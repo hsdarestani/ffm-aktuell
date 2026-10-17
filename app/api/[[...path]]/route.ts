@@ -1,6 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {z} from 'zod';
-import {query} from '@/lib/db';
+import {pool,query} from '@/lib/db';
 import {beginSession,endSession,hashPassword,verifyPassword,sessionUser,trustedOrigin,User} from '@/lib/auth';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -14,6 +14,17 @@ const trim=(v:unknown)=>typeof v==='string'?v.trim():'';
 const text=(n:number)=>z.string().trim().min(1).max(n);
 const optionalText=(n:number)=>z.string().trim().max(n).optional().default('');
 const allowedUrl=(v:unknown)=>{const s=trim(v);if(!s)return null;try{let u=new URL(s);return ['http:','https:'].includes(u.protocol)?u.toString():null;}catch{return null;}};
+// A source link is not proof on its own: the editor must also attest an actual check.
+function independentProof(raw:unknown){
+ const clean=allowedUrl(raw);
+ if(!clean)return null;
+ const u=new URL(clean);
+ if(u.protocol!=='https:')return null;
+ const host=u.hostname.toLowerCase().replace(/^www\./,'');
+ if(['openstreetmap.org','osm.org','overpass-api.de','geofabrik.de','google.com','maps.google.com','yelp.com','tripadvisor.com','facebook.com','instagram.com'].some(d=>host===d||host.endsWith('.'+d)))return null;
+ return clean;
+}
+function conflict(message:string){return Object.assign(new Error(message),{status:409});}
 function parse<T>(schema:z.ZodSchema<T>,body:unknown):T{const r=schema.safeParse(body);if(!r.success)throw Error('Invalid fields: '+r.error.issues.map(x=>x.path.join('.')).join(', '));return r.data;}
 async function payload(req:NextRequest){try{return await req.json();}catch{throw Error('Invalid JSON');}}
 function need(user:User|null){if(!user)throw Object.assign(new Error('Login required'),{status:401});return user;}
@@ -131,6 +142,75 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     if(b.place_id){const owned=await query('SELECT id FROM places WHERE id=$1 AND business_id=$2',[b.place_id,business.id]);if(!owned.rowCount)return bad('Place not owned',403);}
     const r=await query('INSERT INTO deals(business_id,place_id,title,details) VALUES($1,$2,$3,$4) RETURNING id,status',[business.id,b.place_id||null,b.title,b.details]);return ok(r.rows[0],201);
   }
+
+  if(method==='GET'&&path==='admin/validation'){
+    admin(user);
+    const [counts,stale]=await Promise.all([
+      query(`SELECT
+        (SELECT count(*)::int FROM discovery_candidates WHERE reviewed_status='unverified') AS kandidaten,
+        (SELECT count(*)::int FROM discovery_candidates WHERE reviewed_status='needs_review') AS rueckfragen,
+        (SELECT count(*)::int FROM discovery_candidates WHERE reviewed_status='hidden') AS ausgeblendet,
+        (SELECT count(*)::int FROM discovery_candidates WHERE category='Apotheken') AS apotheken,
+        (SELECT count(*)::int FROM places WHERE status='published' AND verification_status='verified' AND activity_status='operating' AND verified_at BETWEEN now()-interval '30 days' AND now()) AS aktuell_geprueft,
+        (SELECT count(*)::int FROM places WHERE status='published' AND activity_status!='permanently_closed' AND (verification_status!='verified' OR verified_at IS NULL OR verified_at < now()-interval '30 days')) AS offen_zur_pruefung`),
+      query("SELECT id,name,category,verified_at,verification_source,verification_note FROM places WHERE status='published' AND activity_status!='permanently_closed' AND (verification_status!='verified' OR verified_at IS NULL OR verified_at<now()-interval '30 days') ORDER BY verified_at ASC NULLS FIRST,name LIMIT 25")
+    ]);
+    return ok({stats:counts.rows[0],recheck:stale.rows,validity_days:30,opening_now_guaranteed:false});
+  }
+  if(method==='GET'&&path==='admin/candidates'){
+    admin(user);
+    const q=trim(qs.get('q')).slice(0,90);
+    const cat=trim(qs.get('category')).slice(0,70);
+    const state=trim(qs.get('state'))||'unverified';
+    if(!['unverified','needs_review'].includes(state))return bad('Ungültiger Prüfstatus');
+    const page=Number(qs.get('page')||0);
+    const offset=Number.isFinite(page)?Math.min(Math.max(Math.floor(page),0),1000)*25:0;
+    const args=[state,cat,q,offset];
+    const where="WHERE reviewed_status=$1 AND ($2='' OR category=$2) AND ($3='' OR name ILIKE '%'||$3||'%' OR address ILIKE '%'||$3||'%')";
+    const [r,n]=await Promise.all([
+      query("SELECT osm_id,name,category,address,website,phone,opening_hours,last_osm_check,osm_url,latitude,longitude,reviewed_status FROM discovery_candidates "+where+" ORDER BY CASE WHEN website IS NOT NULL AND website!='' THEN 0 ELSE 1 END,category,name,osm_id LIMIT 25 OFFSET $4",args),
+      query("SELECT count(*)::int AS total FROM discovery_candidates "+where,args.slice(0,3))
+    ]);
+    return ok({items:r.rows,total:n.rows[0]?.total||0,limit:25,offset});
+  }
+  if(method==='POST'&&path==='admin/review-candidate'){
+    const u=admin(user);
+    const b=parse(z.discriminatedUnion('action',[
+      z.object({action:z.literal('publish'),osm_id:z.string().regex(new RegExp('^(node|way|relation)/[0-9]+$')),
+        verification_source:z.url().max(1000),
+        verification_method:z.enum(['betreiber_webseite','betreiber_kontakt','behoerde']),
+        verification_note:z.string().trim().min(25).max(2000),
+        confirms_existence:z.literal(true),confirms_address:z.literal(true),confirms_operation:z.literal(true),
+        editorial_rank:z.number().int().min(0).max(100).default(0),
+        opening_hours_text:z.string().trim().max(300).optional().default('')}),
+      z.object({action:z.enum(['hide','needs_review']),osm_id:z.string().regex(new RegExp('^(node|way|relation)/[0-9]+$')),
+        reason:z.string().trim().min(10).max(500)})
+    ]),await payload(req));
+    const proof=b.action==='publish'?independentProof(b.verification_source):null;
+    if(b.action==='publish'&&!proof)return bad('Unabhängige HTTPS Quelle des Betreibers oder einer Behörde erforderlich');
+    const tx=await pool.connect();
+    try{
+      await tx.query('BEGIN');
+      const source=await tx.query("SELECT * FROM discovery_candidates WHERE osm_id=$1 AND reviewed_status IN ('unverified','needs_review') FOR UPDATE",[b.osm_id]);
+      const c=source.rows[0];
+      if(!c)throw conflict('Eintrag bereits bearbeitet oder nicht gefunden');
+      if(b.action==='publish'){
+        const duplicate=await tx.query("SELECT id,name FROM places WHERE osm_id=$1 OR (lower(name)=lower($2) AND latitude IS NOT NULL AND longitude IS NOT NULL AND abs(latitude-$3)<0.0005 AND abs(longitude-$4)<0.0008) LIMIT 1",[c.osm_id,c.name,c.latitude,c.longitude]);
+        if(duplicate.rowCount)throw conflict('Ein ähnlicher Ort existiert bereits. Bitte den bestehenden Eintrag prüfen: '+duplicate.rows[0].name);
+        const inserted=await tx.query(
+          "INSERT INTO places(osm_id,name,category,address,latitude,longitude,website,source_url,status,description_de,verification_status,activity_status,verification_source,verification_method,verification_note,verified_by,verified_at,editorial_rank,opening_hours_text) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'published',$9,'verified','operating',$10,$11,$12,$13,now(),$14,$15) RETURNING id",
+          [c.osm_id,c.name,c.category,c.address,c.latitude,c.longitude,c.website,c.osm_url,'Redaktionell auf Betriebsstatus überprüft. Zeiten bitte direkt beim Anbieter prüfen.',proof,b.verification_method,b.verification_note,u.id,b.editorial_rank,b.opening_hours_text]);
+        await tx.query("UPDATE discovery_candidates SET reviewed_status='hidden' WHERE osm_id=$1",[c.osm_id]);
+        await tx.query("INSERT INTO audit_log(actor_id,action,target_type,target_id) VALUES($1,'publish:independent-source-review','place',$2)",[u.id,inserted.rows[0].id]);
+        await tx.query('COMMIT');
+        return ok({success:true,id:inserted.rows[0].id,verified:true});
+      }
+      await tx.query('UPDATE discovery_candidates SET reviewed_status=$2 WHERE osm_id=$1',[b.osm_id,b.action==='hide'?'hidden':'needs_review']);
+      await tx.query('INSERT INTO audit_log(actor_id,action,target_type,target_id) VALUES($1,$2,$3,$4)',[u.id,b.action+':'+b.reason,'discovery_candidate',b.osm_id]);
+      await tx.query('COMMIT');
+      return ok({success:true,verified:false});
+    }catch(e){await tx.query('ROLLBACK');throw e}finally{tx.release()}
+  }
   if(method==='GET'&&path==='admin/queue'){
     admin(user);const [b,c,p,d,posts]=await Promise.all([
       query("SELECT id,name,status,created_at FROM businesses WHERE status='pending' ORDER BY created_at"),
@@ -162,15 +242,18 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     const b=parse(z.object({
       id,activity_status:z.enum(['unknown','operating','temporarily_closed','permanently_closed']),
       verification_source:z.url().max(1000),
+      verification_method:z.enum(['betreiber_webseite','betreiber_kontakt','behoerde']),
+      verification_note:z.string().trim().min(25).max(2000),
+      confirms_existence:z.literal(true),confirms_address:z.literal(true),confirms_status:z.literal(true),
       editorial_rank:z.number().int().min(0).max(100).default(0),
       opening_hours_text:z.string().max(300).optional().default('')
     }),await payload(req));
-    const source=allowedUrl(b.verification_source);
-    if(!source)return bad('Eine überprüfbare Quelle ist erforderlich');
+    const source=independentProof(b.verification_source);
+    if(!source)return bad('Unabhängige HTTPS Quelle erforderlich');
     // Set the verification time only after an authorized editor explicitly
     // reviewed a cited source. API data alone never auto-confirms businesses.
-    const r=await query("UPDATE places SET activity_status=$2, verification_status='verified',verification_source=$3,verified_at=now(),editorial_rank=$4,opening_hours_text=$5,updated_at=now() WHERE id=$1 RETURNING id",
-      [b.id,b.activity_status,source,b.activity_status==='operating'?b.editorial_rank:0,b.opening_hours_text]);
+    const r=await query("UPDATE places SET activity_status=$2, verification_status='verified',verification_source=$3,verified_at=now(),editorial_rank=$4,opening_hours_text=$5,verification_method=$6,verification_note=$7,verified_by=$8,updated_at=now() WHERE id=$1 RETURNING id",
+      [b.id,b.activity_status,source,b.activity_status==='operating'?b.editorial_rank:0,b.opening_hours_text,b.verification_method,b.verification_note,u.id]);
     if(!r.rowCount)return bad('Ort nicht gefunden',404);
     await audit(u,'verify:source-reviewed','place',b.id);
     return ok({success:true,verification_status:'verified'});

@@ -22,7 +22,7 @@ export default function AtlasPage(){
   <header className="atlas-standalone-bar"><a className="atlas-standalone-brand" href="/">ffm<span>aktuell.</span></a><div style={{display:'flex',alignItems:'center',gap:14}}><a href="/">Zur Startseite</a></div></header>
   <div className="atlas-standalone-main"><Atlas3D places={places} lang={lang} variant="full" onSelect={id=>setSelected(places.find(p=>p.id===id)||null)}/></div>
   {error&&<p className="atlas-standalone-note" role="alert">{error}</p>}
-  <p className="atlas-standalone-note">Dreidimensionale Gebäude basieren auf Kartendaten von OpenStreetMap. Einzelne Gebäudehöhen können fehlen. Fotorealistische Fassaden sind nicht enthalten.</p>
+  <p className="atlas-standalone-note">Für einzelne Bereiche der Innenstadt werden amtliche LoD2 Dach- und Wandflächen verwendet. Außerhalb davon zeigt der Atlas vereinfachte Gebäude aus OpenStreetMap. Keine vollständige 3D Abdeckung oder fotorealistischen Fassaden.</p>
   {selected&&<div className="atlas-detail-overlay" role="presentation" onClick={e=>{if(e.target===e.currentTarget)setSelected(null);}}><div className="atlas-detail-sheet" role="dialog" aria-modal="true" aria-label={selected.name}>
    <button className="atlas-detail-close" aria-label="Schließen" onClick={()=>setSelected(null)}><X size={20}/></button>
    <span className="atlas-editorial-index">{selected.district||'Frankfurt'} · {selected.category}</span>
