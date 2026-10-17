@@ -5,12 +5,12 @@ const read=(file)=>readFileSync(file,'utf8');
 const page=read('app/page.tsx');
 const atlas=read('components/AtlasHome.tsx');
 const brand=read('app/brand.css');
-test('Live FFM homepage uses the live Atlas and real APIs',()=>{
+test('Live FFM homepage offers fast search and explicit access to real map APIs',()=>{
  assert.match(page,/import AtlasHome from/);
  assert.match(page,/onSearch=\{value=>/);
  assert.match(atlas,/onSearch\(query\.trim\(\)\)/);
  assert.match(atlas,/onPlace\(p\.id\)/);
- assert.match(atlas,/onCategory\(c\)/);
+ assert.match(atlas,/onCategory\(n.id\)/);assert.match(atlas,/onMap/);assert.doesNotMatch(atlas,/<Atlas3D/);
 });
 test('FFM bespoke identity and responsive layout survive Atlas integration',()=>{
  assert.match(brand,/\.ml-brand-mark/);
