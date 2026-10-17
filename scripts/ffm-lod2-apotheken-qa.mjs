@@ -5,8 +5,9 @@ function ok(text,yes,detail=''){console.log((yes?'BESTANDEN':'FEHLER')+' '+text+
 for(const d of [{label:'Mobil',width:390,height:844},{label:'Desktop',width:1440,height:900}]){
  const b=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const p=await b.newPage({viewport:{width:d.width,height:d.height},reducedMotion:'reduce'});
+ let gpuDraw=false;
  const pageErrors=[];p.on('pageerror',x=>pageErrors.push(x.message));
- p.on('console',x=>{if(['warning','error'].includes(x.type())||/LoD2/.test(x.text()))console.log('BROWSER '+d.label+' '+x.type()+': '+x.text().slice(0,600))});
+ p.on('console',x=>{if(x.text().includes('FFM LoD2 GPU first draw')&&x.text().includes('GL error 0'))gpuDraw=true;if(['warning','error'].includes(x.type())||/LoD2/.test(x.text()))console.log('BROWSER '+d.label+' '+x.type()+': '+x.text().slice(0,600))});
  try{
   const data=await p.request.get(base+'/api/discovery?category=Apotheken&limit=2');
   const resp=data.ok()?await data.json():null;
@@ -21,8 +22,8 @@ for(const d of [{label:'Mobil',width:390,height:844},{label:'Desktop',width:1440
   await p.goto(base+'/atlas?atlasQA=1',{waitUntil:'domcontentloaded',timeout:55000});
   await p.locator('.atlas-map-loading').waitFor({state:'hidden',timeout:60000});
   await p.waitForFunction(()=>document.body.innerText.includes('Echte LoD2 Dach- und Wandflächen'),{timeout:25000}).catch(()=>{});
-  const state=await p.evaluate(()=>{const map=window.__ffmAtlasQA;return {layer:!!map?.getLayer('ffm-real-lod2'),visible:map?.getLayoutProperty('ffm-real-lod2','visibility'),url:document.body.innerText.includes('Echte LoD2 Dach- und Wandflächen')}});
-  ok(d.label+' echte 3D-LoD2-Flächen im WebGL gerendert',state.layer&&state.url,JSON.stringify(state));
+  const state=await p.evaluate(()=>{const map=window.__ffmAtlasQA;return {layer:!!map?.getLayer('ffm-real-lod2'),visible:map?.getLayoutProperty('ffm-real-lod2','visibility')}});
+  ok(d.label+' echte 3D-LoD2-Flächen im WebGL gerendert',state.layer&&gpuDraw,JSON.stringify({...state,gpuDraw}));
   ok(d.label+' keine JavaScript-Fehler',pageErrors.length===0,JSON.stringify(pageErrors.slice(0,2)));
  }catch(e){errors++;console.error('FEHLER Test '+d.label,String(e).slice(0,550))}
  finally{await p.close();await b.close();}
