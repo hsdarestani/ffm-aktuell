@@ -8,7 +8,7 @@ test('pharmacy and on-duty categories are visible and distinct',()=>{
  assert.match(categories,/id:'Apotheken Notdienst'/);
  assert.match(categories,/Apotheken-Notdienst/);
  assert.match(page,/aponet\.de\/notdienstsuche\/60320-Frankfurt/);
- assert.match(page,/keine bestätigten Notdienst-Apotheken/);
+ assert.match(page,/keine Notdienstbestätigung/);
 });
 test('original raw candidates are searchable, never promoted to verified places',()=>{
  assert.match(read('db/schema.sql'),/CREATE TABLE IF NOT EXISTS discovery_candidates/);
@@ -17,8 +17,8 @@ test('original raw candidates are searchable, never promoted to verified places'
  assert.match(api,/path==='discovery-map'/);
  assert.match(api,/path==='pharmacy-notdienst'/);
  assert.match(api,/WHERE reviewed_status='unverified'/);
- assert.match(page,/v5-candidate-card/);
- assert.match(page,/Mehr Orte laden/);
+ assert.match(page,/ffm-find-item/);
+ assert.match(page,/Weitere Orte anzeigen/);
  assert.match(page,/!nurGepruefte/);
 });
 test('large map sets are clustered and anchored to source coordinates',()=>{
