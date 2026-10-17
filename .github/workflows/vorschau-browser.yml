@@ -1,0 +1,35 @@
+name: FFM deutsche Vorschau – Browserprüfung
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/vorschau-browser-smoke.mjs'
+      - '.github/workflows/vorschau-browser.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  vorschau:
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Browser installieren
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+      - name: Veröffentlichten Entwurf auf Mobilgerät und Rechner prüfen
+        run: node scripts/vorschau-browser-smoke.mjs
+        env:
+          FFM_URL: https://ffm-aktuell.smarbiz.sbs/
+      - name: Bildschirmfotos sichern
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffm-deutsche-vorschau-bilder
+          path: artifacts/vorschau/
+          if-no-files-found: ignore
+          retention-days: 14
