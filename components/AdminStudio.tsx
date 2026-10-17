@@ -281,8 +281,8 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
     {view==='overview'&&<>
      <section className="ffm-studio-hero">
       <div className="ffm-studio-hero-text"><Caption>FRANKFURT · DEIN REDAKTIONSRAUM</Caption><h1>Die Stadt.<br/><em>Dein Blick.</em></h1><p>Jeder geprüfte Ort macht Frankfurt ein Stück echter. Hier beginnt die Arbeit hinter den Entdeckungen.</p><button type="button" onClick={()=>navigate('review')}>Jetzt Orte prüfen <ArrowUpRight size={19}/></button></div>
-      <div className="ffm-studio-hero-scene"><div className="ffm-studio-sun"/><Skyline large/><div className="ffm-studio-route" aria-hidden="true"><span/><span/><span/></div><span className="ffm-studio-scene-tag">FFM / 001 <span>LIVE EDITORIAL SPACE</span></span></div>
-      <span className="ffm-studio-hero-index">01 / THE CITY DESK</span>
+      <div className="ffm-studio-hero-scene"><div className="ffm-studio-sun"/><Skyline large/><div className="ffm-studio-route" aria-hidden="true"><span/><span/><span/></div><span className="ffm-studio-scene-tag">FFM / 001 <span>DIE REDAKTION DER STADT</span></span></div>
+      <span className="ffm-studio-hero-index">01 / DAS STADTPULT</span>
      </section>
      <div className="ffm-studio-section-title"><div><Caption>REDAKTION IN ZAHLEN</Caption><h2>Was die Stadt bewegt<span>.</span></h2></div><span>Stand: jetzt · keine Live Öffnungsdaten</span></div>
      <div className="ffm-studio-kpis">
