@@ -1,0 +1,25 @@
+name: Hessen Luftbild – Browserprüfung
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/luftbild-browser.yml'
+      - 'scripts/luftbild-browser.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  luftbild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Browser installieren
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+      - name: Amtliches Luftbild auf Mobilgerät und Rechner testen
+        run: node scripts/luftbild-browser.mjs
