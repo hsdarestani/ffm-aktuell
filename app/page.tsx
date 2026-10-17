@@ -39,18 +39,18 @@ export default function Home(){
  },[refresh]);
  useEffect(()=>{void load()},[load]);
  useEffect(()=>{document.documentElement.lang=lang},[lang]);
- useEffect(()=>{let disposed=false;const controller=new AbortController();setCandidateLoading(true);
-  const q=new URLSearchParams({limit:'48',offset:'0'});
+ useEffect(()=>{if(page!=='discover')return;let disposed=false;const controller=new AbortController();setCandidateLoading(true);
+  const q=new URLSearchParams({limit:'18',offset:'0'});
   if(category!=='Alle')q.set('category',category==='Apotheken Notdienst'?'Apotheken':category);
   if(query.trim())q.set('q',query.trim());
-  fetch('/api/discovery?'+q,{signal:controller.signal}).then(async r=>{if(!r.ok)throw Error('Fehler');return r.json()})
+  fetch('/api/discovery?'+q,{signal:controller.signal,cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('Fehler');return r.json()})
    .then(data=>{if(!disposed){setCandidates(data.items||[]);setCandidateTotal(data.total||0);}})
    .catch(()=>{if(!disposed){setCandidates([]);setCandidateTotal(0);}})
    .finally(()=>{if(!disposed)setCandidateLoading(false)});
   return()=>{disposed=true;controller.abort()};
- },[category,query,refresh]);
+ },[page,category,query,refresh]);
  const mehrLaden=async()=>{if(candidateLoading||candidates.length>=candidateTotal)return;
-  setCandidateLoading(true);try{const q=new URLSearchParams({limit:'48',offset:String(candidates.length)});
+  setCandidateLoading(true);try{const q=new URLSearchParams({limit:'18',offset:String(candidates.length)});
    if(category!=='Alle')q.set('category',category==='Apotheken Notdienst'?'Apotheken':category);
    if(query.trim())q.set('q',query.trim());
    const r=await fetch('/api/discovery?'+q);if(!r.ok)throw Error('Fehler');const d=await r.json();
@@ -71,7 +71,7 @@ export default function Home(){
  const favorite=async(id:string)=>{if(id.startsWith('muster-')||id.startsWith('node/')||id.startsWith('way/')||id.startsWith('relation/')){flash('Ungeprüfte Einträge können noch nicht gespeichert werden.');return}if(!user){setAuth(true);return}try{let active=!favorites.includes(id);await api('favorites',{place_id:id,active});setFavorites(a=>active?[...a,id]:a.filter(x=>x!==id))}catch(e){flash((e as Error).message||'Die Merkliste konnte nicht geändert werden.')}};
  const handle=(e:FormEvent<HTMLFormElement>,path:string,transform?:(x:Record<string,FormDataEntryValue>)=>unknown)=>{e.preventDefault();const form=e.currentTarget;const data=Object.fromEntries(new FormData(form));submit(path,transform?transform(data):data,t.pending).then(success=>{if(success)form.reset()})};
  const onAuth=async(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.currentTarget));const ok=await submit(register?'auth/register':'auth/login',data,t.welcome);if(ok){setAuth(false);setRegister(false)}};
- const nav:[Page,any,string][]=[['home',Compass,t.home],['discover',Search,t.discover],['map',MapIcon,t.map],['events',CalendarDays,t.events],['community',Users,t.community]];
+ const nav:[Page,any,string][]=[['home',Compass,t.home],['discover',Search,t.discover],['map',MapIcon,t.map]];
  const picture=(index:number,p?:Place)=> <div className="v3-photo"><img src={ortsbild(p?.name||'',p?.image_url)} alt="Stimmungsbild zur Stadtempfehlung" loading="lazy"/><span className="v3-photo-index">{String(index+1).padStart(2,'0')}</span><span className="v3-photo-credit">Stimmungsbild</span></div>;
  const cards=(arr:Place[])=>arr.length?<div className="cards v3-place-grid">{arr.map((p,i)=><article className="card v3-place-card" key={p.id}><button className="card-cover" onClick={()=>setSelected(p)} aria-label={p.name}>{picture(i,p)}<span className="v3-visit-mark"><Plus size={18}/></span></button><div className="card-info"><div className="v3-card-label"><span>{catBezeichnungen[p.category]||p.category} · {p.district||t.city}</span><span className="v4-check-label">{statusLabel(p)}</span></div><div><button onClick={()=>setSelected(p)}>{p.name}</button><button className={'heart '+(favorites.includes(p.id)?'liked':'')} onClick={()=>favorite(p.id)} aria-label={t.save}><Heart size={19} fill={favorites.includes(p.id)?'currentColor':'none'}/></button></div><p>{p.description_de}</p><span><MapPin size={14}/>{p.district||t.city}</span></div></article>)}</div>:<div className="empty"><Compass size={28}/><p>{t.empty}</p></div>;
  const sectionHeading=(index:string,head:string,sub:string)=> <div className="section-head"><small>{index} / FFM JOURNAL <span/></small><h2>{head}</h2><p>{sub}</p></div>;
@@ -81,21 +81,54 @@ export default function Home(){
  const reviewSection=(type:string,items:any[])=><div className="review-section" key={type}><h3>{{businesses:'Unternehmen',claims:'Inhaberschaft',places:'Orte',deals:'Angebote',posts:'Beiträge'}[type]||'Einträge'} <span>{items.length}</span></h3>{items.map(a=><div className="review-row" key={a.id}><span>{a.name||a.title||a.body||a.business_name+' / '+a.place_name}</span><div><button title={t.approve} onClick={()=>submit('admin/review',{type:type==='businesses'?'business':type==='claims'?'claim':type==='places'?'place':type==='deals'?'deal':'post',id:a.id,approve:true},t.approve)}><Check size={18}/></button><button title={t.reject} onClick={()=>submit('admin/review',{type:type==='businesses'?'business':type==='claims'?'claim':type==='places'?'place':type==='deals'?'deal':'post',id:a.id,approve:false},t.reject)}><X size={18}/></button></div></div>)}{items.length===0&&<p className="subdued">—</p>}</div>;
  return <div className={'site v3-site'+(page==='admin'?' ffm-studio-active':'')}>
   <header className="header"><div className="header-inner"><button className="logo" onClick={()=>navigate('home')} aria-label="FFM Aktuell Startseite"><span className="ml-brand-mark" aria-hidden="true"><svg viewBox="0 0 60 44" fill="none" role="presentation"><path d="M2 29C15 5 23 7 34 22C43 33 51 37 58 16" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round"/><circle cx="34" cy="22" r="2.7" fill="currentColor"/></svg></span><span className="ml-brand-word">ffm<b>aktuell</b><small>FRANKFURT VON INNEN</small></span></button><nav className="desktop-nav">{nav.map(([p,,txt])=><button key={p} className={page===p?'active':''} onClick={()=>navigate(p)}>{txt}</button>)}</nav><div className="header-end"><button className="business-nav" onClick={()=>navigate('business')}>{t.business}<span className="ui-dot" aria-hidden="true"/></button><button className="user-button" title={t.sign} onClick={()=>user?navigate(user.role==='admin'?'admin':'business'):setAuth(true)}><UserRound size={20}/></button><button className="menu-button" onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div></div>{menu&&<div className="mobile-menu"><button onClick={()=>navigate('business')}>{t.business}</button><button onClick={()=>user?navigate('business'):setAuth(true)}>{user?t.name:t.login}</button>{user?.role==='admin'&&<button onClick={()=>navigate('admin')}>Verwaltung</button>}</div>}</header>
-  <div className="v3-preview-strip" role="status"><span className="v3-preview-spark"/><strong>VORSCHAU</strong><span>{VORSCHAU_HINWEIS}</span></div>
+  {(page==='events'||page==='community')&&<div className="v3-preview-strip" role="status"><span className="v3-preview-spark"/><strong>VORSCHAU</strong><span>{VORSCHAU_HINWEIS}</span></div>}
    {toast&&<div className="toast" role="status"><Check size={16}/>{toast}<button onClick={()=>setToast('')}><X size={16}/></button></div>}
   {error&&<div className="error">{error}<button onClick={()=>setRefresh(x=>x+1)}>{lang==='de'?'Erneut laden':'Retry'}</button></div>}
   {page==='home'&&<AtlasHome lang={lang} places={sichtbareOrte} events={sichtbareVeranstaltungen} news={sichtbareBeitraege} onDiscover={()=>navigate('discover')} onMap={()=>navigate('map')} onEvents={()=>navigate('events')} onCommunity={()=>navigate('community')} onBusiness={()=>navigate('business')} onPlace={selectPlace} onCategory={cat=>{setCategory(cat);navigate('discover')}} onSearch={value=>{setQuery(value);setCategory('Alle');setDistrict('');navigate('discover')}} />}
-  {page==='discover'&&<main className="inner-page"><div className="page-title"><small>01 / FRANKFURT ENTDECKEN</small><h1>{t.discover}<em>.</em></h1><p>{t.curatedSub}</p></div><div className="search-bar"><Search size={20}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t.search}/><select value={district} onChange={e=>setDistrict(e.target.value)}><option value="">{t.district}</option>{[...new Set(sichtbareOrte.map(p=>p.district).filter(Boolean))].sort().map(d=><option key={d}>{d}</option>)}</select><button onClick={()=>navigate('map')}><MapIcon size={18}/>{t.map}</button></div>{categoriesEl}<div className="v4-verification-controls"><label><input type="checkbox" checked={nurGepruefte} onChange={e=>setNurGepruefte(e.target.checked)}/><span>Nur aktuell geprüfte Betriebe</span></label><small>Geprüft: Betriebsstatus innerhalb der letzten 30 Tage mit Quelle kontrolliert. Kein Live-Öffnungsversprechen.</small></div><div className="result-count">{filtered.length} REDAKTIONELLE / MUSTERORTE · {candidateTotal} UNGEPRÜFTE OSM-EINTRÄGE</div>
- {category==='Apotheken Notdienst'&&<div className="v5-duty-notice"><strong>Welche Apotheke hat jetzt Notdienst?</strong><p>Der Notdienst wechselt nach Uhrzeit und Datum. Die unten stehenden Apotheken sind keine bestätigten Notdienst-Apotheken. Den tatsächlichen Dienst bitte direkt bei der offiziellen Apotheken-Notdienstsuche prüfen.</p><a href="https://www.aponet.de/notdienstsuche/60320-Frankfurt" target="_blank" rel="noopener noreferrer">Offizielle Notdienstsuche öffnen</a></div>}
- {cards(filtered)}
- {!nurGepruefte&&<section className="v5-candidate-section"><div className="v3-section-head"><div><span className="v3-eyebrow">OPENSTREETMAP · NOCH NICHT ÜBERPRÜFT</span><h2 className="v5-source-title">Orte aus der Stadt.</h2></div><span className="v3-section-trail">Kein bestätigter Öffnungsstatus</span></div>
- <div className="v5-candidate-grid">{candidates.map(p=><article className="v5-candidate-card" key={p.id}><button type="button" onClick={()=>setSelected(p)}><span className="v5-candidate-category">{catBezeichnungen[p.category]||p.category}</span><strong>{p.name}</strong><small>{p.address||'Frankfurt am Main'}</small><span className="v5-unverified">Nicht auf Betrieb und Öffnungszeiten geprüft</span></button></article>)}</div>
- {candidateLoading&&<p className="v5-loading">Weitere Ortsdaten werden geladen …</p>}
- {candidateTotal>candidates.length&&<button className="v5-load-more" disabled={candidateLoading} onClick={mehrLaden}>Mehr Orte laden · {candidates.length} von {candidateTotal}</button>}
- {candidateTotal===0&&!candidateLoading&&<p className="v5-loading">Für diese Auswahl liegen derzeit keine OSM-Kandidaten vor.</p>}
- <p className="v5-source-foot">Quelle: © OpenStreetMap-Mitwirkende (ODbL). Die Daten stammen aus einer Erhebung, sind nicht in Echtzeit geprüft und enthalten möglicherweise geschlossene Betriebe.</p></section>}
-</main>}
-  {page==='map'&&<main className="atlas-app-map"><Atlas3D places={places} lang={lang} variant="full" onSelect={selectPlace}/><div className="atlas-app-map-note">{t.notice} · © OpenStreetMap contributors, OpenMapTiles, OpenFreeMap</div></main>}
+  {page==='discover'&&<main className="ffm-find-page" id="entdecken">
+ <section className="ffm-find-head">
+  <div className="ffm-find-eyebrow">FRANKFURT ENTDECKEN</div>
+  <h1>Finde, was <em>zu dir passt.</em></h1>
+  <p>Einfach suchen oder auswählen. Alle Orte mit klarer Quellenangabe.</p>
+  <div className="ffm-find-search" role="search"><Search size={21} aria-hidden="true"/><label htmlFor="ffm-find-query" className="sr-only">Orte oder Stadtteile suchen</label><input id="ffm-find-query" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Café, Restaurant, Stadtteil …" autoComplete="off"/>{query&&<button type="button" className="ffm-find-clear" onClick={()=>setQuery('')} aria-label="Suche löschen"><X size={18}/></button>}<button className="ffm-find-map" type="button" onClick={()=>navigate('map')}><MapIcon size={17}/> Karte</button></div>
+ </section>
+ <section className="ffm-find-filters" aria-label="Kategorien">
+  <div className="ffm-find-main-cats">
+   {[['Alle','Alle'],['Cafés','Cafés'],['Restaurants','Essen'],['Bars','Bars'],['Freizeit','Freizeit'],['Museen','Kultur'],['Apotheken','Apotheken']].map(([id,label])=><button type="button" key={id} aria-pressed={category===id} onClick={()=>{setCategory(id);setNurGepruefte(false)}} className={category===id?'active':''}>{label}</button>)}
+  </div>
+  <details className="ffm-find-more">
+   <summary><Plus size={16}/> Weitere Filter {category!=='Alle'&&!['Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(category)?'· '+(catBezeichnungen[category]||category):''}</summary>
+   <div className="ffm-find-extra">
+    <div className="ffm-find-extra-cats">{categories.filter(cat=>!['Alle','Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(cat)).map(cat=><button type="button" key={cat} className={category===cat?'active':''} onClick={()=>setCategory(cat)}>{catBezeichnungen[cat]||cat}</button>)}</div>
+    <label>Stadtteil<select value={district} onChange={e=>setDistrict(e.target.value)}><option value="">Alle Stadtteile</option>{[...new Set(sichtbareOrte.map(p=>p.district).filter(Boolean))].sort().map(d=><option key={d}>{d}</option>)}</select></label>
+    <label className="ffm-find-verified"><input type="checkbox" checked={nurGepruefte} onChange={e=>setNurGepruefte(e.target.checked)}/> Nur aktuell geprüfte Betriebe</label>
+    <small>Prüfung maximal 30 Tage alt. Keine Garantie, dass der Ort jetzt geöffnet ist.</small>
+   </div>
+  </details>
+ </section>
+ {category==='Apotheken Notdienst'&&<section className="ffm-find-duty"><strong>Apotheken-Notdienst gesucht?</strong><p>Welche Apotheke gerade Dienst hat, erfährst du zuverlässig über die offizielle aktuelle Suche. Die Ortsliste hier ist keine Notdienstbestätigung.</p><a href="https://www.aponet.de/notdienstsuche/60320-Frankfurt" target="_blank" rel="noopener noreferrer">Aktuellen Notdienst bei aponet prüfen</a></section>}
+ <section className="ffm-find-results" aria-labelledby="ffm-find-results-title">
+  <div className="ffm-find-result-head"><div><h2 id="ffm-find-results-title">Orte in Frankfurt</h2><p>{nurGepruefte?'Nur kürzlich bestätigte Betriebe':'Einträge aus OpenStreetMap mit ungeprüftem Betriebsstatus'}</p></div><span>{nurGepruefte?filtered.filter(p=>!p.demo).length:candidateTotal+filtered.filter(p=>!p.demo).length} Einträge</span></div>
+  {filtered.some(p=>!p.demo)&&<div className="ffm-find-verified-results"><div className="ffm-find-subhead"><Check size={17}/><strong>Redaktionelle Orte</strong><span>Quelle und Status im Detail</span></div>{cards(filtered.filter(p=>!p.demo))}</div>}
+  {!nurGepruefte&&<>
+   <div className="ffm-find-source-line"><span className="ffm-find-source-dot"/><strong>Aus OpenStreetMap</strong><small>Nicht auf Betrieb und Öffnungszeiten geprüft</small></div>
+   <div className="ffm-find-list" aria-busy={candidateLoading&&candidates.length===0}>
+    {candidates.map(p=><button type="button" className="ffm-find-item" key={p.id} onClick={()=>setSelected(p)}>
+     <span className="ffm-find-pin"><MapPin size={21}/></span>
+     <span className="ffm-find-item-copy"><strong>{p.name}</strong><small>{catBezeichnungen[p.category]||p.category} · {p.address||'Frankfurt am Main'}</small></span>
+     <span className="ffm-find-unverified">Ungeprüft</span><span className="ffm-find-chevron">›</span>
+    </button>)}
+   </div>
+   {candidateLoading&&<p className="ffm-find-empty" role="status">Orte werden geladen …</p>}
+   {!candidateLoading&&candidates.length===0&&<div className="ffm-find-empty">Noch keine Einträge für diese Suche. Versuche einen anderen Begriff oder wähle eine Kategorie.</div>}
+   {candidateTotal>candidates.length&&<button className="ffm-find-load" disabled={candidateLoading} onClick={mehrLaden}>Weitere Orte anzeigen <span>{candidates.length} / {candidateTotal}</span></button>}
+   <p className="ffm-find-source-credit">Datenquelle: © OpenStreetMap-Mitwirkende (ODbL). Angaben können veraltet sein. Bitte vor dem Besuch beim Anbieter prüfen.</p>
+  </>}
+  {nurGepruefte&&filtered.filter(p=>!p.demo).length===0&&<div className="ffm-find-empty">Hier gibt es aktuell noch keine frisch bestätigten Betriebe. Du kannst den Filter oben deaktivieren, um weitere Orte zu sehen.</div>}
+  {filtered.some(p=>p.demo)&&!nurGepruefte&&<details className="ffm-find-preview"><summary>Musterorte zur Orientierung ansehen <Plus size={16}/></summary><p>Die folgenden Karten sind <strong>Beispiele</strong>, keine bestätigten Empfehlungen.</p>{cards(filtered.filter(p=>p.demo))}</details>}
+ </section>
+ </main>}
+ {page==='map'&&<main className="atlas-app-map"><Atlas3D places={places} lang={lang} variant="full" onSelect={selectPlace}/><div className="atlas-app-map-note">{t.notice} · © OpenStreetMap contributors, OpenMapTiles, OpenFreeMap</div></main>}
   {page==='events'&&<main className="inner-page v3-editorial-page">
  <div className="page-title v3-page-head"><small>03 / STADTJOURNAL</small><h1>Die Stadt lebt<em>.</em></h1><p>Ideen, Begegnungen und neue Perspektiven auf Frankfurt.</p></div>
  <section className="v3-section"><div className="v3-section-head"><div><span className="v3-eyebrow">FÜR DEINEN KALENDER</span><h2>Was steht an?</h2></div><span className="v3-section-trail">Veranstaltungen in Frankfurt</span></div>
