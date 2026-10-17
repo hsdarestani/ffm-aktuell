@@ -1,8 +1,8 @@
 'use client';
 
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
-import {Layers3,LocateFixed,Minus,Plus,MapPin,Check,SlidersHorizontal,X,Sun,Sunset} from 'lucide-react';
-import type {Map as LibreMap,Marker as LibreMarker} from 'maplibre-gl';
+import {Layers3,LocateFixed,Minus,Plus,Check,X,Sun,Sunset} from 'lucide-react';
+import type {Map as LibreMap,GeoJSONSource} from 'maplibre-gl';
 
 export type AtlasPlace={
  id:string;name:string;latitude:number|null;longitude:number|null;category:string;
@@ -17,6 +17,8 @@ type Props={
 };
 type Area={id:string,de:string,en:string,center:[number,number],zoom:number,bearing:number};
 const CENTER:[number,number]=[8.6773,50.1106];
+const INTRO_CENTER:[number,number]=[8.6675,50.1138];
+const POI_SOURCE='ffm-curated-geo';
 const DISTRICTS:Area[]=[
  {id:'city',de:'Frankfurt',en:'Frankfurt',center:CENTER,zoom:14.55,bearing:-23},
  {id:'altstadt',de:'Altstadt',en:'Old Town',center:[8.6832,50.1101],zoom:16.25,bearing:-28},
@@ -53,57 +55,126 @@ function isSelectedCategory(p:AtlasPlace,cat:string){
  if(cat==='Sehenswürdigkeiten')return /sehenswürd|sight|attraktion|landmark|monument/i.test(c);
  return c===cat.toLowerCase();
 }
+/** MapLibre's existing vector data is recolored in place. Unlike a tinted raster
+ * overlay, this preserves 3D geometry and legible vector streets at every bearing. */
 function setColorScheme(map:LibreMap,mode:AtlasMode){
- // Only existing underlying vector layers are changed; keep accurate roads and POIs.
- const layers=map.getStyle().layers;
- if(!layers)return;
+ const dusk=mode==='golden';
+ const layers=map.getStyle().layers??[];
  for(const layer of layers){
-  if(layer.type==='fill'&&/water|river|lake/i.test(layer.id)){
-   try{map.setPaintProperty(layer.id,'fill-color',mode==='golden'?'#91adb3':'#9cbfc3')}catch{}
-  }
-  if(layer.type==='fill'&&/park|landcover|grass|wood|forest/i.test(layer.id)){
-   try{map.setPaintProperty(layer.id,'fill-color',mode==='golden'?'#b9bea8':'#d1dece')}catch{}
-  }
+  const id=layer.id.toLowerCase();
+  if(id.startsWith('ffm-'))continue;
+  try{
+   if(layer.type==='symbol'){
+    // Remove commercial-style map noise (road shields, transit icons, POI spam).
+    // City and neighborhood context stays visible beneath our curated locations.
+    const keep=/(?:^|[-_])(place|city|town|suburb|neighbourhood|neighborhood|district|village|settlement|waterway|river)(?:$|[-_])/.test(id)
+      && !/(shield|road|motorway|airport|bus|train|station|stop)/.test(id);
+    map.setLayoutProperty(layer.id,'visibility',keep?'visible':'none');
+    if(keep){
+     map.setPaintProperty(layer.id,'text-color',dusk?'#444f4b':'#465b55');
+     map.setPaintProperty(layer.id,'text-halo-color',dusk?'#e9ddd2':'#eaf0e8');
+     map.setPaintProperty(layer.id,'text-halo-width',1.5);
+    }
+    continue;
+   }
+   if(layer.type==='background'){
+    map.setPaintProperty(layer.id,'background-color',dusk?'#e7dacf':'#edf0e8');
+   }else if(layer.type==='fill'){
+    if(/water|river|lake|ocean|sea/.test(id))map.setPaintProperty(layer.id,'fill-color',dusk?'#82a9ae':'#96babe');
+    else if(/park|wood|grass|forest|landcover|landuse|garden|green/.test(id))map.setPaintProperty(layer.id,'fill-color',dusk?'#b8c5ad':'#cbdac8');
+    else if(/building/.test(id))map.setPaintProperty(layer.id,'fill-color',dusk?'#d4c5bb':'#d8dfd5');
+    else if(/land|residential|industrial/.test(id))map.setPaintProperty(layer.id,'fill-color',dusk?'#ebdfd3':'#eef0e9');
+   }else if(layer.type==='line'){
+    if(/water/.test(id))map.setPaintProperty(layer.id,'line-color',dusk?'#8eaeb1':'#a6c6c6');
+    else if(/road|street|bridge|highway|motorway|transport|rail|tunnel/.test(id)){
+     const casing=/casing|outline|case/.test(id);
+     map.setPaintProperty(layer.id,'line-color',casing?(dusk?'#d1c5b9':'#d7ded3'):(dusk?'#faf0e3':'#ffffff'));
+    }
+   }
+  }catch(e){console.warn('Atlas optional paint layer:',layer.id,e);}
  }
- if(map.getLayer('ffm-architecture'))map.setPaintProperty('ffm-architecture','fill-extrusion-color',mode==='golden'
- ? ['interpolate',['linear'],['coalesce',['get','render_height'],['get','height'],12],0,'#d9cab8',90,'#be9f91',260,'#8b7778']
- : ['interpolate',['linear'],['coalesce',['get','render_height'],['get','height'],12],0,'#dfddd6',90,'#b9c4c2',260,'#899e9d']);
+ if(map.getLayer('ffm-architecture')){
+  map.setPaintProperty('ffm-architecture','fill-extrusion-color',
+   ['interpolate',['linear'],['coalesce',['get','render_height'],['get','height'],12],
+    0,dusk?'#d8cbbd':'#d9e0d7',35,dusk?'#b8aba2':'#b9cbc2',
+    110,dusk?'#908d8b':'#97aaa5',250,dusk?'#636c70':'#687e7c']);
+  map.setPaintProperty('ffm-architecture','fill-extrusion-opacity',dusk?0.96:0.93);
+ }
+ // Soft directional lighting reveals tower mass and silhouettes without textures.
+ try{
+  const lightMap=map as unknown as {setLight?:(light:{anchor:string,color:string,intensity:number,position:number[]})=>void};
+  lightMap.setLight?.({anchor:'viewport',color:dusk?'#fff1d9':'#f4fbf8',intensity:dusk?0.66:0.52,position:[1.5,210,38]});
+ }catch{}
 }
 function add3DBuildings(map:LibreMap){
  if(map.getLayer('ffm-architecture'))return;
  if(!map.getSource('ffm-openmaptiles')){
   map.addSource('ffm-openmaptiles',{type:'vector',url:'https://tiles.openfreemap.org/planet',attribution:'© OpenStreetMap contributors'});
  }
- const labels=map.getStyle().layers?.find(l=>l.type==='symbol'&&Boolean(l.layout&&('text-field' in l.layout)));
+ // Base footprints remain behind; 3D towers share the real map projection.
+ const firstLabel=map.getStyle().layers?.find(l=>l.type==='symbol');
  map.addLayer({
-  id:'ffm-architecture',
-  type:'fill-extrusion',
-  source:'ffm-openmaptiles',
-  'source-layer':'building',
-  minzoom:14,
-  filter:['!=',['get','hide_3d'],true],
+  id:'ffm-architecture',type:'fill-extrusion',source:'ffm-openmaptiles','source-layer':'building',minzoom:13.5,
   paint:{
-   'fill-extrusion-color':'#d5d7d1',
-   'fill-extrusion-height':['interpolate',['linear'],['zoom'],14.0,0,15.25,['coalesce',['get','render_height'],['get','height'],12]],
-   'fill-extrusion-base':['interpolate',['linear'],['zoom'],14.0,0,15.25,['coalesce',['get','render_min_height'],['get','min_height'],0]],
-   'fill-extrusion-opacity':0.95,
-   'fill-extrusion-vertical-gradient':true
+   'fill-extrusion-color':'#c6beb5',
+   'fill-extrusion-height':['interpolate',['linear'],['zoom'],13.5,0,15.1,['coalesce',['get','render_height'],['get','height'],12]],
+   'fill-extrusion-base':['interpolate',['linear'],['zoom'],13.5,0,15.1,['coalesce',['get','render_min_height'],['get','min_height'],0]],
+   'fill-extrusion-opacity':0.96,'fill-extrusion-vertical-gradient':true
   }
- },labels?.id);
+ },firstLabel?.id);
 }
-function textLang(de:string,en:string,lang:'de'|'en'){return lang==='de'?de:en}
+function geoFeatures(places:AtlasPlace[]){
+ return {type:'FeatureCollection' as const,features:places.map(p=>({
+  type:'Feature' as const,id:p.id,properties:{id:p.id,name:p.name,category:p.category},
+  geometry:{type:'Point' as const,coordinates:[p.longitude as number,p.latitude as number]}
+ }))};
+}
+function addGeoPins(map:LibreMap){
+ if(map.getSource(POI_SOURCE))return;
+ map.addSource(POI_SOURCE,{type:'geojson',data:geoFeatures([])});
+ // All rings are MapLibre GPU layers with a single GeoJSON coordinate source:
+ // stable with pitch, bearing, zoom, container resize and mobile touch rotation.
+ map.addLayer({id:'ffm-poi-halo',type:'circle',source:POI_SOURCE,
+  paint:{'circle-radius':['interpolate',['linear'],['zoom'],12,12,17,23],
+   'circle-color':'#72575d','circle-opacity':0.13,
+   'circle-blur':0.35,'circle-pitch-alignment':'map'}});
+ map.addLayer({id:'ffm-poi-dot',type:'circle',source:POI_SOURCE,
+  paint:{'circle-radius':['interpolate',['linear'],['zoom'],12,6,17,10],
+   'circle-color':'#805965','circle-stroke-color':'#fff8ee',
+   'circle-stroke-width':3,'circle-pitch-alignment':'map'}});
+ map.addLayer({id:'ffm-poi-labels',type:'symbol',source:POI_SOURCE,minzoom:16.3,
+  layout:{'text-field':['get','name'],'text-size':12,'text-anchor':'top','text-offset':[0,1.25],
+   'text-allow-overlap':false,'text-optional':true},
+  paint:{'text-color':'#34423c','text-halo-color':'#f8f4ed','text-halo-width':2}});
+ map.addLayer({id:'ffm-poi-selected-label',type:'symbol',source:POI_SOURCE,
+  filter:['==',['get','id'],'__none__'],
+  layout:{'text-field':['get','name'],'text-size':14,'text-anchor':'top','text-offset':[0,1.45],
+   'text-allow-overlap':true},
+  paint:{'text-color':'#26362f','text-halo-color':'#f9f6f0','text-halo-width':2}});
+}
+function updateSelectedPin(map:LibreMap,selected:string|null){
+ if(!map.getLayer('ffm-poi-dot'))return;
+ const match=['==',['get','id'],selected??'__none__'];
+ map.setPaintProperty('ffm-poi-dot','circle-color',['case',match,'#223d39','#805965']);
+ map.setPaintProperty('ffm-poi-dot','circle-radius',['case',match,12,['interpolate',['linear'],['zoom'],12,6,17,10]]);
+ map.setPaintProperty('ffm-poi-halo','circle-opacity',['case',match,0.3,0.13]);
+ map.setFilter('ffm-poi-selected-label',['==',['get','id'],selected??'__none__']);
+}
 
 export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props){
  const t=UI[lang];
- const mapDiv=useRef<HTMLDivElement>(null), mapRef=useRef<LibreMap|null>(null), markersRef=useRef<LibreMarker[]>([]);
- const [area,setArea]=useState('city'),[cat,setCat]=useState('Alle'),[mode,setMode]=useState<AtlasMode>('day'),[is3D,set3D]=useState(true),[ready,setReady]=useState(false),[fallback,setFallback]=useState(false),[error,setError]=useState(false),[selected,setSelected]=useState<string|null>(null),[showDistricts,setShowDistricts]=useState(false);
- const state=useRef({mode:'day' as AtlasMode,is3D:true});
+ const mapDiv=useRef<HTMLDivElement>(null),mapRef=useRef<LibreMap|null>(null);
+ const latestPlaces=useRef(places),activeSelect=useRef<(p:AtlasPlace)=>void>(()=>{});
+ latestPlaces.current=places;
+ const [area,setArea]=useState('city'),[cat,setCat]=useState('Alle'),[mode,setMode]=useState<AtlasMode>('golden'),[is3D,set3D]=useState(true),[ready,setReady]=useState(false),[fallback,setFallback]=useState(false),[error,setError]=useState(false),[selected,setSelected]=useState<string|null>(null),[showDistricts,setShowDistricts]=useState(false);
+ const state=useRef({mode:'golden' as AtlasMode,is3D:true});
  const selectedPlace=places.find(p=>p.id===selected);
  const filtered=useMemo(()=>places.filter(p=>validCoords(p)&&isSelectedCategory(p,cat)),[places,cat]);
  const moveTo=useCallback((place:AtlasPlace)=>{
   setSelected(place.id);
-  if(validCoords(place)){mapRef.current?.flyTo({center:[place.longitude as number,place.latitude as number],zoom:Math.max(mapRef.current.getZoom(),16.1),pitch:state.current.is3D?56:0,bearing:state.current.is3D?-22:0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:1350,padding:{top:110,bottom:variant==='hero'?190:240,left:24,right:24}});}
+  if(validCoords(place)){mapRef.current?.flyTo({center:[place.longitude as number,place.latitude as number],zoom:Math.max(mapRef.current.getZoom(),16.1),pitch:state.current.is3D?56:0,bearing:state.current.is3D?-22:0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:1350,offset:[0,variant==='hero'?-48:-66]});}
  },[variant]);
+ activeSelect.current=moveTo;
  const goDistrict=useCallback((id:string)=>{
   setArea(id);setShowDistricts(false);setSelected(null);
   const d=DISTRICTS.find(x=>x.id===id)||DISTRICTS[0];
@@ -120,18 +191,40 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    let supported=false;try{supported=Boolean(canvas.getContext('webgl2')||canvas.getContext('webgl'));}catch{}
    if(!supported){setError(true);return;}
    const map=new maplibre.Map({
-    container:mapDiv.current,style:VECTOR_STYLE,center:CENTER,zoom:14.55,pitch:55,bearing:-23,
+    container:mapDiv.current,style:VECTOR_STYLE,center:INTRO_CENTER,zoom:16.6,pitch:69,bearing:-32,
     maxZoom:19,minZoom:10.8,maxPitch:75,attributionControl:false,
     canvasContextAttributes:{antialias:true},fadeDuration:250
    });
    mapRef.current=map;
    const onStyle=()=>{
     if(cancelled)return;
-    hasStyle=true;setError(false);setReady(true);
+    hasStyle=true;setError(false);
     try{
-     if(!triedRaster){add3DBuildings(map);setColorScheme(map,state.current.mode);}
-    }catch(e){console.warn('FFM Atlas building layer unavailable:',e);}
+     if(!triedRaster){add3DBuildings(map);setColorScheme(map,state.current.mode);addGeoPins(map);}
+     setReady(true);
+     if(!triedRaster&&!(window.matchMedia('(prefers-reduced-motion: reduce)').matches)){
+      // Opening shot: close to the banking towers, then float out toward the Main.
+      requestAnimationFrame(()=>{if(!cancelled)map.flyTo({center:CENTER,zoom:14.95,pitch:62,bearing:-24,
+       duration:2400,curve:1.45,essential:true});});
+     }else map.jumpTo({center:CENTER,zoom:14.95,pitch:state.current.is3D?62:0,bearing:-24});
+    }catch(e){console.warn('Atlas scene initialization:',e);setReady(true);}
    };
+   map.on('click',e=>{
+    if(!map.getLayer('ffm-poi-dot'))return;
+    const feature=map.queryRenderedFeatures(e.point,{layers:['ffm-poi-dot']})[0];
+    const id=feature?.properties?.id as string|undefined;
+    if(!id)return;
+    const place=latestPlaces.current.find(p=>p.id===id);
+    if(place)activeSelect.current(place);
+   });
+   map.on('mousemove',e=>{
+    if(map.getLayer('ffm-poi-dot'))map.getCanvas().style.cursor=
+     map.queryRenderedFeatures(e.point,{layers:['ffm-poi-dot']}).length?'pointer':'';
+   });
+   // E2E-only inspection, never activated on ordinary visitor pages.
+   if(new URLSearchParams(window.location.search).has('atlasQA')){
+    (window as unknown as {__ffmAtlasQA?:LibreMap}).__ffmAtlasQA=map;
+   }
    map.on('style.load',onStyle);
    map.on('error',e=>{
     if(cancelled||hasStyle)return;
@@ -143,7 +236,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    });
    map.addControl(new maplibre.AttributionControl({compact:true}),'bottom-right');
   }).catch(()=>{if(!cancelled)setError(true);});
-  return()=>{cancelled=true;markersRef.current.forEach(m=>m.remove());markersRef.current=[];mapRef.current?.remove();mapRef.current=null;};
+  return()=>{cancelled=true;mapRef.current?.remove();mapRef.current=null;};
  },[]);
  useEffect(()=>{
   const map=mapRef.current;if(!ready||!map)return;
@@ -153,27 +246,20 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   if(!fallback&&map.getLayer('ffm-architecture'))map.setLayoutProperty('ffm-architecture','visibility',is3D?'visible':'none');
  },[mode,is3D,area,ready,fallback]);
  useEffect(()=>{
-  let dead=false;
-  import('maplibre-gl').then(({default:maplibre})=>{
-   if(dead||!mapRef.current||!ready)return;
-   markersRef.current.forEach(marker=>marker.remove());
-   markersRef.current=filtered.map(p=>{
-    const el=document.createElement('button');el.type='button';el.className='atlas-pin'+(p.id===selected?' is-selected':'');
-    el.setAttribute('aria-label',p.name);el.title=p.name;
-    const center=document.createElement('span');center.className='atlas-pin-core';el.appendChild(center);
-    const tag=document.createElement('span');tag.className='atlas-pin-label';tag.textContent=p.name;el.appendChild(tag);
-    el.addEventListener('click',()=>moveTo(p));
-    return new maplibre.Marker({element:el,anchor:'bottom'}).setLngLat([p.longitude as number,p.latitude as number]).addTo(mapRef.current!);
-   });
-  });
-  return()=>{dead=true;markersRef.current.forEach(m=>m.remove());markersRef.current=[];};
- },[ready,filtered,moveTo,selected]);
+  const map=mapRef.current;
+  if(!ready||!map||!map.getSource(POI_SOURCE))return;
+  (map.getSource(POI_SOURCE) as GeoJSONSource).setData(geoFeatures(filtered));
+ },[ready,filtered]);
+ useEffect(()=>{
+  const map=mapRef.current;
+  if(ready&&map&&!fallback)updateSelectedPin(map,selected);
+ },[ready,selected,fallback]);
  const counts=filtered.length;
  return <section className={'atlas-root atlas-'+variant+' atlas-tone-'+mode} aria-label={t.map}>
   <div className="atlas-map-host" ref={mapDiv} aria-label={t.map} role="application"/>
   <div className="atlas-veil" aria-hidden="true"/>
   <div className="atlas-topbar">
-   <div className="atlas-brand"><span className="atlas-brand-id">ffm<span>.</span></span><div><small>{t.focus}</small><strong>{t.title}</strong></div></div>
+   <div className="atlas-brand"><span className="atlas-brand-id">ffm<span>.</span></span><div><small>FRANKFURT AM MAIN</small><strong>{lang==='de'?'Deine Stadt. Neu entdeckt.':'Rediscover your city.'}</strong></div></div>
    <div className="atlas-tools">
     <button type="button" className={'atlas-tone-button'+(mode==='golden'?' active':'')} onClick={()=>setMode(x=>x==='day'?'golden':'day')} title={mode==='day'?t.golden:t.day} aria-label={mode==='day'?t.golden:t.day}>{mode==='day'?<Sunset size={17}/>:<Sun size={17}/>}<span>{mode==='day'?t.golden:t.day}</span></button>
     <button type="button" className="atlas-dim-button" aria-pressed={is3D} onClick={()=>set3D(x=>!x)} title={t.view}>{is3D?'3D':'2D'}</button>
@@ -194,7 +280,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
      <div className="atlas-selection-text"><span>{selectedPlace.district||'Frankfurt'} · {selectedPlace.category}</span><strong>{selectedPlace.name}</strong><small>{lang==='de'?selectedPlace.description_de||selectedPlace.address:selectedPlace.description_en||selectedPlace.address}</small></div>
      <button type="button" onClick={()=>onSelect?.(selectedPlace.id)} className="atlas-selection-cta">{t.select}<span className="atlas-selection-circle"><Plus size={18}/></span></button>
     </div>:<div className="atlas-explore-card">
-     <div className="atlas-bottom-copy"><span>{t.subtitle}</span><strong>{DISTRICTS.find(d=>d.id===area)?.[lang]||'Frankfurt'}</strong><small>{fallback?t.tip:ready?t.hint:t.loading}</small></div>
+     <div className="atlas-bottom-copy"><span>{lang==='de'?'DEIN NÄCHSTER STADT-MOMENT':'YOUR NEXT CITY MOMENT'}</span><strong>{DISTRICTS.find(d=>d.id===area)?.[lang]||'Frankfurt'}</strong><small>{ready?`${counts} ${lang==='de'?'Orte entdecken':'places to explore'}`:t.loading}</small></div>
      <button type="button" onClick={()=>setShowDistricts(x=>!x)} className="atlas-district-toggle" aria-expanded={showDistricts}><Layers3 size={18}/><span>{t.choose}</span><span className="atlas-mini-plus"><Plus size={15}/></span></button>
     </div>}
    {showDistricts&&<div className="atlas-district-picker" role="group" aria-label={t.district}>
