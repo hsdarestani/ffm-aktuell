@@ -1,47 +1,33 @@
-# FFM Aktuell — Visual identity system
+# FFM Aktuell — Quiet City (visual system v2)
 
-## Design position
-**SIGNAL / 069** is the implemented main site direction. FFM Aktuell is a live city frequency: a bridge between editorial culture, street-level discovery and the pace of Frankfurt. It must look neither like a tourist directory nor a stock SaaS template.
+## Positioning
+A useful and confident Frankfurt city guide. Editorial, local and inviting without looking like a tourist agency, nightlife flyer or generic SaaS dashboard.
 
-Brand promise (German): **Die Stadt ist nicht still.**
-Personality: informed, lively, confident, local, practical, expressive, inclusive.
-Name stays FFM Aktuell; trademark and customer approval are still pending.
+Brand phrase: **Frankfurt. Immer wieder neu.**
 
-## Three visual directions
-The interactive previews are available at **/brand-lab** with mobile/desktop control and shareable links:
+## Principles
+- Clarity first: purposeful whitespace, legible text sizes, clear hierarchy, direct primary actions.
+- Local character: city-specific photography and accurate local records; no stock representations of individual places.
+- Restrained palette: nearly-white #F8F8F5, forest ink #26342E, neutral grey-green #626E66 and a single muted clay accent #AB6050.
+- Type: DM Sans for all interface content; Instrument Serif for a selective poetic emphasis, never forced onto buttons or forms.
+- Reduce noise: no autoplay media, hero animations, decorative city maps, neon, huge serial numbers, outline headings, faux live counters or invented badges.
+- Functional discovery: homepage search goes to the real database-backed listings filter; category links and featured places open existing working views.
+- Robust mobile design: 360px and up, readable text, 44px minimum touch targets for primary controls, no horizontal overflow, clear map/search navigation.
 
-1. **SIGNAL / 069**: metropolitan wayfinding, rail-map diagrams, orange field, graphite city black, bold condensed display. Current homepage.
-2. **NACHTSCHICHT**: urban nightlife, violet after-dark atmosphere, acid lime highlight, rhythmic graphic language.
-3. **STADTARCHIV**: cultural editorial publishing, cream paper, ultramarine and archival golden yellow, expressive high-contrast serif.
+## Photography
+Both images are **real photographs of Frankfurt am Main**, by their named authors, used under the Unsplash License.
 
-The preview prototypes are intentionally non-transactional. The actual product functionality (real approved places, auth, maps, moderation, B2B) is preserved on the main site. Only SIGNAL / 069 is implemented as the full homepage and applied system-wide.
+- Hero, a city street with tall buildings by **Leonhard Niederwimmer**: https://unsplash.com/photos/a-city-street-with-tall-buildings-0Cor_Y24BdM
+- Editorial second image, pedestrian street and high-rises by **Leon Seibert**: https://unsplash.com/photos/people-walking-on-pedestrian-lane-near-high-rise-buildings-during-daytime-3FiG6P7lWAs
+- Both images are displayed as city atmosphere, not as photographs of an unrelated venue or as proof of the listing's accuracy.
+- Provider data/images should be licensed and verified before adding location-specific imagery.
+- Image hosting uses Unsplash CDN; cache/privacy suitability must be reviewed before general production release.
 
-## Core tokens — Signal 069
-- Signal orange: `#FF5B35`, active direction, signal, CTAs, hero emphasis.
-- Asphalt black: `#17191B`, editorial dark surfaces, text and grid.
-- Paper ivory: `#F3F0E8`, reading surface.
-- Neutral stone: `#D9D8D0`, quieter editorial blocks.
-- Directional lavender and sage are reserved for exploration graphics and location illustrations.
+## Implementation
+- `components/MinimalHome.tsx`: redesigned landing with editorial hero, working search, categories, verified place summaries, journal and community/B2B links.
+- `app/brand.css`: compact consistent visual layer loaded after the original functional styles.
+- `app/page.tsx`: existing state, API calls, auth, community and admin stay intact.
+- `app/brand-lab/page.tsx`: old concept gallery redirects back home.
+- `public/icon.svg`, `public/ffm-wordmark.svg`, site metadata and PWA colors now follow the restrained mark.
 
-Type: Barlow Condensed ExtraBold / Black for campaign headlines; Syne Bold for editorial cards and titles; Space Grotesk for UI content; DM Mono for coordinates, eyebrow labels and editorial numbering. Instrument Serif appears only in the Stadtarchiv prototype.
-
-## Identity motifs
-- **069:** Frankfurt telephone prefix; uniquely local stamp used in huge numerals and navigation rails.
-- **Signal route:** a city-network diagram deliberately stylized and not represented as an accurate navigational map.
-- **Node + pulse:** local stories, places and events as nodes, with a real-time visual pulse (not a false claim of real-time updates).
-- **Square controls and angular arrows:** rooted in civic wayfinding, not rounded generic mobile-SaaS cards.
-- **Editorial serials:** 01/02/03, district labels, issue numbers, microcoordinates. Distinguish actual location records from visual decorations.
-
-## Design and content integrity
-- No invented opening hours, live crowd counts, event availability, ratings or user reviews.
-- Graphic location illustrations are abstract placeholders, **not photos of listed venues**.
-- Properly licensed, source-verified photography can be introduced later into the reusable image field.
-- Responsive design targets 360/390/768/1280+ viewports, respects reduced-motion preferences.
-- Do not copy a Frankfurt municipality visual trademark or suggest an official city affiliation.
-
-## Operations and implementation
-- CSS overrides in `app/brand.css` are loaded after legacy `app/globals.css` for backwards compatibility.
-- New modular live homepage: `components/SignalHome.tsx`.
-- Showcase: `app/brand-lab/page.tsx`.
-- Identity assets: `public/icon.svg` and `public/ffm-wordmark.svg`.
-- The rest of the app's live flows are unchanged; quality assurance should include registration, submission, place detail, mobile map, bilingual navigation and admin review.
+This is a designed implementation, not a formally approved identity. Test actual user flows and get stakeholder approval before declaring brand final.
