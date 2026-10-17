@@ -17,7 +17,7 @@ type Props={
 };
 type Area={id:string,de:string,en:string,center:[number,number],zoom:number,bearing:number};
 const CENTER:[number,number]=[8.6773,50.1106];
-const INTRO_CENTER:[number,number]=[8.6675,50.1138];
+const INTRO_CENTER:[number,number]=[8.6666,50.1074];
 const POI_SOURCE='ffm-curated-geo';
 const DISTRICTS:Area[]=[
  {id:'city',de:'Frankfurt',en:'Frankfurt',center:CENTER,zoom:14.55,bearing:-23},
@@ -210,7 +210,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    let supported=false;try{supported=Boolean(canvas.getContext('webgl2')||canvas.getContext('webgl'));}catch{}
    if(!supported){setError(true);return;}
    const map=new maplibre.Map({
-    container:mapDiv.current,style:VECTOR_STYLE,center:INTRO_CENTER,zoom:16.6,pitch:69,bearing:-32,
+    container:mapDiv.current,style:VECTOR_STYLE,center:INTRO_CENTER,zoom:14.1,pitch:49,bearing:-21,
     maxZoom:19,minZoom:10.8,maxPitch:75,attributionControl:false,
     canvasContextAttributes:{antialias:true},fadeDuration:250
    });
@@ -223,8 +223,8 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
      setReady(true);
      if(!triedRaster&&!(window.matchMedia('(prefers-reduced-motion: reduce)').matches)){
       // Opening shot: close to the banking towers, then float out toward the Main.
-      requestAnimationFrame(()=>{if(!cancelled)map.flyTo({center:CENTER,zoom:14.95,pitch:62,bearing:-24,
-       duration:2400,curve:1.45,essential:true});});
+      requestAnimationFrame(()=>{if(!cancelled)map.flyTo({center:CENTER,zoom:14.95,pitch:58,bearing:-24,
+       duration:2250,curve:1.3,essential:true});});
      }else map.jumpTo({center:CENTER,zoom:14.95,pitch:state.current.is3D?62:0,bearing:-24});
     }catch(e){console.warn('Atlas scene initialization:',e);setReady(true);}
    };
