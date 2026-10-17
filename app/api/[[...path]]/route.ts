@@ -1,5 +1,5 @@
 import {NextRequest,NextResponse} from 'next/server';
-import {createHash} from 'node:crypto';
+import {createHash,randomBytes} from 'node:crypto';
 import {z} from 'zod';
 import {pool,query} from '@/lib/db';
 import {beginSession,endSession,hashPassword,verifyPassword,sessionUser,trustedOrigin,User} from '@/lib/auth';
@@ -74,6 +74,11 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     const digest=createHash('sha256').update(b.token).digest('hex');
     const client=await pool.connect();
     let accountId:string;
+    // The invitation, user, audit and first session must succeed or fail together.
+    // Creating a session after COMMIT can otherwise consume the one-use invite
+    // while returning HTTP 500 and leaving the new administrator locked out.
+    const sessionToken=randomBytes(32).toString('hex');
+    const sessionHash=createHash('sha256').update(sessionToken).digest('hex');
     try{
       await client.query('BEGIN');
       const invite=await client.query('SELECT token_hash FROM admin_invites WHERE token_hash=$1 AND used_at IS NULL AND expires_at>now() FOR UPDATE',[digest]);
@@ -83,12 +88,22 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
         [b.email.trim().toLowerCase(),hashPassword(b.password),b.display_name]);
       if(!created.rowCount){await client.query('ROLLBACK');return bad('E-Mail-Adresse ist bereits vergeben.',409)}
       accountId=created.rows[0].id;
+      // Avoid binding one PostgreSQL parameter in both UUID and TEXT columns;
+      // that raises SQLSTATE 42P08 (inconsistent parameter types).
+      await client.query(
+        "INSERT INTO audit_log(actor_id,action,target_type,target_id) VALUES($1,'admin:one-time-activation','user',$2)",
+        [accountId,accountId]);
+      await client.query("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '30 days')",
+        [sessionHash,accountId]);
       await client.query('UPDATE admin_invites SET used_at=now() WHERE token_hash=$1',[digest]);
-      await client.query("INSERT INTO audit_log(actor_id,action,target_type,target_id) VALUES($1,'admin:one-time-activation','user',$1)",[accountId]);
       await client.query('COMMIT');
-    }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
+    }catch(e){
+      await client.query('ROLLBACK');
+      throw e;
+    }finally{client.release()}
     const response=ok({success:true,role:'admin'},201);
-    await beginSession(accountId!,response);
+    response.cookies.set('ffm_session',sessionToken,{httpOnly:true,secure:process.env.NODE_ENV==='production',
+      sameSite:'lax',path:'/',maxAge:60*60*24*30});
     return response;
   }
   if(method==='POST'&&path==='auth/logout'){
