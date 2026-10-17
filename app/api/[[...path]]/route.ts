@@ -78,6 +78,16 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     ]);
     return ok({items:r.rows,total:n.rows[0]?.count||0,limit,offset,source:'© OpenStreetMap-Mitwirkende · ODbL',verified:false,openingNowAvailable:false});
   }
+  if(method==='GET'&&path==='discovery-map'){
+    const raw=trim(qs.get('bbox')).split(',').map(Number);
+    if(raw.length!==4||raw.some(v=>!Number.isFinite(v))||
+      raw[0]<8.2||raw[2]>9.1||raw[1]<49.7||raw[3]>50.4||raw[0]>=raw[2]||raw[1]>=raw[3])
+      return bad('Kartenausschnitt ungültig');
+    const cat=trim(qs.get('category'));
+    const validCategory=cat==='Apotheken Notdienst'?'Apotheken':cat;
+    const r=await query("SELECT osm_id AS id,osm_id,name,category,latitude,longitude,address,osm_url AS source_url,website,opening_hours AS opening_hours_text FROM discovery_candidates WHERE reviewed_status='unverified' AND longitude BETWEEN $1 AND $3 AND latitude BETWEEN $2 AND $4 AND ($5='' OR category=$5) ORDER BY osm_id LIMIT 1500",[raw[0],raw[1],raw[2],raw[3],validCategory==='Alle'?'':validCategory]);
+    return ok({items:r.rows,limited:r.rowCount===1500,verified:false,source:'© OpenStreetMap-Mitwirkende · ODbL'});
+  }
   if(method==='GET'&&path==='pharmacy-notdienst'){
     // External, official, dynamic duty rota. No guesses or caching duty data.
     return ok({url:'https://www.aponet.de/notdienstsuche/60320-Frankfurt',source:'aponet · Bundesapothekerkammer',
