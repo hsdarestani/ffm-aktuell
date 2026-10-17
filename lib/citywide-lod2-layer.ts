@@ -9,7 +9,8 @@ type Payload={faces:Face[];partial:boolean};
 type Tile={key:string;buffer:WebGLBuffer;count:number;origin:[number,number,number];used:number};
 function program(gl:WebGLRenderingContext){
  const prog=gl.createProgram();if(!prog)throw Error('LoD2 GPU Programm fehlt');
- for(const [type,source] of [[gl.VERTEX_SHADER,vertex],[gl.FRAGMENT_SHADER,fragment]]){
+ const defs:[number,string][]=[[gl.VERTEX_SHADER,vertex],[gl.FRAGMENT_SHADER,fragment]];
+ for(const [type,source] of defs){
   const sh=gl.createShader(type);if(!sh)throw Error('LoD2 GPU Shader fehlt');
   gl.shaderSource(sh,source);gl.compileShader(sh);
   if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(sh)||'Shader ungültig');
