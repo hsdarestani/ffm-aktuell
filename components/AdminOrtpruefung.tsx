@@ -85,7 +85,7 @@ export default function AdminOrtpruefung({onChanged}:{onChanged:()=>void}){
    <p>{selected.category} · {selected.address||'Ohne eindeutige Adresse'}</p>
    <p>OSM Öffnungszeiten: {selected.opening_hours||'nicht vorhanden'} · OSM Check: {selected.last_osm_check||'unbekannt'}</p>
    <p><a target="_blank" rel="noopener noreferrer" href={selected.osm_url}>OSM Eintrag anzeigen</a>{selected.website&&<> · <a href={selected.website} target="_blank" rel="noopener noreferrer">Genannte Webseite prüfen</a></>}</p>
-   <form onSubmit={submit}>
+   <form key={selected.osm_id} onSubmit={submit}>
     <label className="form-label">Unabhängige Originalquelle (HTTPS)<input type="url" name="verification_source" defaultValue={selected.website?.startsWith('https://')?selected.website:''} required placeholder="https://…"/></label>
     <label className="form-label">Prüfweg<select name="verification_method" defaultValue="betreiber_webseite"><option value="betreiber_webseite">Offizielle Betreiberwebseite</option><option value="betreiber_kontakt">Betreiber persönlich kontaktiert</option><option value="behoerde">Offizielle Behördenseite</option></select></label>
     <label className="form-label">Prüfprotokoll (mindestens 25 Zeichen)<textarea name="verification_note" required minLength={25} maxLength={2000} placeholder="Was wurde wann und von wem anhand welcher Originalquelle geprüft?"/></label>
