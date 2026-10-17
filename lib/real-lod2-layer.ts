@@ -61,16 +61,19 @@ export function addRealLod2Layer(map:LibreMap,onLoaded:(triangles:number)=>void)
  const layer:CustomLayerInterface={
   id:'ffm-real-lod2',type:'custom',renderingMode:'3d',
   onAdd(m,gl){
+   console.info('FFM LoD2 custom layer onAdd initialized');
    const ctx=gl as WebGLRenderingContext;
    fetch('/lod2/frankfurt-preview.json').then(r=>{if(!r.ok)throw Error('LoD2-Daten nicht bereit');return r.json()})
     .then((model:Model)=>{
      if(disposed||!Array.isArray(model.features))return;
+     console.info('FFM LoD2 downloaded real surfaces:',model.features.length);
      const geo=triangles(model);
+     console.info('FFM LoD2 constructed GPU vertices:',geo.count);
      if(geo.count<90)return;
      shader=program(ctx);buffer=ctx.createBuffer();if(!buffer)throw Error('GPU-Puffer fehlt');
      ctx.bindBuffer(ctx.ARRAY_BUFFER,buffer);ctx.bufferData(ctx.ARRAY_BUFFER,geo.vertices,ctx.STATIC_DRAW);
      count=geo.count;origin=[geo.origin.x,geo.origin.y,geo.origin.z];
-     onLoaded(count/3);m.triggerRepaint();
+     onLoaded(count/3);console.info('FFM LoD2 render model ready:',count/3,'triangles');m.triggerRepaint();
     }).catch(e=>console.warn('FFM LoD2:',e));
   },
   render(gl,args){
@@ -88,6 +91,7 @@ export function addRealLod2Layer(map:LibreMap,onLoaded:(triangles:number)=>void)
    ctx.disableVertexAttribArray(pos);ctx.disableVertexAttribArray(color);
   },
   onRemove(_map,gl){
+   console.info('FFM LoD2 custom layer removed');
    disposed=true;const ctx=gl as WebGLRenderingContext;
    if(buffer)ctx.deleteBuffer(buffer);if(shader)ctx.deleteProgram(shader);
    buffer=null;shader=null;count=0;
