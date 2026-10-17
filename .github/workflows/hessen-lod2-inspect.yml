@@ -1,0 +1,27 @@
+name: Hessen LoD2 Geometrieprüfung
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hessen-lod2-inspect.yml'
+      - 'scripts/inspect-hessen-lod2.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lod2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Amtliche LoD2-Geometriequelle prüfen
+        run: node scripts/inspect-hessen-lod2.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frankfurt-lod2-probe
+          path: artifacts/lod2/
+          if-no-files-found: ignore
