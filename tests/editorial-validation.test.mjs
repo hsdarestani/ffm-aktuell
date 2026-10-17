@@ -29,16 +29,17 @@ test('candidate discovery stays unverified until editorial review',()=>{
  assert.match(api,/opening_now_guaranteed:false/);
  assert.match(api,/interval '30 days'/);
 });
-test('German-only editorial panel explains verification limits and supports recheck',()=>{
- assert.match(ui,/Ungeprüft/);
- assert.match(ui,/Rückfragen/);
- assert.match(ui,/admin\/validation/);
- assert.match(ui,/admin\/candidates/);
- assert.match(ui,/admin\/review-candidate/);
- assert.match(ui,/keine Live Garantie/);
- assert.match(ui,/type="checkbox" name="confirms_operation" required/);
- assert.match(page,/AdminOrtpruefung/);
- assert.match(page,/verification_note/);
+test('new German editorial workspace still requires real evidence before publication',()=>{
+ const studio=get('components/AdminStudio.tsx');
+ assert.match(studio,/Noch ungeprüft/);
+ assert.match(studio,/Rückfragen/);
+ assert.match(studio,/admin\\/validation/);
+ assert.match(studio,/admin\\/candidates/);
+ assert.match(studio,/admin\\/review-candidate/);
+ assert.match(studio,/kein Live Öffnungsstatus/i);
+ assert.match(studio,/name="confirms_operation" required/);
+ assert.match(studio,/name="verification_note"/);
+ assert.match(page,/AdminStudio/);
 });
 test('independent proof blocks OSM and third-party ratings as original operator sources',()=>{
  for(const hostname of ['openstreetmap.org','geofabrik.de','google.com','yelp.com','tripadvisor.com'])assert.ok(api.includes("'"+hostname+"'"));
