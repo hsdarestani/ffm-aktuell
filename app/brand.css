@@ -74,7 +74,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 .mh-hero-message{padding:55px 0 68px}
 .mh-hero-message h1{font:500 clamp(58px,6.3vw,104px)/.96 var(--mh-sans);letter-spacing:-.068em;margin:0 0 29px;color:var(--mh-ink)}
 .mh-hero-message h1 span,.mh-hero-message h1 em{display:block}
-.mh-hero-message h1 em{font:400 clamp(68px,6.6vw,111px)/.96 var(--mh-serif);letter-spacing:-.035em;white-space:nowrap}
+.mh-hero-message h1 em{font:400 clamp(58px,5.1vw,83px)/1.04 var(--mh-serif);letter-spacing:-.035em;white-space:nowrap}
 .mh-hero-message>p{max-width:425px;color:var(--mh-subtle);font-size:15px;line-height:1.85;margin:0 0 31px}
 .mh-search{height:60px;max-width:460px;background:#fff;display:flex;align-items:center;gap:12px;border:1px solid #d9e0d8;box-shadow:0 8px 28px #26342e08;padding:0 6px 0 18px}
 .mh-search>svg{color:#7c8880;flex-shrink:0}
@@ -217,7 +217,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
  .desktop-nav{gap:22px}
  .mh-hero-copy{padding-left:30px;padding-right:25px}
  .mh-hero-message h1{font-size:clamp(52px,6.2vw,84px)}
- .mh-hero-message h1 em{font-size:clamp(62px,6.25vw,90px)}
+ .mh-hero-message h1 em{font-size:clamp(57px,5.1vw,80px)}
  .mh-section,.mh-divider>div,.mh-photo-note,.mh-community{margin-left:30px;margin-right:30px}
  .mh-section{padding-top:78px;padding-bottom:78px}
  .mh-hero-visual{min-height:560px}
@@ -257,7 +257,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
  .mh-hero-copy{padding:28px 23px 24px}
  .mh-hero-message{padding:56px 0 45px}
  .mh-hero-message h1{font-size:clamp(52px,9vw,80px)}
- .mh-hero-message h1 em{font-size:clamp(58px,10vw,88px);white-space:normal}
+ .mh-hero-message h1 em{font-size:clamp(58px,9vw,82px);white-space:normal}
  .mh-hero-message>p{font-size:14px;max-width:520px}
  .mh-hero-bottom{font-size:9px}
  .mh-hero-visual{min-height:340px;height:340px}
