@@ -33,7 +33,7 @@ const CATS=[
  {value:'Restaurants',de:'Essen',en:'Food'},
  {value:'Kultur',de:'Kultur',en:'Culture'},
  {value:'Natur',de:'Draußen',en:'Outdoors'},
- {value:'Sehenswürdigkeiten',de:'Highlights',en:'Highlights'}
+ {value:'Sehenswürdigkeiten',de:'Sehenswert',en:'Highlights'}
 ] as const;
 const UI={
  de:{title:'Frankfurt entdecken.',subtitle:'Eine Stadt. Unzählige Perspektiven.',focus:'Deine Stadt in 3D',hint:'Ziehen, drehen und zoomen',map:'3D Stadtatlas',places:'Orte',district:'Viertel',select:'Ort ansehen',choose:'Stadtteil wählen',view:'Ansicht',day:'Tag',golden:'Abend',zoomIn:'Vergrößern',zoomOut:'Verkleinern',reset:'Frankfurt zentrieren',mode3d:'3D',mode2d:'2D',loading:'Die Stadt wird geladen …',error:'Die Karte konnte nicht geladen werden.',retry:'Neu laden',empty:'In dieser Auswahl gibt es noch keine veröffentlichten Orte.',tip:'Gebäudehöhen aus OpenStreetMap, wo vorhanden',credit:'© OpenStreetMap · OpenMapTiles · OpenFreeMap',back:'Zurück zur Stadt'},
