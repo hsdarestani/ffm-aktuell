@@ -67,6 +67,13 @@ CREATE INDEX IF NOT EXISTS discovery_category_name_idx ON discovery_candidates(c
 CREATE INDEX IF NOT EXISTS discovery_geo_idx ON discovery_candidates(latitude,longitude);
 CREATE INDEX IF NOT EXISTS discovery_search_idx ON discovery_candidates USING gin
  (to_tsvector('simple',name||' '||coalesce(address,'')));
+-- Survey tile cache stored separately from place records, surviving rebuilds.
+CREATE TABLE IF NOT EXISTS lod2_tiles (
+ tile_id text PRIMARY KEY,
+ data jsonb NOT NULL,
+ fetched_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS lod2_tiles_fetched_idx ON lod2_tiles(fetched_at);
 CREATE TABLE IF NOT EXISTS events (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL,
  description_de text NOT NULL DEFAULT '', description_en text NOT NULL DEFAULT '',
