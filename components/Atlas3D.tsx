@@ -328,7 +328,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    });
    map.addControl(new maplibre.AttributionControl({compact:true}),'bottom-right');
   }).catch(()=>{if(!cancelled)setError(true);});
-  return()=>{cancelled=true;if(revealTimer!==undefined)window.clearTimeout(revealTimer);map.off('zoomend',switchLoD2);mapRef.current?.remove();mapRef.current=null;};
+  return()=>{cancelled=true;if(revealTimer!==undefined)window.clearTimeout(revealTimer);mapRef.current?.remove();mapRef.current=null;};
  },[]);
  useEffect(()=>{
   const map=mapRef.current;if(!ready||!map)return;
