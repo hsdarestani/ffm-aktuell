@@ -1,0 +1,32 @@
+name: Frankfurter Orte – Kandidatenliste
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/osm-kandidaten.yml'
+      - 'scripts/osm-kandidaten.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  kandidaten:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Daten als Prüf-Kandidaten aus OpenStreetMap sammeln
+        run: node scripts/osm-kandidaten.mjs
+        env:
+          OVERPASS_ENDPOINT: https://overpass-api.de/api/interpreter
+          OUTPUT: artifacts/osm-kandidaten.json
+      - name: Prüfliste sichern – keine Veröffentlichung
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffm-osm-kandidaten-unverifiziert
+          path: artifacts/osm-kandidaten.json
+          if-no-files-found: ignore
+          retention-days: 10
