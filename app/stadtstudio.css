@@ -13,7 +13,7 @@
 .ffm-studio button,.ffm-studio input,.ffm-studio textarea,.ffm-studio select{font-family:inherit}
 .ffm-studio button{color:inherit}
 .ffm-studio :is(button,a,input,select,textarea):focus-visible{outline:3px solid var(--studio-coral);outline-offset:3px}
-.ffm-studio-rail{background:var(--studio-dark);color:#f1f0e9;display:flex;flex-direction:column;min-width:0;position:sticky;align-self:start;top:100px;min-height:calc(100dvh - 100px);padding:32px 20px 23px;z-index:5}
+.ffm-studio-rail{background:var(--studio-dark);color:#f1f0e9;display:flex;flex-direction:column;min-width:0;position:sticky;align-self:start;top:0;min-height:100dvh;padding:32px 20px 23px;z-index:5}
 .ffm-studio-rail-top{padding:0 11px;display:flex;align-items:center;justify-content:space-between}
 .ffm-studio-brand{display:flex;align-items:center;gap:11px}
 .ffm-studio-mark{width:39px;height:39px;flex:none}
