@@ -158,7 +158,7 @@ function updateSelectedPin(map:LibreMap,selected:string|null){
  map.setPaintProperty('ffm-poi-dot','circle-color',['case',match,'#223d39','#805965']);
  map.setPaintProperty('ffm-poi-dot','circle-radius',['case',match,12,['interpolate',['linear'],['zoom'],12,6,17,10]]);
  map.setPaintProperty('ffm-poi-halo','circle-opacity',['case',match,0.3,0.13]);
- map.setFilter('ffm-poi-selected-label',match);
+ map.setFilter('ffm-poi-selected-label',['==',['get','id'],selected??'__none__']);
 }
 
 export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props){
