@@ -43,7 +43,7 @@ for(const device of [{name:'mobil',width:390,height:844},{name:'rechner',width:1
    const imageStates=await images.evaluateAll(nodes=>nodes.slice(0,4).map(i=>({ok:i instanceof HTMLImageElement&&i.complete&&i.naturalWidth>0,src:i.getAttribute('src')})));
    assert(device.name+' '+v.nav+' erste Bilder geladen',imageStates.every(x=>x.ok));
    if(!imageStates.every(x=>x.ok))console.warn('BILDPROBLEME',JSON.stringify(imageStates));
-   try{await page.screenshot({path:'artifacts/vorschau/'+device.name+'-'+v.id+'.png',fullPage:false,animations:'allow',timeout:12000});}catch(e){console.warn('Bildschirmfoto nicht verfügbar:',v.id,String(e).slice(0,180));}
+   if(v.id!=='start')try{await page.screenshot({path:'artifacts/vorschau/'+device.name+'-'+v.id+'.png',fullPage:false,animations:'allow',timeout:12000});}catch(e){console.warn('Bildschirmfoto nicht verfügbar:',v.id,String(e).slice(0,180));}
    if(device.width<800){
     const widths=await page.evaluate(()=>({page:document.documentElement.scrollWidth,fenster:innerWidth}));
     assert(device.name+' '+v.nav+' ohne waagrechten Überlauf',widths.page<=widths.fenster+3);
