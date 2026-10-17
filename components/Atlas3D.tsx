@@ -5,6 +5,7 @@ import {Layers3,LocateFixed,Minus,Plus,Check,X,Sun,Sunset} from 'lucide-react';
 import type {Map as LibreMap,GeoJSONSource} from 'maplibre-gl';
 import {KATEGORIEN,passendeRubrik} from '@/lib/ortskategorien';
 import {addRealLod2Layer} from '@/lib/real-lod2-layer';
+import {addCitywideLod2Layer} from '@/lib/citywide-lod2-layer';
 
 export type AtlasPlace={
  id:string;name:string;latitude:number|null;longitude:number|null;category:string;
@@ -28,11 +29,22 @@ const DISTRICTS:Area[]=[
  {id:'westend',de:'Westend',en:'Westend',center:[8.6620,50.1182],zoom:15.7,bearing:-13},
  {id:'nordend',de:'Nordend',en:'Nordend',center:[8.6994,50.1202],zoom:15.6,bearing:35},
  {id:'bornheim',de:'Bornheim',en:'Bornheim',center:[8.7118,50.1256],zoom:15.7,bearing:-26},
- {id:'ostend',de:'Ostend',en:'Ostend',center:[8.7095,50.1097],zoom:15.5,bearing:16}
+ {id:'ostend',de:'Ostend',en:'Ostend',center:[8.7095,50.1097],zoom:15.5,bearing:16},
+ {id:'bockenheim',de:'Bockenheim',en:'Bockenheim',center:[8.6425,50.1200],zoom:15.3,bearing:14},
+ {id:'roedelheim',de:'Rödelheim',en:'Rödelheim',center:[8.6096,50.1260],zoom:15.0,bearing:-15},
+ {id:'hoechst',de:'Höchst',en:'Höchst',center:[8.5504,50.1008],zoom:15.3,bearing:-17},
+ {id:'niederrad',de:'Niederrad',en:'Niederrad',center:[8.6490,50.0887],zoom:15.4,bearing:18},
+ {id:'oberursel',de:'Bonames',en:'Bonames',center:[8.6605,50.185],zoom:15,bearing:-20},
+ {id:'seckbach',de:'Seckbach',en:'Seckbach',center:[8.725,50.139],zoom:15.3,bearing:15},
+ {id:'fechenheim',de:'Fechenheim',en:'Fechenheim',center:[8.763,50.123],zoom:15.2,bearing:-17},
+ {id:'bergen',de:'Bergen Enkheim',en:'Bergen Enkheim',center:[8.776,50.154],zoom:15.1,bearing:12},
+ {id:'kalbach',de:'Kalbach',en:'Kalbach',center:[8.636,50.181],zoom:15.2,bearing:22},
+ {id:'gallus',de:'Gallus',en:'Gallus',center:[8.641,50.105],zoom:15.4,bearing:-25},
+ {id:'griesheim',de:'Griesheim',en:'Griesheim',center:[8.611,50.095],zoom:15.2,bearing:21}
 ];
 const CATS=KATEGORIEN;
 const UI={
- de:{title:'Frankfurt entdecken.',subtitle:'Eine Stadt. Unzählige Perspektiven.',focus:'Deine Stadt in 3D',hint:'Ziehen, drehen und zoomen',map:'3D Stadtatlas',places:'Orte',district:'Viertel',select:'Ort ansehen',choose:'Stadtteil wählen',view:'Ansicht',day:'Tag',golden:'Abend',zoomIn:'Vergrößern',zoomOut:'Verkleinern',reset:'Frankfurt zentrieren',mode3d:'3D',mode2d:'2D',loading:'Die Stadt wird geladen …',error:'Die Karte konnte nicht geladen werden.',retry:'Neu laden',empty:'In dieser Auswahl gibt es noch keine veröffentlichten Orte.',tip:'Gebäudehöhen aus OpenStreetMap, wo vorhanden',credit:'© OpenStreetMap · OpenMapTiles · OpenFreeMap',back:'Zurück zur Stadt'},
+ de:{title:'Frankfurt entdecken.',subtitle:'Eine Stadt. Unzählige Perspektiven.',focus:'Deine Stadt in 3D',hint:'Ziehen, drehen und zoomen',map:'3D Stadtatlas',places:'Orte',district:'Viertel',select:'Ort ansehen',choose:'Stadtteil wählen',view:'Ansicht',day:'Tag',golden:'Abend',zoomIn:'Vergrößern',zoomOut:'Verkleinern',reset:'Frankfurt zentrieren',mode3d:'3D',mode2d:'2D',loading:'Die Stadt wird geladen …',error:'Die Karte konnte nicht geladen werden.',retry:'Neu laden',empty:'In dieser Auswahl gibt es noch keine veröffentlichten Orte.',tip:'3D Gebäude in ganz Frankfurt · genaue LoD2 Dächer werden bei Nähe geladen',credit:'© OpenStreetMap · OpenMapTiles · OpenFreeMap · HLBG · Powered by Lodapi',back:'Zurück zur Stadt'},
  en:{title:'Discover Frankfurt.',subtitle:'One city. A thousand perspectives.',focus:'Your city in 3D',hint:'Drag, rotate and zoom',map:'3D City Atlas',places:'Places',district:'Neighborhoods',select:'View place',choose:'Choose a district',view:'View',day:'Day',golden:'Evening',zoomIn:'Zoom in',zoomOut:'Zoom out',reset:'Center Frankfurt',mode3d:'3D',mode2d:'2D',loading:'Loading your city …',error:'The map could not be loaded.',retry:'Reload map',empty:'There are no published places in this category yet.',tip:'Building heights from OpenStreetMap where available',credit:'© OpenStreetMap · OpenMapTiles · OpenFreeMap',back:'Back to the city'}
 };
 const VECTOR_STYLE='https://tiles.openfreemap.org/styles/bright';
@@ -113,10 +125,10 @@ function add3DBuildings(map:LibreMap){
  // Base footprints remain behind; 3D towers share the real map projection.
  const firstLabel=map.getStyle().layers?.find(l=>l.type==='symbol');
  map.addLayer({
-  id:'ffm-architecture',type:'fill-extrusion',source:'ffm-openmaptiles','source-layer':'building',minzoom:13.5,
+  id:'ffm-architecture',type:'fill-extrusion',source:'ffm-openmaptiles','source-layer':'building',minzoom:12.2,
   paint:{
    'fill-extrusion-color':'#c6beb5',
-   'fill-extrusion-height':['interpolate',['linear'],['zoom'],13.5,0,15.1,['coalesce',['get','render_height'],['get','height'],12]],
+   'fill-extrusion-height':['interpolate',['linear'],['zoom'],12.2,0,14.2,['coalesce',['get','render_height'],['get','height'],12]],
    'fill-extrusion-base':['interpolate',['linear'],['zoom'],13.5,0,15.1,['coalesce',['get','render_min_height'],['get','min_height'],0]],
    'fill-extrusion-opacity':0.96,'fill-extrusion-vertical-gradient':true
   }
@@ -261,11 +273,13 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
      });});
     }else map.jumpTo({center:CENTER,zoom:14.95,pitch:state.current.is3D?58:0,bearing:-24});
    };
+   const switchLoD2=()=>{if(map.getLayer('ffm-real-lod2'))map.setLayoutProperty('ffm-real-lod2','visibility',state.current.is3D&&map.getZoom()<16.15?'visible':'none')};
+   map.on('zoomend',switchLoD2);
    const onStyle=()=>{
     if(cancelled)return;
     hasStyle=true;setError(false);
     try{
-     if(!triedRaster){add3DBuildings(map);addLuftbild(map);setColorScheme(map,state.current.mode);addGeoPins(map);addCandidatePins(map);addRealLod2Layer(map,setLod2Triangles);}
+     if(!triedRaster){add3DBuildings(map);addLuftbild(map);setColorScheme(map,state.current.mode);addGeoPins(map);addCandidatePins(map);addRealLod2Layer(map,setLod2Triangles);addCitywideLod2Layer(map);}
     }catch(e){console.warn('FFM Atlas optional 3D scene:',e);}
     // MapLibre 'style.load' only means style metadata loaded, NOT tiles.
     // 'idle' means the visible tile region has finished rendering.
@@ -314,7 +328,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    });
    map.addControl(new maplibre.AttributionControl({compact:true}),'bottom-right');
   }).catch(()=>{if(!cancelled)setError(true);});
-  return()=>{cancelled=true;if(revealTimer!==undefined)window.clearTimeout(revealTimer);mapRef.current?.remove();mapRef.current=null;};
+  return()=>{cancelled=true;if(revealTimer!==undefined)window.clearTimeout(revealTimer);map.off('zoomend',switchLoD2);mapRef.current?.remove();mapRef.current=null;};
  },[]);
  useEffect(()=>{
   const map=mapRef.current;if(!ready||!map)return;
@@ -323,7 +337,8 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   map.easeTo({pitch:is3D?56:0,bearing:is3D?(DISTRICTS.find(x=>x.id===area)?.bearing??-23):0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:850});
   if(!fallback&&map.getLayer('ffm-architecture'))map.setLayoutProperty('ffm-architecture','visibility',is3D&&!luftbild?'visible':'none');
   if(map.getLayer('ffm-luftbild'))map.setLayoutProperty('ffm-luftbild','visibility',luftbild?'visible':'none');
-  if(map.getLayer('ffm-real-lod2'))map.setLayoutProperty('ffm-real-lod2','visibility',is3D&&!luftbild?'visible':'none');
+  if(map.getLayer('ffm-real-lod2'))map.setLayoutProperty('ffm-real-lod2','visibility',is3D&&!luftbild&&map.getZoom()<16.15?'visible':'none');
+  if(map.getLayer('ffm-citywide-lod2'))map.setLayoutProperty('ffm-citywide-lod2','visibility',is3D&&!luftbild?'visible':'none');
  },[mode,is3D,area,ready,fallback,luftbild]);
  useEffect(()=>{
   const map=mapRef.current;
