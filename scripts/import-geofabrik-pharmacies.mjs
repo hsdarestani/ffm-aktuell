@@ -25,7 +25,11 @@ for(const f of features){
  let uid=String(f.id||t['@id']||'');
  let match=uid.match(/^([nwr])(\d+)$/)||uid.match(/^(node|way|relation)\/(\d+)$/);
  if(!match)continue;
- const type={n:'node',w:'way',r:'relation'}[match[1]]||match[1],id=type+'/'+match[2];
+ const code=match[1],rawId=Number(match[2]);
+ const type=code==='a'?(rawId%2===0?'way':'relation'):({n:'node',w:'way',r:'relation'}[code]||code);
+ const numeric=code==='a'?Math.floor(rawId/2):rawId;
+ if(!Number.isSafeInteger(numeric)||numeric<=0)continue;
+ const id=type+'/'+numeric;
  if(seen.has(id))continue;seen.add(id);
  const addr=[t['addr:street'],t['addr:housenumber'],t['addr:postcode'],t['addr:city']].filter(Boolean).join(' ');
  const url='https://www.openstreetmap.org/'+id;
