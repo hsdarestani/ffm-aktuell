@@ -5,6 +5,7 @@
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 const src=process.argv[2]||'artifacts/pharmacies.geojson',out=process.argv[3]||'data/apotheken-import.sql';
 const features=JSON.parse(await readFile(src,'utf8')).features||[];
+console.log('Geofabrik sample pharmacy feature:',JSON.stringify(features[0]||{}).slice(0,1000));
 const q=x=>x==null?'NULL':"'"+String(x).replaceAll("'","''").replaceAll('\u0000','').slice(0,1800)+"'";
 function center(g){
  if(g?.type==='Point')return g.coordinates;
