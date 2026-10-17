@@ -203,7 +203,8 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
  const zoom=useCallback((delta:number)=>mapRef.current?.zoomTo(Math.max(10.5,Math.min(19,mapRef.current.getZoom()+delta)),{duration:350}),[]);
  useEffect(()=>{
   if(!mapDiv.current)return;
-  let cancelled=false,hasStyle=false,triedRaster=false;
+  let cancelled=false,hasStyle=false,triedRaster=false,revealed=false;
+  let revealTimer:number|undefined;
   import('maplibre-gl').then(({default:maplibre})=>{
    if(cancelled||!mapDiv.current)return;
    const canvas=document.createElement('canvas');
@@ -215,20 +216,33 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     canvasContextAttributes:{antialias:true},fadeDuration:250
    });
    mapRef.current=map;
+   const revealScene=()=>{
+    if(cancelled||revealed)return;
+    revealed=true;
+    if(revealTimer!==undefined)window.clearTimeout(revealTimer);
+    setReady(true);
+    if(!triedRaster&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+     // The first camera shot plays only once actual street and building tiles
+     // have painted. No blank canvas or flying into unloaded skyscrapers.
+     requestAnimationFrame(()=>{if(!cancelled)map.flyTo({
+      center:CENTER,zoom:14.95,pitch:58,bearing:-24,
+      duration:2250,curve:1.3,essential:true
+     });});
+    }else map.jumpTo({center:CENTER,zoom:14.95,pitch:state.current.is3D?58:0,bearing:-24});
+   };
    const onStyle=()=>{
     if(cancelled)return;
     hasStyle=true;setError(false);
     try{
      if(!triedRaster){add3DBuildings(map);setColorScheme(map,state.current.mode);addGeoPins(map);}
-     setReady(true);
-     if(!triedRaster&&!(window.matchMedia('(prefers-reduced-motion: reduce)').matches)){
-      // Opening shot: close to the banking towers, then float out toward the Main.
-      requestAnimationFrame(()=>{if(!cancelled)map.flyTo({center:CENTER,zoom:14.95,pitch:58,bearing:-24,
-       duration:2250,curve:1.3,essential:true});});
-     }else map.jumpTo({center:CENTER,zoom:14.95,pitch:state.current.is3D?62:0,bearing:-24});
-    }catch(e){console.warn('Atlas scene initialization:',e);setReady(true);}
+    }catch(e){console.warn('FFM Atlas optional 3D scene:',e);}
+    // MapLibre 'style.load' only means style metadata loaded, NOT tiles.
+    // 'idle' means the visible tile region has finished rendering.
+    map.once('idle',revealScene);
+    revealTimer=window.setTimeout(revealScene,15000); // recover from slow/blocking tiles
    };
-   map.on('click',e=>{
+   map.on('style.load',onStyle);
+      map.on('click',e=>{
     if(!map.getLayer('ffm-poi-dot'))return;
     const feature=map.queryRenderedFeatures(e.point,{layers:['ffm-poi-dot']})[0];
     const id=feature?.properties?.id as string|undefined;
@@ -255,7 +269,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    });
    map.addControl(new maplibre.AttributionControl({compact:true}),'bottom-right');
   }).catch(()=>{if(!cancelled)setError(true);});
-  return()=>{cancelled=true;mapRef.current?.remove();mapRef.current=null;};
+  return()=>{cancelled=true;if(revealTimer!==undefined)window.clearTimeout(revealTimer);mapRef.current?.remove();mapRef.current=null;};
  },[]);
  useEffect(()=>{
   const map=mapRef.current;if(!ready||!map)return;

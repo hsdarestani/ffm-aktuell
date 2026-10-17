@@ -16,6 +16,8 @@ test('pins are rendered in the geographical projection, never moved by DOM trans
 });
 test('cinematic palette and camera reveal',()=>{
  assert.match(map,/requestAnimationFrame/);
+ assert.match(map,/map.once\('idle',revealScene\)/);
+ assert.match(map,/clearTimeout\(revealTimer\)/);
  assert.match(map,/duration:2250/);
  assert.match(map,/setColorScheme/);
  assert.match(map,/setLight/);
