@@ -33,9 +33,9 @@ test('new German editorial workspace still requires real evidence before publica
  const studio=get('components/AdminStudio.tsx');
  assert.match(studio,/Noch ungeprüft/);
  assert.match(studio,/Rückfragen/);
- assert.match(studio,/admin\\/validation/);
- assert.match(studio,/admin\\/candidates/);
- assert.match(studio,/admin\\/review-candidate/);
+ assert.ok(studio.includes('admin/validation'));
+ assert.ok(studio.includes('admin/candidates'));
+ assert.ok(studio.includes('admin/review-candidate'));
  assert.match(studio,/kein Live Öffnungsstatus/i);
  assert.match(studio,/name="confirms_operation" required/);
  assert.match(studio,/name="verification_note"/);
