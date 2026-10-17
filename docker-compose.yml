@@ -1,6 +1,7 @@
 name: ffm-aktuell
 services:
   db:
+    container_name: ffm-aktuell-db
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
@@ -20,7 +21,7 @@ services:
     build: .
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://ffm:${POSTGRES_PASSWORD}@db:5432/ffm
+      DATABASE_URL: postgres://ffm:${POSTGRES_PASSWORD}@ffm-aktuell-db:5432/ffm
       SESSION_SECRET: ${SESSION_SECRET:?Session secret missing}
       NEXT_PUBLIC_SITE_URL: https://ffm-aktuell.smarbiz.sbs
       NODE_ENV: production
