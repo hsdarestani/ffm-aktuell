@@ -116,10 +116,12 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   let cancelled=false,hasStyle=false,triedRaster=false;
   import('maplibre-gl').then(({default:maplibre})=>{
    if(cancelled||!mapDiv.current)return;
-   if(!maplibre.supported()){setError(true);return;}
+   const canvas=document.createElement('canvas');
+   let supported=false;try{supported=Boolean(canvas.getContext('webgl2')||canvas.getContext('webgl'));}catch{}
+   if(!supported){setError(true);return;}
    const map=new maplibre.Map({
     container:mapDiv.current,style:VECTOR_STYLE,center:CENTER,zoom:14.55,pitch:55,bearing:-23,
-    maxZoom:19,minZoom:10.8,maxPitch:75,attributionControl:{compact:true},
+    maxZoom:19,minZoom:10.8,maxPitch:75,attributionControl:false,
     canvasContextAttributes:{antialias:true},fadeDuration:250
    });
    mapRef.current=map;
@@ -130,7 +132,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
      if(!triedRaster){add3DBuildings(map);setColorScheme(map,state.current.mode);}
     }catch(e){console.warn('FFM Atlas building layer unavailable:',e);}
    };
-   map.on('load',onStyle);
+   map.on('style.load',onStyle);
    map.on('error',e=>{
     if(cancelled||hasStyle)return;
     console.warn('FFM Atlas base map:',e.error);
