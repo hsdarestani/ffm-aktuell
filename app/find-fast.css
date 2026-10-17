@@ -106,3 +106,114 @@
  .atlas-map-more-cats>summary{font-size:11px;padding:9px 11px}
  .atlas-category-tabs{top:98px}
 }
+
+
+/* VISUAL DISCOVERY · 2026-10-18
+   The screen answers "where do I tap?" before telling a story. Real OSM
+   records use category illustrations (not false photographs of venues). */
+.ffm-find-visual{max-width:1140px;padding-top:27px;padding-bottom:75px}
+.ffm-find-visual .ffm-find-head{display:grid;grid-template-columns:minmax(175px,.45fr) minmax(280px,1fr);gap:32px;align-items:center;margin:0 0 25px;text-align:left}
+.ffm-find-visual .ffm-find-head h1{font:400 clamp(36px,4.1vw,53px)/1 'Instrument Serif',Georgia,serif;letter-spacing:-1px;margin:0}
+.ffm-find-visual .ffm-find-head h1 span{color:#cb8160}
+.ffm-find-visual .ffm-find-search{width:100%;max-width:none;min-height:58px;border-radius:16px;margin:0}
+.ffm-find-visual .ffm-find-filters{margin:0 0 20px}
+.ffm-find-visual .ffm-find-main-cats{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+.ffm-find-visual .ffm-find-category{position:relative;isolation:isolate;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:9px;padding:12px 6px;border:1px solid #e4e8dc;border-radius:15px;min-height:106px;background:#fff;color:#334c3b;font-size:12px;font-weight:780;text-align:center;overflow:hidden;transition:background .18s,transform .18s,border-color .18s}
+.ffm-find-visual .ffm-find-category:before{content:'';position:absolute;z-index:-1;top:-42px;right:-30px;width:86px;height:86px;border:1px solid #d8e6db;border-radius:50%;opacity:.6}
+.ffm-find-visual .ffm-find-category:hover{transform:translateY(-2px);border-color:#a8bea9}
+.ffm-find-visual .ffm-find-category-visual{width:48px;height:48px;display:grid;place-items:center;background:#f2f1e8;border-radius:16px;color:#547b5b;transition:transform .2s}
+.ffm-find-visual .ffm-find-category:hover .ffm-find-category-visual{transform:rotate(-5deg) scale(1.06)}
+.ffm-find-visual .ffm-find-category.coffee .ffm-find-category-visual{background:#f5e7d9;color:#976b4e}
+.ffm-find-visual .ffm-find-category.food .ffm-find-category-visual{background:#e4ece0;color:#50815b}
+.ffm-find-visual .ffm-find-category.night .ffm-find-category-visual{background:#efe3ef;color:#845f85}
+.ffm-find-visual .ffm-find-category.play .ffm-find-category-visual{background:#f3ecdc;color:#a18248}
+.ffm-find-visual .ffm-find-category.culture .ffm-find-category-visual{background:#e3ebef;color:#637c98}
+.ffm-find-visual .ffm-find-category.health .ffm-find-category-visual{background:#dfeee9;color:#4f8574}
+.ffm-find-visual .ffm-find-category.active{background:#244836;color:#fff;border-color:#244836;box-shadow:0 5px 20px #2448361e}
+.ffm-find-visual .ffm-find-category.active .ffm-find-category-visual{background:#ffffff20;color:#fff}
+.ffm-find-visual .ffm-find-category.active:before{border-color:#ffffff50}
+.ffm-find-visual .ffm-find-more{margin:9px auto 0}
+.ffm-find-visual .ffm-find-more>summary{font-size:11px;padding:9px;min-height:35px}
+.ffm-find-visual .ffm-find-results{margin-top:12px}
+.ffm-find-visual .ffm-find-result-head{display:flex;align-items:center;margin:0 0 14px;padding:0 0 12px}
+.ffm-find-visual .ffm-find-result-head h2{font:400 31px/1 'Instrument Serif',Georgia,serif;letter-spacing:-.4px;margin:0;display:flex;align-items:center;gap:11px}
+.ffm-find-visual .ffm-find-result-head h2 span{font:700 11px/1 'DM Sans',sans-serif;border:1px solid #dfebe0;background:#eaf1e8;padding:7px 10px;border-radius:20px;letter-spacing:0;color:#557b5f}
+.ffm-find-visual .ffm-find-data{position:relative;z-index:2}
+.ffm-find-visual .ffm-find-data summary{display:flex;align-items:center;gap:5px;padding:7px;border-radius:9px;font-size:11px;font-weight:740;color:#668275;cursor:pointer;list-style:none}
+.ffm-find-visual .ffm-find-data summary::-webkit-details-marker{display:none}
+.ffm-find-visual .ffm-find-data[open] summary{color:#234c37}
+.ffm-find-visual .ffm-find-data>div{position:absolute;right:0;top:calc(100% + 7px);width:min(335px,80vw);border-radius:13px;border:1px solid #dce6dc;background:#fff;box-shadow:0 20px 45px #203b2825;padding:16px 19px;z-index:15}
+.ffm-find-visual .ffm-find-data strong{font-size:13px}
+.ffm-find-visual .ffm-find-data p{font-size:11px;color:#6a806e;line-height:1.65;margin:9px 0}
+.ffm-find-visual .ffm-find-data small{font-size:10px;color:#8b9c8c}
+.ffm-find-visual .ffm-find-source-line{margin:0 0 10px;gap:8px}
+.ffm-find-visual .ffm-find-source-line strong{font-size:12px}
+.ffm-find-visual .ffm-find-source-line small{font-size:10px}
+.ffm-find-visual .ffm-find-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.ffm-find-visual .ffm-find-item{padding:0;display:grid;grid-template-rows:95px minmax(0,1fr) 26px;align-items:stretch;min-width:0;min-height:222px;border-radius:15px;overflow:hidden;gap:0;text-align:left;border:1px solid #e1e9df;background:#fff;transition:transform .2s,box-shadow .2s,border-color .2s}
+.ffm-find-visual .ffm-find-item:hover{transform:translateY(-3px);box-shadow:0 12px 22px #22392c17;border-color:#b4cbb8}
+.ffm-find-visual .ffm-find-place-visual{height:95px;position:relative;display:grid;place-items:center;color:#4f765a;overflow:hidden;background:linear-gradient(135deg,#dce9dc,#f5f6ee)}
+.ffm-find-visual .ffm-find-place-visual:after{position:absolute;inset:0;content:'';background:linear-gradient(145deg,#ffffff5b,transparent 58%);pointer-events:none}
+.ffm-find-visual .ffm-find-place-visual>svg{z-index:1;filter:drop-shadow(0 3px 5px #29443616)}
+.ffm-find-visual .ffm-find-visual-rim{width:84px;height:84px;position:absolute;left:calc(50% - 42px);bottom:-37px;transform:rotate(-18deg);border-radius:22px;border:2px solid #ffffff61;box-shadow:0 0 0 20px #ffffff24,0 0 0 49px #ffffff14}
+.ffm-find-visual .ffm-find-item.coffee .ffm-find-place-visual{background:linear-gradient(125deg,#f4dfca,#eed8c1);color:#916c4c}
+.ffm-find-visual .ffm-find-item.food .ffm-find-place-visual{background:linear-gradient(125deg,#dce9dc,#b6d8ba);color:#436f4e}
+.ffm-find-visual .ffm-find-item.night .ffm-find-place-visual{background:linear-gradient(125deg,#ddd0e4,#c3b2d8);color:#725f84}
+.ffm-find-visual .ffm-find-item.culture .ffm-find-place-visual{background:linear-gradient(125deg,#d5e4e9,#b7cad7);color:#527489}
+.ffm-find-visual .ffm-find-item.health .ffm-find-place-visual{background:linear-gradient(125deg,#deede4,#b8d8ce);color:#4b8171}
+.ffm-find-visual .ffm-find-item.play .ffm-find-place-visual{background:linear-gradient(125deg,#e2e8d7,#cbdab3);color:#718452}
+.ffm-find-visual .ffm-find-item-copy{padding:12px 13px 7px;display:flex;flex-direction:column;gap:5px;align-items:start}
+.ffm-find-visual .ffm-find-item-copy strong{font-size:14px;line-height:1.28;color:#243d2c;white-space:normal;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.ffm-find-visual .ffm-find-item-copy small{font-size:10px;color:#7e9482;display:block;width:100%;max-width:100%;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.ffm-find-visual .ffm-find-item-footer{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 13px 9px;color:#ab8660}
+.ffm-find-visual .ffm-find-item-footer>span{font-size:9px;display:inline-flex;align-items:center;gap:5px}
+.ffm-find-visual .ffm-find-item-footer>svg{color:#5e8669}
+.ffm-find-visual .ffm-find-source-credit{margin-top:18px;opacity:.85}
+.ffm-find-visual .ffm-find-verified-results .v3-place-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+@media(max-width:900px){
+ .ffm-find-visual .ffm-find-head{gap:13px}
+ .ffm-find-visual .ffm-find-main-cats{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+ .ffm-find-visual .ffm-find-category{min-height:91px}
+ .ffm-find-visual .ffm-find-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:590px){
+ .ffm-find-visual{padding:16px 13px 100px}
+ .ffm-find-visual .ffm-find-head{display:flex;flex-direction:column;align-items:stretch;text-align:left;gap:15px;margin:0 0 14px}
+ .ffm-find-visual .ffm-find-head h1{font-size:39px;letter-spacing:-.5px}
+ .ffm-find-visual .ffm-find-search{min-height:53px;border-radius:13px;padding:5px 5px 5px 13px}
+ .ffm-find-visual .ffm-find-search input{font-size:14px}
+ .ffm-find-visual .ffm-find-map{min-height:42px;padding:10px 12px}
+ .ffm-find-visual .ffm-find-map span{font-size:0}
+ .ffm-find-visual .ffm-find-map svg{width:21px;height:21px}
+ .ffm-find-visual .ffm-find-filters{margin-bottom:14px}
+ .ffm-find-visual .ffm-find-main-cats{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+ .ffm-find-visual .ffm-find-category{min-height:78px;border-radius:12px;padding:7px 3px;gap:4px;font-size:10px;letter-spacing:-.15px}
+ .ffm-find-visual .ffm-find-category-visual{width:37px;height:37px;border-radius:12px}
+ .ffm-find-visual .ffm-find-category-visual svg{height:23px;width:23px}
+ .ffm-find-visual .ffm-find-category:before{width:60px;height:60px;right:-28px;top:-28px}
+ .ffm-find-visual .ffm-find-more{margin:2px auto 0}
+ .ffm-find-visual .ffm-find-more>summary{min-height:30px;padding:5px}
+ .ffm-find-visual .ffm-find-result-head{margin-bottom:10px;padding-bottom:10px}
+ .ffm-find-visual .ffm-find-result-head h2{font-size:28px}
+ .ffm-find-visual .ffm-find-result-head h2 span{padding:6px 8px;font-size:10px}
+ .ffm-find-visual .ffm-find-source-line{gap:7px;margin-bottom:10px}
+ .ffm-find-visual .ffm-find-source-line small{margin-left:auto}
+ .ffm-find-visual .ffm-find-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .ffm-find-visual .ffm-find-item{grid-template-rows:73px minmax(0,1fr) 23px;min-height:172px;border-radius:12px}
+ .ffm-find-visual .ffm-find-place-visual{height:73px}
+ .ffm-find-visual .ffm-find-place-visual>svg{width:28px;height:28px}
+ .ffm-find-visual .ffm-find-item-copy{padding:9px 10px 6px;gap:5px}
+ .ffm-find-visual .ffm-find-item-copy strong{font-size:12px;line-height:1.22}
+ .ffm-find-visual .ffm-find-item-copy small{font-size:9px}
+ .ffm-find-visual .ffm-find-item-footer{margin:0 10px 5px}
+ .ffm-find-visual .ffm-find-item-footer>span{font-size:9px}
+ .ffm-find-visual .ffm-find-data>div{right:0;width:min(320px,85vw)}
+ .ffm-find-visual .ffm-find-verified-results .v3-place-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:350px){
+ .ffm-find-visual .ffm-find-category{font-size:9px}
+ .ffm-find-visual .ffm-find-result-head h2{font-size:25px}
+ .ffm-find-visual .ffm-find-data summary{font-size:10px}
+ .ffm-find-visual .ffm-find-item-copy strong{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){.ffm-find-visual :is(.ffm-find-category,.ffm-find-item,.ffm-find-category-visual){transition:none!important}}
