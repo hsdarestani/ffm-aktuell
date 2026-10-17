@@ -22,7 +22,7 @@ const copy={
  search:'Was möchtest du entdecken?',searchAction:'Suchen',photo:'Ein Blick auf Frankfurt am Main',
  photoCredit:'Stadtfotografie · Unsplash',
  index:'Eine Stadt. Viele Perspektiven.',indexSub:'Ob ein neuer Lieblingsort oder ein vertrauter Klassiker: Hier beginnt deine nächste Entdeckung.',
- explore:'Orte entdecken',categories:'Entdecke nach Interesse',categoriesSub:'Was passt heute zu dir?',
+ explore:'Orte entdecken',categoriesTitle:'Entdecke nach Interesse',categoriesSub:'Was passt heute zu dir?',
  curated:'Orte, die es wert sind.',curatedSub:'Ein kleiner Anfang. Mit der Zeit wird daraus dein persönlicher Frankfurt-Guide.',
  allPlaces:'Alle Orte ansehen',placeAction:'Ort ansehen',neighborhood:'Stadtteil',
  journal:'Aus Frankfurt.',journalSub:'Aktuelle Veranstaltungen und Geschichten aus deiner Stadt.',
@@ -42,7 +42,7 @@ const copy={
  search:'What would you like to discover?',searchAction:'Search',photo:'A view of Frankfurt am Main',
  photoCredit:'City photography · Unsplash',
  index:'One city. Many perspectives.',indexSub:'A new favorite or a familiar classic. Your next discovery starts here.',
- explore:'Explore places',categories:'Explore by interest',categoriesSub:'What feels right today?',
+ explore:'Explore places',categoriesTitle:'Explore by interest',categoriesSub:'What feels right today?',
  curated:'Places worth your time.',curatedSub:'A thoughtful beginning. Over time, your personal guide to Frankfurt.',
  allPlaces:'View all places',placeAction:'View place',neighborhood:'Neighborhood',
  journal:'From Frankfurt.',journalSub:'Events and stories from around the city.',
@@ -94,7 +94,7 @@ export default function MinimalHome({lang,places,events,news,onDiscover,onMap,on
 
   <section className="mh-section mh-discover" aria-labelledby="mh-interests">
    <header className="mh-section-header">
-    <div><span className="mh-eyebrow">01 &nbsp; / &nbsp; {lang==='de'?'Entdecken':'Discover'}</span><h2 id="mh-interests">{t.categories}</h2><p>{t.categoriesSub}</p></div>
+    <div><span className="mh-eyebrow">01 &nbsp; / &nbsp; {lang==='de'?'Entdecken':'Discover'}</span><h2 id="mh-interests">{t.categoriesTitle}</h2><p>{t.categoriesSub}</p></div>
     <button className="mh-inline-link" onClick={onDiscover}>{t.allPlaces}<ArrowUpRight size={17}/></button>
    </header>
    <div className="mh-category-grid">{t.categories.map(([value,label,english],i)=><button key={value} onClick={()=>onCategory(value)} className="mh-category">
