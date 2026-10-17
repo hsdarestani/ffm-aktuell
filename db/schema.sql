@@ -28,6 +28,13 @@ CREATE TABLE IF NOT EXISTS places (
  source_url text, updated_at timestamptz NOT NULL DEFAULT now(),
  status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','published','rejected'))
 );
+-- Bestandskompatible Prüffelder; keine Veröffentlichung als "geprüft" ohne Quelle.
+ALTER TABLE places ADD COLUMN IF NOT EXISTS verification_status text NOT NULL DEFAULT 'unverified';
+ALTER TABLE places ADD COLUMN IF NOT EXISTS activity_status text NOT NULL DEFAULT 'unknown';
+ALTER TABLE places ADD COLUMN IF NOT EXISTS verified_at timestamptz;
+ALTER TABLE places ADD COLUMN IF NOT EXISTS verification_source text;
+ALTER TABLE places ADD COLUMN IF NOT EXISTS editorial_rank smallint NOT NULL DEFAULT 0;
+ALTER TABLE places ADD COLUMN IF NOT EXISTS opening_hours_text text;
 CREATE INDEX IF NOT EXISTS places_status_category_idx ON places(status,category);
 CREATE INDEX IF NOT EXISTS places_name_idx ON places USING gin(to_tsvector('simple',name||' '||description_de||' '||district));
 CREATE TABLE IF NOT EXISTS events (

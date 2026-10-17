@@ -53,7 +53,9 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   if(method==='GET'&&path==='me')return ok({user});
   if(method==='GET'&&path==='places'){
     const category=trim(qs.get('category'));const district=trim(qs.get('district'));const search=trim(qs.get('q'));
-    const r=await query("SELECT id,name,category,district,description_de,description_en,address,latitude,longitude,website,image_url,source_url FROM places WHERE status='published' AND ($1='' OR category=$1) AND ($2='' OR district=$2) AND ($3='' OR (name||' '||description_de||' '||district) ILIKE '%'||$3||'%') ORDER BY name LIMIT 80",[category,district,search.slice(0,100)]);
+    const mode=trim(qs.get('mode'));
+    if(mode&&mode!=='verified'&&mode!=='top')return bad('Unbekannter Ansichtsmodus');
+    const r=await query("SELECT id,name,category,district,description_de,description_en,address,latitude,longitude,website,image_url,source_url,verification_status,activity_status,verified_at,verification_source,editorial_rank,opening_hours_text FROM places WHERE status='published' AND activity_status!='permanently_closed' AND ($1='' OR category=$1) AND ($2='' OR district=$2) AND ($3='' OR (name||' '||description_de||' '||district) ILIKE '%'||$3||'%') AND ($4='' OR (verification_status='verified' AND activity_status='operating' AND verified_at BETWEEN now()-interval '30 days' AND now() AND ($4!='top' OR editorial_rank>0))) ORDER BY CASE WHEN verification_status='verified' AND activity_status='operating' AND verified_at > now()-interval '30 days' THEN 0 ELSE 1 END, editorial_rank DESC, name LIMIT 80",[category,district,search.slice(0,100),mode]);
     return ok({items:r.rows});
   }
   if(method==='GET'&&path==='events'){const r=await query("SELECT * FROM events WHERE status='published' AND starts_at>=now()-interval '1 day' ORDER BY starts_at LIMIT 40");return ok({items:r.rows});}
@@ -119,6 +121,31 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     const r=await query('UPDATE '+table+' SET status=$1 WHERE id=$2 RETURNING id',[target,b.id]);
     if(!r.rowCount)return bad('Not found',404);
     await audit(u,'review:'+target,b.type,b.id);return ok({success:true});
+  }
+  if(method==='POST'&&path==='admin/verify-place'){
+    const u=admin(user);
+    const b=parse(z.object({
+      id,activity_status:z.enum(['unknown','operating','temporarily_closed','permanently_closed']),
+      verification_source:z.url().max(1000),
+      editorial_rank:z.number().int().min(0).max(100).default(0),
+      opening_hours_text:z.string().max(300).optional().default('')
+    }),await payload(req));
+    const source=allowedUrl(b.verification_source);
+    if(!source)return bad('Eine überprüfbare Quelle ist erforderlich');
+    // Set the verification time only after an authorized editor explicitly
+    // reviewed a cited source. API data alone never auto-confirms businesses.
+    const r=await query("UPDATE places SET activity_status=$2, verification_status='verified',verification_source=$3,verified_at=now(),editorial_rank=$4,opening_hours_text=$5,updated_at=now() WHERE id=$1 RETURNING id",
+      [b.id,b.activity_status,source,b.activity_status==='operating'?b.editorial_rank:0,b.opening_hours_text]);
+    if(!r.rowCount)return bad('Ort nicht gefunden',404);
+    await audit(u,'verify:source-reviewed','place',b.id);
+    return ok({success:true,verification_status:'verified'});
+  }
+  if(method==='POST'&&path==='admin/dispute-place'){
+    const u=admin(user);
+    const b=parse(z.object({id,reason:text(500)}),await payload(req));
+    const r=await query("UPDATE places SET verification_status='disputed',editorial_rank=0,updated_at=now() WHERE id=$1 RETURNING id",[b.id]);
+    if(!r.rowCount)return bad('Ort nicht gefunden',404);
+    await audit(u,'dispute:'+b.reason,'place',b.id);return ok({success:true});
   }
   if(method==='POST'&&path==='admin/places'){
     const u=admin(user);
