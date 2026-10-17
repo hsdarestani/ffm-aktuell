@@ -16,6 +16,7 @@ services:
       retries: 10
     mem_limit: 384m
   web:
+    container_name: ffm-aktuell-web
     build: .
     restart: unless-stopped
     environment:
@@ -38,7 +39,7 @@ services:
       start_period: 30s
 networks:
   shared:
-    name: aplus-publisher_default
+    name: ${PUBLISHER_NETWORK:-aplus-publisher_default}
     external: true
 volumes:
   ffm_db:
