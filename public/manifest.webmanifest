@@ -1,11 +1,11 @@
 {
-  "name": "FFM Aktuell — Frankfurt. Immer wieder neu.",
+  "name": "FFM Aktuell — Frankfurt von innen",
   "short_name": "FFM Aktuell",
-  "description": "Orte, Menschen und Geschichten aus Frankfurt.",
+  "description": "Eine Stadt, tausend Blickwinkel. Frankfurt unabhängig entdecken.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f8f8f5",
-  "theme_color": "#f8f8f5",
+  "background_color": "#f6f5f1",
+  "theme_color": "#f6f5f1",
   "lang": "de",
   "icons": [
     {
