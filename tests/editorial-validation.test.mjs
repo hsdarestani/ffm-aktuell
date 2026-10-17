@@ -35,7 +35,7 @@ test('German-only editorial panel explains verification limits and supports rech
  assert.match(ui,/admin\/validation/);
  assert.match(ui,/admin\/candidates/);
  assert.match(ui,/admin\/review-candidate/);
- assert.match(ui,/Keine Live Garantie/);
+ assert.match(ui,/keine Live Garantie/);
  assert.match(ui,/type="checkbox" name="confirms_operation" required/);
  assert.match(page,/AdminOrtpruefung/);
  assert.match(page,/verification_note/);
