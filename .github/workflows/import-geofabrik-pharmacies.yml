@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/import-geofabrik-pharmacies.yml'
+      - 'scripts/import-geofabrik-pharmacies.mjs'
   workflow_dispatch:
 permissions:
   contents: write
