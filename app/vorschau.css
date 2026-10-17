@@ -202,3 +202,26 @@
  .v3-site .place-dialog>.v3-photo{height:222px;min-height:222px}
  .v3-site .dialog-body h2{font-size:38px}
 }
+
+/* FFM real-city source transparency, optional official orthophotography */
+.v4-verification-controls{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;justify-content:space-between;background:#ebece5;border:1px solid #dadfd4;border-radius:10px;padding:12px 15px;margin:14px 0 18px}
+.v4-verification-controls label{display:flex;align-items:center;gap:9px;color:#31473b;font-size:12px;font-weight:700;cursor:pointer}
+.v4-verification-controls input{accent-color:#305440;width:16px;height:16px}
+.v4-verification-controls small{color:#627365;font-size:10px;line-height:1.5;max-width:510px}
+.v4-check-label{display:inline-block;background:#e9ede6;color:#54695c;border:1px solid #d8e0d7;border-radius:5px;padding:3px 6px;font-size:9px;font-weight:600;line-height:1.5}
+.v4-place-check{color:#527467;font-size:11px;font-weight:650;margin:10px 0 0}
+.v4-verify-admin{margin:0 0 28px;border:1px solid #d9e0d7;border-radius:12px;padding:18px;background:#edf0e9}
+.v4-verify-admin h2{font:400 30px 'Instrument Serif',serif}
+.v4-verify-admin p{font-size:12px;line-height:1.6;color:#667969}
+.atlas-tools .atlas-air-button{background:rgba(255,250,240,.9);color:#304538;border-color:rgba(43,72,53,.2);padding:0 13px;font-size:11px;white-space:nowrap;font-weight:700}
+.atlas-tools .atlas-air-button.active{background:#263c32;border-color:#263c32;color:#fff}
+.atlas-luftbild-warning{position:absolute;z-index:9;top:194px;left:20px;right:20px;background:#f7f2ea;color:#543b36;border:1px solid #e1c9b8;border-radius:8px;font-size:11px;padding:12px 14px;box-shadow:0 8px 27px #1b2f272e;pointer-events:none}
+.v4-group-heading{font:400 39px/1.06 'Instrument Serif',Georgia,serif;margin:15px 0}
+.v4-group-sub{font-size:12px;line-height:1.75;color:#677c6a;margin-bottom:23px}
+.v4-group-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin:0 0 50px}
+.v4-group{display:flex;flex-direction:column;gap:11px;min-height:165px;padding:20px;border:1px solid #d9dfd5;border-radius:12px;background:linear-gradient(140deg,#ebeee6,#faf8ef);align-items:start}
+.v4-group h3{font:400 29px/1.08 'Instrument Serif',Georgia,serif;margin:0}
+.v4-group p{font-size:12px;line-height:1.6;color:#6c7d6f;margin:0}
+.v4-group small{font-size:9px;color:#8e756e;text-transform:uppercase;font-weight:700;letter-spacing:1px}
+@media(max-width:800px){.atlas-tools .atlas-air-button{font-size:10px;min-height:35px;padding:0 10px}.v4-group-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.v4-verification-controls small{flex-basis:100%}}
+@media(max-width:480px){.atlas-tools{gap:4px}.atlas-tools .atlas-air-button{font-size:9px;padding:0 7px;min-height:34px}.atlas-tools .atlas-dim-button{width:37px;height:34px}.atlas-tools .atlas-tone-button{width:37px;min-height:34px}.atlas-tools .atlas-tone-button span{display:none}.atlas-brand strong,.atlas-hero .atlas-brand strong{font-size:18px}.v4-group-grid{grid-template-columns:1fr 1fr;gap:10px}.v4-group{padding:15px;min-height:177px}.v4-group h3{font-size:25px}.v4-group p{font-size:11px}.atlas-luftbild-warning{top:120px}}
