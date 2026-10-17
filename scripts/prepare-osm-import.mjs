@@ -12,16 +12,25 @@ if(!Array.isArray(original.candidates)||original.candidates.length<3000)throw Er
 const entries=new Map(original.candidates.map(x=>[x.osm_id,x]));
 let pharmacyCount=0;
 const query='[out:json][timeout:70];(nwr["amenity"="pharmacy"](50.045,8.555,50.195,8.810););out center tags;';
-const base=process.env.OVERPASS_ENDPOINT||'https://overpass-api.de/api/interpreter';
-const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),85000);
-try{
- const r=await fetch(base,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','User-Agent':'FFM-Aktuell-POI-Import/1.0'},body:new URLSearchParams({data:query}),signal:ctl.signal});
- if(!r.ok)throw Error('Pharmacy Overpass HTTP '+r.status);
- const data=await r.json();
- if(!Array.isArray(data.elements))throw Error('Pharmacy source invalid');
- for(const p of candidatesFromOSM(data.elements)){p.category='Apotheken';entries.set(p.osm_id,p);pharmacyCount++}
-}finally{clearTimeout(t)}
-if(pharmacyCount<50)throw Error('Pharmacy results incomplete: '+pharmacyCount);
+const endpoints=[process.env.OVERPASS_ENDPOINT,'https://overpass.kumi.systems/api/interpreter',
+ 'https://overpass.private.coffee/api/interpreter','https://overpass.nchc.org.tw/api/interpreter'].filter(Boolean);
+for(const endpoint of [...new Set(endpoints)]){
+ const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),26000);
+ try{
+  const r=await fetch(endpoint,{method:'POST',
+   headers:{'Content-Type':'application/x-www-form-urlencoded','User-Agent':'FFM-Aktuell-POI-Import/1.0'},
+   body:new URLSearchParams({data:query}),signal:ctl.signal});
+  if(!r.ok)throw Error('HTTP '+r.status);
+  const data=await r.json();
+  if(!Array.isArray(data.elements))throw Error('Unexpected Overpass response');
+  const found=candidatesFromOSM(data.elements);
+  if(found.length<50)throw Error('Too few pharmacies: '+found.length);
+  for(const p of found){p.category='Apotheken';entries.set(p.osm_id,p);pharmacyCount++}
+  console.log('Apothekenquelle:',endpoint,'gefunden:',pharmacyCount);break;
+ }catch(e){console.warn('Overpass-Quelle fehlgeschlagen:',endpoint,e.message)}
+ finally{clearTimeout(t)}
+}
+if(pharmacyCount<50)console.warn('Apothekenimport ausstehend; historische Kandidaten trotzdem gesichert.');
 const q=x=>x==null?'NULL':"'"+String(x).replaceAll("'","''").replaceAll('\u0000','').slice(0,2000)+"'";
 const out=['BEGIN;','-- OSM Kandidaten. Nicht verifiziert; niemals als Notdienst oder geöffnet kennzeichnen.','-- Quelle: © OpenStreetMap-Mitwirkende (ODbL).'];
 let accepted=0;
