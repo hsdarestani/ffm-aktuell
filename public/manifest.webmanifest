@@ -1,11 +1,11 @@
 {
-  "name": "FFM Aktuell – Frankfurt erleben",
+  "name": "FFM Aktuell — Die Stadt ist nicht still",
   "short_name": "FFM Aktuell",
-  "description": "Deine Stadt. Neu entdeckt.",
+  "description": "Dein direkter Draht zu den Orten, Ideen und Menschen, die Frankfurt bewegen.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f6f3ed",
-  "theme_color": "#172b2b",
+  "background_color": "#f3f0e8",
+  "theme_color": "#17191b",
   "lang": "de",
   "icons": [
     {
