@@ -57,7 +57,7 @@ function triangles(data:Model){
 export function addRealLod2Layer(map:LibreMap,onLoaded:(triangles:number)=>void){
  if(map.getLayer('ffm-real-lod2'))return;
  let shader:WebGLProgram|null=null,buffer:WebGLBuffer|null=null,count=0,disposed=false;
- let origin=[0,0,0];
+ let origin=[0,0,0],draws=0;
  const layer:CustomLayerInterface={
   id:'ffm-real-lod2',type:'custom',renderingMode:'3d',
   onAdd(m,gl){
@@ -88,6 +88,7 @@ export function addRealLod2Layer(map:LibreMap,onLoaded:(triangles:number)=>void)
    ctx.uniformMatrix4fv(ctx.getUniformLocation(shader,'u_matrix'),false,matrix);
    ctx.enable(ctx.DEPTH_TEST);ctx.disable(ctx.CULL_FACE);
    ctx.drawArrays(ctx.TRIANGLES,0,count);
+   if(draws++===0)console.info('FFM LoD2 GPU first draw',count,'GL error',ctx.getError());
    ctx.disableVertexAttribArray(pos);ctx.disableVertexAttribArray(color);
   },
   onRemove(_map,gl){
