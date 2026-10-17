@@ -84,3 +84,25 @@
 @media(max-width:380px){.ffm-find-main-cats button{padding:8px 10px}.ffm-find-search input{font-size:12px}.ffm-find-map{font-size:0;gap:0}.ffm-find-map svg{width:20px;height:20px}}
 /* Simple public navigation: Start, Entdecken, Karte. Events/community remain reachable without duplicating every section above the fold. */
 @media(max-width:720px){.v3-site .header{height:65px}.v3-site .header-inner{height:65px;padding-left:16px;padding-right:16px}}
+
+/* Map retains 2D/3D, photos and all categories; advanced choices no longer flood the map. */
+.atlas-tools .atlas-map-more-views{position:relative;pointer-events:auto}
+.atlas-map-more-views>summary,.atlas-map-more-cats>summary{display:flex;align-items:center;justify-content:center;gap:6px;list-style:none;cursor:pointer;background:rgba(255,255,255,.94);border:1px solid #dbe4da;color:#294736;border-radius:26px;padding:11px 13px;font-size:12px;font-weight:800;box-shadow:0 4px 15px #213d2b12;white-space:nowrap}
+.atlas-map-more-views>summary::-webkit-details-marker,.atlas-map-more-cats>summary::-webkit-details-marker{display:none}
+.atlas-map-more-views[open]>summary,.atlas-map-more-cats[open]>summary{background:#e4eee6}
+.atlas-map-more-views>div{position:absolute;z-index:80;right:0;top:calc(100% + 10px);background:#fff;padding:11px;display:grid;gap:9px;min-width:185px;box-shadow:0 16px 32px #273b2c25;border-radius:12px;border:1px solid #dae6db}
+.atlas-map-more-views>div button{width:100%;white-space:nowrap;justify-content:start}
+.atlas-category-tabs .atlas-map-more-cats{position:relative;flex:none}
+.atlas-category-tabs:has(.atlas-map-more-cats[open]){overflow:visible}
+.atlas-map-more-cats-list{display:grid;gap:5px;position:absolute;top:calc(100% + 8px);right:0;min-width:195px;max-height:min(60dvh,430px);overflow:auto;padding:9px;background:white;border:1px solid #dce8de;border-radius:12px;box-shadow:0 14px 35px #1f382b36;z-index:70}
+.atlas-map-more-cats-list button{width:100%;text-align:left;border-radius:7px;padding:10px 12px;min-height:37px;box-shadow:none;font-size:11px}
+@media(max-width:750px){
+ .atlas-category-tabs{max-width:calc(100% - 22px);right:11px;gap:6px}
+ .atlas-category-tabs button{font-size:11px;padding:7px 11px}
+ .atlas-map-more-cats-list{right:0}
+}
+@media(max-width:480px){
+ .atlas-map-more-views>summary{font-size:11px;padding:10px 9px}
+ .atlas-map-more-cats>summary{font-size:11px;padding:9px 11px}
+ .atlas-category-tabs{top:98px}
+}
