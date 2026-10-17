@@ -35,6 +35,13 @@ ALTER TABLE places ADD COLUMN IF NOT EXISTS verified_at timestamptz;
 ALTER TABLE places ADD COLUMN IF NOT EXISTS verification_source text;
 ALTER TABLE places ADD COLUMN IF NOT EXISTS editorial_rank smallint NOT NULL DEFAULT 0;
 ALTER TABLE places ADD COLUMN IF NOT EXISTS opening_hours_text text;
+-- Redaktionelle Beweiskette: OSM-ID dient nur der Identität, nie als Betriebsnachweis.
+ALTER TABLE places ADD COLUMN IF NOT EXISTS osm_id text;
+ALTER TABLE places ADD COLUMN IF NOT EXISTS verification_method text;
+ALTER TABLE places ADD COLUMN IF NOT EXISTS verification_note text;
+ALTER TABLE places ADD COLUMN IF NOT EXISTS verified_by uuid REFERENCES users(id) ON DELETE SET NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS places_osm_id_unique ON places(osm_id) WHERE osm_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS places_recheck_idx ON places(status, verified_at) WHERE status='published';
 CREATE INDEX IF NOT EXISTS places_status_category_idx ON places(status,category);
 CREATE INDEX IF NOT EXISTS places_name_idx ON places USING gin(to_tsvector('simple',name||' '||description_de||' '||district));
 -- Separate crowd-sourced discovery index. Raw OSM candidates are never
