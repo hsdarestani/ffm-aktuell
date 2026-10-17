@@ -380,14 +380,19 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   <div className="atlas-topbar">
    <div className="atlas-brand"><span className="atlas-brand-id">ffm<span>.</span></span><div><small>FRANKFURT AM MAIN</small><strong>{lang==='de'?'Deine Stadt. Neu entdeckt.':'Rediscover your city.'}</strong></div></div>
    <div className="atlas-tools">
-    <button type="button" className={'atlas-tone-button'+(mode==='golden'?' active':'')} onClick={()=>setMode(x=>x==='day'?'golden':'day')} title={mode==='day'?t.golden:t.day} aria-label={mode==='day'?t.golden:t.day}>{mode==='day'?<Sunset size={17}/>:<Sun size={17}/>}<span>{mode==='day'?t.golden:t.day}</span></button>
-    <button type="button" className={'atlas-air-button'+(luftbild?' active':'')} aria-pressed={luftbild} onClick={()=>{setLuftbildFehler(false);if(!luftbild)set3D(false);else set3D(true);setLuftbild(v=>!v)}} title="Amtliche Luftbilder statt Kartenzeichnung">{luftbild?'Stadtplan':'Luftbild'}</button>
     <button type="button" className="atlas-dim-button" aria-pressed={is3D} onClick={()=>{if(luftbild){setLuftbild(false);set3D(true)}else set3D(x=>!x)}} title={t.view}>{is3D?'3D':'2D'}</button>
+    <details className="atlas-map-more-views"><summary>Ansicht <Plus size={14}/></summary><div>
+      <button type="button" className={'atlas-tone-button'+(mode==='golden'?' active':'')} onClick={()=>setMode(x=>x==='day'?'golden':'day')} title={mode==='day'?t.golden:t.day} aria-label={mode==='day'?t.golden:t.day}>{mode==='day'?<Sunset size={17}/>:<Sun size={17}/>}<span>{mode==='day'?t.golden:t.day}</span></button>
+      <button type="button" className={'atlas-air-button'+(luftbild?' active':'')} aria-pressed={luftbild} onClick={()=>{setLuftbildFehler(false);if(!luftbild)set3D(false);else set3D(true);setLuftbild(v=>!v)}} title="Amtliche Luftbilder statt Kartenzeichnung">{luftbild?'Stadtplan':'Luftbild'}</button>
+    </div></details>
    </div>
   </div>
   <div className="atlas-micro"><span className="atlas-red-dot"/> FRANKFURT AM MAIN <span className="atlas-micro-separator"/> 50°06&apos; N · 08°41&apos; E</div>
   <div className="atlas-category-tabs" role="group" aria-label={t.places}>
-   {CATS.map(item=><button type="button" key={item.id} className={cat===item.id?'selected':''} onClick={()=>chooseCategory(item.id)} aria-pressed={cat===item.id}>{item.label}</button>)}
+   {CATS.filter(item=>['Alle','Cafés','Restaurants','Bars','Freizeit','Apotheken'].includes(item.id)).map(item=><button type="button" key={item.id} className={cat===item.id?'selected':''} onClick={()=>chooseCategory(item.id)} aria-pressed={cat===item.id}>{item.label}</button>)}
+   <details className="atlas-map-more-cats"><summary>{!['Alle','Cafés','Restaurants','Bars','Freizeit','Apotheken'].includes(cat)?CATS.find(v=>v.id===cat)?.label||'Weitere':'Weitere'} <Plus size={14}/></summary>
+     <div className="atlas-map-more-cats-list">{CATS.filter(item=>!['Alle','Cafés','Restaurants','Bars','Freizeit','Apotheken'].includes(item.id)).map(item=><button type="button" key={item.id} className={cat===item.id?'selected':''} onClick={()=>chooseCategory(item.id)} aria-pressed={cat===item.id}>{item.label}</button>)}</div>
+   </details>
   </div>
   <div className="atlas-map-utilities">
    <button aria-label={t.zoomIn} title={t.zoomIn} onClick={()=>zoom(1)}><Plus size={20}/></button>
