@@ -244,7 +244,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       verification_source:z.url().max(1000),
       verification_method:z.enum(['betreiber_webseite','betreiber_kontakt','behoerde']),
       verification_note:z.string().trim().min(25).max(2000),
-      confirms_existence:z.literal(true),confirms_address:z.literal(true),
+      confirms_existence:z.literal(true),confirms_address:z.literal(true),confirms_status:z.literal(true),
       editorial_rank:z.number().int().min(0).max(100).default(0),
       opening_hours_text:z.string().max(300).optional().default('')
     }),await payload(req));
