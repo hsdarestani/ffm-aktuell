@@ -35,11 +35,11 @@ export default function Home(){
  const flash=(m:string)=>{setToast(m);window.setTimeout(()=>setToast(''),4500);};
  const load=useCallback(async()=>{
   setLoading(true);setError('');
-  try{const [p,e,n,c,d,m]=await Promise.all([api('places'),api('events'),api('news'),api('posts'),api('deals'),api('me')]);setPlaces(p.items);setEvents(e.items);setNews(n.items);setPosts(c.items);setDeals(d.items);setUser(m.user);setFavorites(m.user?(await api('favorites')).items:[]);}catch(e){setError('Die Inhalte konnten nicht geladen werden. Bitte versuche es erneut.')}finally{setLoading(false)}
+  try{const [p,e,n,m]=await Promise.all([api('places'),api('events'),api('news'),api('me')]);setPlaces(p.items);setEvents(e.items);setNews(n.items);setUser(m.user);if(m.user){void api('favorites').then(d=>setFavorites(d.items)).catch(()=>setFavorites([]))}else setFavorites([]);}catch(e){setError('Die Inhalte konnten nicht geladen werden. Bitte versuche es erneut.')}finally{setLoading(false)}
  },[refresh]);
  useEffect(()=>{void load()},[load]);
  useEffect(()=>{document.documentElement.lang=lang},[lang]);
- useEffect(()=>{if(page!=='discover')return;let disposed=false;const controller=new AbortController();setCandidateLoading(true);
+ useEffect(()=>{if(page!=='discover')return;let disposed=false;const controller=new AbortController();setCandidateLoading(true);setCandidates([]);setCandidateTotal(0);const timer=window.setTimeout(()=>{
   const q=new URLSearchParams({limit:'18',offset:'0'});
   if(category!=='Alle')q.set('category',category==='Apotheken Notdienst'?'Apotheken':category);
   if(query.trim())q.set('q',query.trim());
@@ -47,7 +47,7 @@ export default function Home(){
    .then(data=>{if(!disposed){setCandidates(data.items||[]);setCandidateTotal(data.total||0);}})
    .catch(()=>{if(!disposed){setCandidates([]);setCandidateTotal(0);}})
    .finally(()=>{if(!disposed)setCandidateLoading(false)});
-  return()=>{disposed=true;controller.abort()};
+  },240);return()=>{disposed=true;window.clearTimeout(timer);controller.abort()};
  },[page,category,query,refresh]);
  const mehrLaden=async()=>{if(candidateLoading||candidates.length>=candidateTotal)return;
   setCandidateLoading(true);try{const q=new URLSearchParams({limit:'18',offset:String(candidates.length)});
@@ -59,6 +59,7 @@ export default function Home(){
  };
 
  useEffect(()=>{if(page==='business'&&user){api('businesses').then(b=>{setBusiness(b.items[0]||null);if(b.items[0])api('business/overview').then(setBusinessDetail).catch(()=>{})}).catch(()=>{})}if(page==='admin'&&user?.role==='admin')api('admin/queue').then(setQueue).catch(()=>{})},[page,user,refresh]);
+ useEffect(()=>{if(page==='community')void api('posts').then(d=>setPosts(d.items||[])).catch(()=>{});if(page==='events')void api('deals').then(d=>setDeals(d.items||[])).catch(()=>{})},[page,refresh]);
  const sichtbareOrte=useMemo(()=>[...places,...vorschauOrte.filter(v=>!places.some(p=>p.name===v.name))],[places]);
  const sichtbareVeranstaltungen=useMemo(()=>[...events,...vorschauVeranstaltungen],[events]);
  const sichtbareBeitraege=useMemo(()=>[...news,...vorschauBeitraege],[news]);
@@ -100,7 +101,7 @@ export default function Home(){
    <summary><Plus size={16}/> Weitere Filter {category!=='Alle'&&!['Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(category)?'· '+(catBezeichnungen[category]||category):''}</summary>
    <div className="ffm-find-extra">
     <div className="ffm-find-extra-cats">{categories.filter(cat=>!['Alle','Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(cat)).map(cat=><button type="button" key={cat} className={category===cat?'active':''} onClick={()=>setCategory(cat)}>{catBezeichnungen[cat]||cat}</button>)}</div>
-    <label>Stadtteil<select value={district} onChange={e=>setDistrict(e.target.value)}><option value="">Alle Stadtteile</option>{[...new Set(sichtbareOrte.map(p=>p.district).filter(Boolean))].sort().map(d=><option key={d}>{d}</option>)}</select></label>
+    <small>Stadtteile findest du direkt über das Suchfeld.</small>
     <label className="ffm-find-verified"><input type="checkbox" checked={nurGepruefte} onChange={e=>setNurGepruefte(e.target.checked)}/> Nur aktuell geprüfte Betriebe</label>
     <small>Prüfung maximal 30 Tage alt. Keine Garantie, dass der Ort jetzt geöffnet ist.</small>
    </div>
@@ -157,7 +158,7 @@ export default function Home(){
   {page==='admin'&&(user?.role==='admin'?<AdminStudio onChanged={()=>setRefresh(n=>n+1)}/>:<main className="inner-page"><div className="empty"><LockKeyhole/><p>Zugriff nur für die Redaktion. Bitte melde dich als Administrator an.</p></div></main>)}
   <footer className="footer"><div className="footer-top"><div><strong>ffm<b>aktuell</b><em>.</em></strong><p>FRANKFURT VON INNEN. DEINE STADT, DEIN BLICK.</p></div><div><button onClick={()=>navigate('discover')}>{t.discover}</button><button onClick={()=>navigate('events')}>{t.events}</button><button onClick={()=>navigate('business')}>{t.business}</button></div></div><div className="footer-bottom"><span>© 2026 FFM Aktuell</span><span>Frankfurt am Main</span></div></footer>
   <nav className="mobile-bottom">{nav.map(([p,Icon,title])=><button className={page===p?'active':''} key={p} onClick={()=>navigate(p)}><Icon size={21}/><span>{title}</span></button>)}</nav>
-  {selected&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}><div className="place-dialog" role="dialog" aria-modal="true"><button className="dialog-close" onClick={()=>setSelected(null)}><X/></button>{picture(2,selected)}<div className="dialog-body">{selected.demo&&<span className="v3-demo-label">Musterort – noch keine redaktionelle Freigabe</span>}<small>{catBezeichnungen[selected.category]||selected.category} / {selected.district}</small><p className="v4-place-check">{statusLabel(selected)}{selected.verified_at&&frischBestaetigt(selected)?' · Zuletzt geprüft: '+date(selected.verified_at,lang):''}</p><h2>{selected.name}</h2><p>{lang==='de'?selected.description_de||selected.description_en:selected.description_en||selected.description_de}</p><p className="address"><MapPin size={16}/>{selected.address}</p><div className="dialog-actions"><button className="primary-btn small" onClick={()=>favorite(selected.id)}><Heart size={16}/>{favorites.includes(selected.id)?t.saved:t.save}</button>{selected.website&&<a href={selected.website} target="_blank" rel="noopener noreferrer" className="secondary-btn">{t.website}<span className="ui-dot" aria-hidden="true"/></a>}</div>{selected.candidate&&<p className="v5-candidate-alert">Ungeprüfter OSM-Eintrag. Bitte die Adresse, die Existenz und die Öffnungszeiten direkt beim Anbieter kontrollieren.</p>}{selected.verification_source&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.verification_source}>Quelle der Betriebsprüfung</a>}{selected.source_url&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.source_url}>{t.source}<span className="ui-dot" aria-hidden="true"/></a>}<p className="fineprint">{t.notice}</p></div></div></div>}
+  {selected&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}><div className="place-dialog" role="dialog" aria-modal="true"><button className="dialog-close" onClick={()=>setSelected(null)}><X/></button>{!selected.candidate&&picture(2,selected)}<div className="dialog-body">{selected.demo&&<span className="v3-demo-label">Musterort – noch keine redaktionelle Freigabe</span>}<small>{catBezeichnungen[selected.category]||selected.category} / {selected.district}</small><p className="v4-place-check">{statusLabel(selected)}{selected.verified_at&&frischBestaetigt(selected)?' · Zuletzt geprüft: '+date(selected.verified_at,lang):''}</p><h2>{selected.name}</h2><p>{lang==='de'?selected.description_de||selected.description_en:selected.description_en||selected.description_de}</p><p className="address"><MapPin size={16}/>{selected.address}</p><div className="dialog-actions"><button className="primary-btn small" onClick={()=>favorite(selected.id)}><Heart size={16}/>{favorites.includes(selected.id)?t.saved:t.save}</button>{selected.website&&<a href={selected.website} target="_blank" rel="noopener noreferrer" className="secondary-btn">{t.website}<span className="ui-dot" aria-hidden="true"/></a>}</div>{selected.candidate&&<p className="v5-candidate-alert">Ungeprüfter OSM-Eintrag. Bitte die Adresse, die Existenz und die Öffnungszeiten direkt beim Anbieter kontrollieren.</p>}{selected.verification_source&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.verification_source}>Quelle der Betriebsprüfung</a>}{selected.source_url&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.source_url}>{t.source}<span className="ui-dot" aria-hidden="true"/></a>}<p className="fineprint">{t.notice}</p></div></div></div>}
   {auth&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setAuth(false)}}><div className="auth-dialog" role="dialog" aria-modal="true"><button className="dialog-close" onClick={()=>setAuth(false)}><X/></button><span className="auth-mark">F✳</span><small>DEIN ZUGANG ZU FFM AKTUELL</small><h2>{register?t.register:t.welcome}</h2><form onSubmit={onAuth}>{register&&formField(t.name,'display_name',true)}{formField(t.email,'email',true,'email')}{formField(t.password,'password',true,'password')}<button className="primary-btn">{register?t.register:t.login}<span className="ui-dot" aria-hidden="true"/></button></form><button className="switch-auth" onClick={()=>setRegister(!register)}>{register?t.login:t.register}<span className="ui-dot" aria-hidden="true"/></button></div></div>}
  </div>;
 }
