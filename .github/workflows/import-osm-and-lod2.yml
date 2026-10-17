@@ -1,0 +1,50 @@
+name: OSM Quelle importieren und Hessens LoD2 prüfen
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/import-osm-and-lod2.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  daten:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Vorhandenen Originalexport aus dem Oktober laden
+        uses: actions/download-artifact@v4
+        with:
+          name: ffm-osm-kandidaten-unverifiziert
+          run-id: 39035078106
+          github-token: ${{ github.token }}
+          path: artifacts/import
+      - name: Originaldaten und Apotheken in SQL-Prüfkatalog überführen
+        env:
+          OVERPASS_ENDPOINT: https://overpass-api.de/api/interpreter
+        run: node scripts/prepare-osm-import.mjs artifacts/import/osm-kandidaten.json data/osm-discovery.sql
+      - name: Amtliches Hessen-LoD2 untersuchen
+        run: node scripts/inspect-hessen-lod2.mjs
+      - name: LoD2-Testausgabe aufbewahren
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hessen-lod2-service-inspection
+          path: artifacts/lod2/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Import in eigene Daten-Branch committen
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -C data/frankfurt-discovery-source
+          git add data/osm-discovery.sql data/osm-import-summary.json
+          git commit -m "data: original Frankfurt OSM candidates and pharmacy records for DB review"
+          git push --force origin HEAD:refs/heads/data/frankfurt-discovery-source
