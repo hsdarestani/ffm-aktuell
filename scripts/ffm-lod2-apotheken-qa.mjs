@@ -6,6 +6,7 @@ for(const d of [{label:'Mobil',width:390,height:844},{label:'Desktop',width:1440
  const b=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const p=await b.newPage({viewport:{width:d.width,height:d.height},reducedMotion:'reduce'});
  const pageErrors=[];p.on('pageerror',x=>pageErrors.push(x.message));
+ p.on('console',x=>{if(['warning','error'].includes(x.type())||/LoD2/.test(x.text()))console.log('BROWSER '+d.label+' '+x.type()+': '+x.text().slice(0,600))});
  try{
   const data=await p.request.get(base+'/api/discovery?category=Apotheken&limit=2');
   const resp=data.ok()?await data.json():null;
