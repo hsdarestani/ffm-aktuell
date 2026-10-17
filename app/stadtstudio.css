@@ -1,0 +1,334 @@
+/* FFM STADTSTUDIO — bespoke editorial workspace. Scoped to .ffm-studio.
+   The urban route line, skyline, asymmetric panels and sharp labels carry the
+   Frankfurt identity. Never silently transform unverified OSM into an open business. */
+.ffm-studio{
+ --studio-ink:#21392f;--studio-dark:#182f27;--studio-night:#10261e;
+ --studio-paper:#f7f5ee;--studio-card:#fffefb;--studio-muted:#737e72;
+ --studio-peach:#f9ab75;--studio-coral:#e97b5e;--studio-sage:#e8eee5;--studio-stroke:#e1e4db;
+ display:grid;grid-template-columns:258px minmax(0,1fr);min-height:calc(100dvh - 103px);
+ color:var(--studio-ink);background:var(--studio-paper);font-family:'DM Sans',sans-serif;
+ isolation:isolate;font-size:14px;line-height:1.5;
+}
+.ffm-studio *{box-sizing:border-box}
+.ffm-studio button,.ffm-studio input,.ffm-studio textarea,.ffm-studio select{font-family:inherit}
+.ffm-studio button{color:inherit}
+.ffm-studio :is(button,a,input,select,textarea):focus-visible{outline:3px solid var(--studio-coral);outline-offset:3px}
+.ffm-studio-rail{background:var(--studio-dark);color:#f1f0e9;display:flex;flex-direction:column;min-width:0;position:sticky;align-self:start;top:100px;min-height:calc(100dvh - 100px);padding:32px 20px 23px;z-index:5}
+.ffm-studio-rail-top{padding:0 11px;display:flex;align-items:center;justify-content:space-between}
+.ffm-studio-brand{display:flex;align-items:center;gap:11px}
+.ffm-studio-mark{width:39px;height:39px;flex:none}
+.ffm-studio-brand strong{display:block;color:#fff;font-weight:800;font-size:20px;letter-spacing:-1.3px;line-height:1.05}
+.ffm-studio-brand strong span,.ffm-studio-mobile-brand>span span{color:var(--studio-peach)}
+.ffm-studio-brand small{font-size:8px;letter-spacing:2.1px;opacity:.6;font-weight:700;white-space:nowrap}
+.ffm-studio-closemenu{display:none}
+.ffm-studio-rail-caption{display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid #ffffff24;margin:58px 9px 22px;padding-top:20px;color:#abbdb2;font-size:9px;font-weight:750;letter-spacing:1.55px}
+.ffm-studio-rail-caption span{opacity:.55}
+.ffm-studio-rail-nav{display:grid;gap:7px}
+.ffm-studio-rail-nav button{height:54px;display:flex;align-items:center;gap:14px;width:100%;background:transparent;border:0;color:#cedcd1;padding:0 14px;text-align:left;border-radius:10px;position:relative;font-weight:700;transition:background .2s,color .2s,transform .2s}
+.ffm-studio-rail-nav button span{flex:1}
+.ffm-studio-rail-nav button small{font-size:10px;color:#779185;font-weight:700}
+.ffm-studio-rail-nav button:hover{color:#fff;background:#ffffff13;transform:translateX(2px)}
+.ffm-studio-rail-nav button.active{color:#143027;background:#f0f4ea;box-shadow:0 5px 20px #03180b38}
+.ffm-studio-rail-nav button.active small{color:#809487}
+.ffm-studio-rail-nav button.active:before{content:'';height:27px;width:4px;background:var(--studio-coral);border-radius:4px;position:absolute;left:-11px}
+.ffm-studio-rail-bottom{margin-top:auto;padding:35px 7px 0}
+.ffm-studio-rail-art{position:relative;border-bottom:1px solid #ffffff2b;padding:0 0 13px}
+.ffm-studio-skyline{width:100%;height:auto;max-height:80px;display:block;color:#a6bead}
+.ffm-studio-rail-art>span{font-size:9px;color:#849e8d;letter-spacing:1.2px}
+.ffm-studio-rail-note{display:flex;align-items:center;gap:10px;padding:22px 0}
+.ffm-studio-rail-note strong{display:block;font-size:12px;color:#f5f7ed}
+.ffm-studio-rail-note small{display:block;font-size:10px;color:#9cac9e;margin-top:3px}
+.ffm-studio-status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:#96c8ac;box-shadow:0 0 0 4px #a6cfaa22;flex:none}
+.ffm-studio-back{display:flex;justify-content:space-between;align-items:center;color:#fcf4e8;gap:10px;border-top:1px solid #ffffff27;padding:16px 0 1px;font-size:12px;font-weight:700}
+.ffm-studio-back:hover{color:var(--studio-peach)}
+.ffm-studio-work{min-width:0;display:flex;flex-direction:column;min-height:100vh}
+.ffm-studio-top{height:76px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--studio-stroke);background:#fdfcf8;padding:0 clamp(22px,3.9vw,66px);gap:14px}
+.ffm-studio-breadcrumb{font-size:10px;font-weight:800;letter-spacing:1.15px;color:#627467;white-space:nowrap}
+.ffm-studio-breadcrumb span{margin:0 12px;color:#c8ccc4}
+.ffm-studio-top-end{display:flex;align-items:center;gap:20px}
+.ffm-studio-date{font-size:11px;color:#778576;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.ffm-studio-refresh{display:grid;place-items:center;background:transparent;border:1px solid var(--studio-stroke);border-radius:50%;height:37px;width:37px}
+.ffm-studio-refresh:hover{background:#eaf0e9}
+.ffm-studio-avatar{display:grid;place-items:center;background:var(--studio-dark);color:#fff;width:36px;height:36px;border-radius:50%;font-size:12px;font-weight:800}
+.ffm-studio-mobile-brand,.ffm-studio-menubutton,.ffm-studio-mobile-tabs{display:none}
+.ffm-studio-content{width:100%;max-width:1520px;padding:clamp(24px,3vw,47px) clamp(20px,4vw,66px) 78px;margin:0 auto}
+.ffm-studio-overline{font-size:10px;letter-spacing:1.8px;color:#a17960;font-weight:800;text-transform:uppercase}
+.ffm-studio h1,.ffm-studio h2,.ffm-studio h3,.ffm-studio p{margin-top:0}
+.ffm-studio h1,.ffm-studio h2{letter-spacing:-.025em}
+.ffm-studio-hero{min-height:300px;display:grid;grid-template-columns:1fr minmax(260px,44%);position:relative;background:var(--studio-dark);color:#fff;overflow:hidden;border-radius:14px;padding:clamp(28px,4vw,53px) clamp(28px,4.5vw,63px);isolation:isolate}
+.ffm-studio-hero:after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(90deg,#ffffff07 0px,#ffffff07 1px,transparent 1px,transparent 79px);pointer-events:none;z-index:-1}
+.ffm-studio-hero-text{z-index:2}
+.ffm-studio-hero .ffm-studio-overline{color:#fac298}
+.ffm-studio-hero h1{font:400 clamp(51px,5.4vw,90px)/.95 'Instrument Serif','Playfair Display',Georgia,serif;margin:18px 0 21px;letter-spacing:-.05em}
+.ffm-studio-hero h1 em{font-weight:400;color:var(--studio-peach);font-style:italic}
+.ffm-studio-hero p{max-width:425px;font-size:13px;color:#c3d0c8;line-height:1.85;margin:0 0 24px}
+.ffm-studio-hero-text>button{display:inline-flex;align-items:center;gap:18px;background:var(--studio-peach);padding:12px 19px;border:0;border-radius:7px;color:#153227;font-weight:800;font-size:12px;transition:transform .18s,background .18s}
+.ffm-studio-hero-text>button:hover{transform:translateY(-2px);background:#ffbf94}
+.ffm-studio-hero-index{position:absolute;right:26px;top:23px;font-size:9px;letter-spacing:1.3px;color:#b4c6bc}
+.ffm-studio-hero-scene{position:relative;align-self:stretch;display:flex;align-items:end;justify-content:center;min-height:220px;margin:-20px -28px -26px 4px;overflow:hidden;z-index:1}
+.ffm-studio-hero-scene:after{position:absolute;content:'';inset:0;background:radial-gradient(circle at 60% 30%,#eaa16d28,transparent 52%)}
+.ffm-studio-sun{position:absolute;right:17%;top:13%;height:150px;width:150px;border:1px solid #ffc69f68;border-radius:50%;box-shadow:0 0 0 34px #f9b7840d,0 0 0 78px #f9b7840a;background:radial-gradient(circle,#f5ad7e29,transparent 65%)}
+.ffm-studio-hero-scene>.ffm-studio-skyline{width:100%;max-height:none;height:240px;position:relative;z-index:2;color:#e8c4a7;filter:drop-shadow(0 0 12px #ffc3972c)}
+.ffm-studio-route{position:absolute;z-index:3;inset:auto 0 26px 8%;height:42px;border-top:1px dashed #dbb18a78;transform:rotate(-7deg);opacity:.9}
+.ffm-studio-route span{height:8px;width:8px;display:block;border-radius:50%;position:absolute;background:#f8ac77;box-shadow:0 0 0 5px #f8ac7735,0 0 20px #f8ac77;top:-4px}
+.ffm-studio-route span:nth-child(1){left:9%}.ffm-studio-route span:nth-child(2){left:54%;animation:ffmStudioPulse 2.2s ease-in-out infinite}.ffm-studio-route span:nth-child(3){right:9%}
+@keyframes ffmStudioPulse{50%{transform:scale(1.4);box-shadow:0 0 0 11px #f8ac771c,0 0 23px #f8ac77}}
+.ffm-studio-scene-tag{position:absolute;right:8%;bottom:18px;color:#d7c3b3;font-size:9px;letter-spacing:1px;z-index:3}
+.ffm-studio-scene-tag span{color:#bdc9be;opacity:.6}
+.ffm-studio-section-title{display:flex;align-items:end;justify-content:space-between;gap:18px;margin:39px 0 19px}
+.ffm-studio-section-title h2,.ffm-studio-panel-heading h2,.ffm-studio-mod-left h2{font:400 clamp(29px,3.4vw,43px)/1.1 'Instrument Serif',Georgia,serif;margin:8px 0 0}
+.ffm-studio-section-title h2 span{color:var(--studio-coral)}
+.ffm-studio-section-title>span{font-size:11px;color:#889286}
+.ffm-studio-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.ffm-studio-kpi{display:flex;flex-direction:column;align-items:stretch;min-height:178px;padding:19px 19px 17px;border-radius:11px;text-align:left;background:#fff;border:1px solid var(--studio-stroke);position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
+.ffm-studio-kpi:hover{transform:translateY(-3px);box-shadow:0 12px 30px #1e302117}
+.ffm-studio-kpi>span:first-child{display:flex;align-items:center;gap:9px;color:#778477;font-size:10px;font-weight:800;letter-spacing:1.1px}
+.ffm-studio-kpi strong{font:400 clamp(40px,4vw,62px)/1.1 'Instrument Serif',Georgia,serif;letter-spacing:-.05em;margin:auto 0 8px}
+.ffm-studio-kpi small{display:flex;justify-content:space-between;align-items:center;gap:7px;font-size:11px;color:#7c887b;z-index:1}
+.ffm-studio-kpi.highlighted{background:#dce8d9;border-color:#d5e5d0}
+.ffm-studio-kpi.highlighted>span:first-child{color:#456a56}
+.ffm-studio-kpi-arc{position:absolute;border:1px solid #6e988852;width:134px;height:134px;border-radius:50%;right:-65px;bottom:-50px;pointer-events:none}
+.ffm-studio-home-columns{display:grid;grid-template-columns:minmax(0,1.52fr) minmax(250px,.85fr);gap:16px;margin-top:22px}
+.ffm-studio-panel{border:1px solid var(--studio-stroke);border-radius:12px;background:var(--studio-card);min-width:0}
+.ffm-studio-next{padding:27px 29px 12px}
+.ffm-studio-panel-heading{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:20px}
+.ffm-studio-panel-heading h2{font-size:34px}
+.ffm-studio-panel-heading>button{border:0;border-bottom:1px solid #b3c3b6;background:transparent;font-size:12px;font-weight:750;display:flex;align-items:center;gap:8px;white-space:nowrap;padding:7px 0}
+.ffm-studio-next-row{width:100%;border:0;border-top:1px solid var(--studio-stroke);padding:17px 4px 17px 0;background:transparent;display:flex;align-items:center;gap:20px;text-align:left}
+.ffm-studio-next-row:hover{background:#f6f8f2}
+.ffm-studio-next-row>span,.ffm-studio-item-index{font-size:11px;font-weight:800;color:#a3b3a3;letter-spacing:1px;min-width:25px}
+.ffm-studio-next-row>div{flex:1;min-width:0}
+.ffm-studio-next-row strong{display:block;font-size:13px;color:#263e32}
+.ffm-studio-next-row small{display:block;margin-top:4px;color:#929d8e;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ffm-studio-next-row>svg{color:#647c6b}
+.ffm-studio-manifesto{padding:32px 29px 26px;background:#f3dfd0;border-color:#e5d4c7;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;min-height:330px}
+.ffm-studio-manifesto:after{position:absolute;right:-60px;bottom:-100px;width:230px;height:230px;border:1px solid #b77b6055;border-radius:50%;box-shadow:0 0 0 35px #ae76571c,0 0 0 78px #ae76570b;content:'';pointer-events:none}
+.ffm-studio-manifesto-decoration{display:flex;align-items:center;gap:9px;font-size:10px;font-weight:800;letter-spacing:1.2px;color:#a16b55}
+.ffm-studio-manifesto h2{font:400 clamp(36px,3.3vw,51px)/1.06 'Instrument Serif',Georgia,serif;margin:26px 0 15px;position:relative;z-index:1}
+.ffm-studio-manifesto h2 em{font-weight:400;color:#bd7055}
+.ffm-studio-manifesto p{font-size:12px;line-height:1.7;max-width:260px;color:#785c4d;z-index:1;position:relative}
+.ffm-studio-manifesto>div:last-child{border-top:1px solid #c99f884f;padding-top:18px;display:flex;gap:13px;flex-wrap:wrap;font-size:9px;font-weight:800;letter-spacing:.6px;color:#8e6652;z-index:1}
+.ffm-studio-home-bottom{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:24px 0;font-size:11px;color:#8c978b}
+.ffm-studio-home-bottom>span:first-child{display:flex;align-items:center;gap:9px}
+.ffm-studio-page-heading{min-height:155px;display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:25px}
+.ffm-studio-page-heading h1{font:400 clamp(43px,4.7vw,66px)/.98 'Instrument Serif',Georgia,serif;margin:14px 0 15px;letter-spacing:-.045em}
+.ffm-studio-page-heading h1 em{font-weight:400;color:#bc765a}
+.ffm-studio-page-heading p{font-size:13px;color:#7e897c;margin:0;line-height:1.7}
+.ffm-studio-heading-illustration{width:96px;height:96px;border-radius:50%;background:#e9eee5;display:grid;place-items:center;color:#7d9986;position:relative;flex:none}
+.ffm-studio-heading-illustration:after{content:'';position:absolute;width:111px;height:111px;border:1px dashed #c1d0c3;border-radius:50%}
+.ffm-studio-review-tabs{display:flex;gap:7px;padding:6px;background:#e9ebe3;border-radius:11px;margin-bottom:16px;width:max-content;max-width:100%;overflow-x:auto}
+.ffm-studio-review-tabs button{border:0;background:transparent;padding:12px 16px;border-radius:8px;font-size:12px;font-weight:800;color:#637365;white-space:nowrap;display:flex;align-items:center;gap:10px}
+.ffm-studio-review-tabs button.active{background:#fff;box-shadow:0 3px 13px #192c1816;color:#223b2e}
+.ffm-studio-review-tabs button span{font-size:10px;border-radius:20px;background:#e1e8df;padding:3px 7px;color:#69816b}
+.ffm-studio-review-layout{display:grid;grid-template-columns:minmax(300px,1.05fr) minmax(360px,1.2fr);gap:16px;align-items:start}
+.ffm-studio-queue-panel{padding:21px 0 0;overflow:hidden}
+.ffm-studio-queue-top{display:flex;align-items:center;justify-content:space-between;padding:0 23px 16px;gap:10px}
+.ffm-studio-queue-top>span:last-child{font-size:10px;font-weight:800;color:#9eaa9e;letter-spacing:.8px}
+.ffm-studio-filterrow{padding:0 18px 17px;display:flex;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--studio-stroke)}
+.ffm-studio-search{display:flex;align-items:center;background:#f3f5ef;border:1px solid #e1e6df;border-radius:8px;flex:1;min-width:180px;gap:8px;padding:0 11px;color:#87998a;height:44px}
+.ffm-studio-search input{background:transparent;border:0;outline:0;width:100%;font-size:12px;color:#2f4b3a;min-width:0}
+.ffm-studio-search input:focus-visible{outline:none}
+.ffm-studio-search button{border:0;background:transparent;padding:4px;display:grid;place-items:center}
+.ffm-studio-categoryfilter{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #e1e6df;padding:0 10px;border-radius:8px;height:44px;color:#718376}
+.ffm-studio-categoryfilter select{min-width:90px;max-width:145px;font-size:11px;font-weight:700;background:transparent;border:0;color:#4e6455;outline:0}
+.ffm-studio-queue-list{max-height:calc(100vh - 335px);min-height:270px;overflow-y:auto;scrollbar-color:#c7d1c5 transparent}
+.ffm-studio-queue-item{display:flex;align-items:center;text-align:left;gap:13px;width:100%;padding:17px 19px;border:0;border-bottom:1px solid #e9ede6;background:#fff;min-height:104px;position:relative}
+.ffm-studio-queue-item:hover{background:#f6f7f1}
+.ffm-studio-queue-item.selected{background:#eef4ea}
+.ffm-studio-queue-item.selected:before{position:absolute;content:'';inset:12px auto 12px 0;width:3px;border-radius:2px;background:#d67e59}
+.ffm-studio-queue-item>div{flex:1;min-width:0}
+.ffm-studio-queue-item strong{display:block;font-size:13px;color:#20392e;overflow-wrap:anywhere}
+.ffm-studio-queue-item small{display:block;color:#88978a;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin:5px 0}
+.ffm-studio-queue-item>svg{color:#718773}
+.ffm-studio-inline-warn{display:inline-flex;align-items:center;gap:7px;font-size:10px;font-weight:700;color:#b67c5a}
+.ffm-studio-inline-warn>span{height:5px;width:5px;background:#e2a474;border-radius:50%}
+.ffm-studio-pagination{padding:15px 20px;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#889589}
+.ffm-studio-pagination>div{display:flex;gap:5px}
+.ffm-studio-pagination button{height:33px;width:36px;display:grid;place-items:center;border:1px solid var(--studio-stroke);background:#fff;border-radius:7px}
+.ffm-studio-detail-panel{padding:clamp(21px,2vw,35px);max-height:calc(100dvh - 185px);overflow-y:auto;scrollbar-color:#d1d9cb transparent;position:relative}
+.ffm-studio-detail-top{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.ffm-studio-pill{background:#e9eee7;color:#567360;font-size:10px;padding:6px 10px;border-radius:20px;font-weight:800;white-space:nowrap}
+.ffm-studio-pill.warn{background:#fbebdb;color:#b9774c}
+.ffm-studio-detail-name{display:flex;justify-content:space-between;align-items:start;gap:10px}
+.ffm-studio-detail h2{font:400 clamp(33px,2.7vw,45px)/1.1 'Instrument Serif',Georgia,serif;margin:14px 0 8px;overflow-wrap:anywhere}
+.ffm-studio-detail-name>h2{max-width:90%}
+.ffm-studio-location-mark{width:39px;height:39px;border:1px solid #dce7da;display:grid;place-items:center;color:#557661;border-radius:10px;flex:none;margin-top:13px}
+.ffm-studio-muted{font-size:12px;color:#89978b;line-height:1.65}
+.ffm-studio-geo-line{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:16px 0;font-size:10px;color:#8b968b}
+.ffm-studio-geo-line span{display:flex;align-items:center;gap:6px}
+.ffm-studio-source-strip{display:flex;gap:12px;align-items:start;background:#eef4ed;padding:14px;border-radius:8px;margin:13px 0}
+.ffm-studio-source-dot{background:#c18458;width:10px;height:10px;margin-top:5px;border-radius:50%;box-shadow:0 0 0 4px #deb18e3b;flex:none}
+.ffm-studio-source-strip strong{display:block;font-size:12px}
+.ffm-studio-source-strip small{display:block;font-size:11px;color:#7e8a7d;line-height:1.55;margin-top:3px}
+.ffm-studio-linkline{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 26px}
+.ffm-studio-linkline a{display:inline-flex;align-items:center;gap:6px;color:#406550;font-size:11px;font-weight:800;border-bottom:1px solid #c9dbcc;padding:4px 0}
+.ffm-studio-form{display:grid;gap:16px}
+.ffm-studio-formheading{border-top:1px solid var(--studio-stroke);padding-top:17px}
+.ffm-studio-formheading h3{font:400 24px/1.1 'Instrument Serif',Georgia,serif;margin:8px 0 0}
+.ffm-studio-field{display:grid;gap:7px;min-width:0}
+.ffm-studio-field>span:first-child{font-size:11px;font-weight:750;color:#536b59}
+.ffm-studio-field>small{font-size:10px;color:#9ba79a;line-height:1.45}
+.ffm-studio-field :is(input,textarea,select){width:100%;max-width:100%;border:1px solid #d8e2d8;border-radius:7px;padding:11px 12px;font-size:12px;color:#243d2c;background:#fdfefb;min-height:43px}
+.ffm-studio-field textarea{resize:vertical;line-height:1.55}
+.ffm-studio-field :is(input,textarea,select):hover{border-color:#a6bdac}
+.ffm-studio-field :is(input,textarea,select):focus{outline:2px solid #9abfa3;outline-offset:1px}
+.ffm-studio-form-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ffm-studio-checks{display:grid;gap:8px;background:#f5f7f1;padding:15px;border:1px solid #e5eae0;border-radius:8px}
+.ffm-studio-checks label{display:flex;align-items:start;gap:10px;font-size:11px;font-weight:700;line-height:1.55;color:#566b57}
+.ffm-studio-checks input{flex:none;accent-color:#286c4e;width:17px;height:17px}
+.ffm-studio-safety{display:flex;align-items:start;gap:7px;font-size:10px;color:#9b7966;line-height:1.5;margin:0}
+.ffm-studio-safety svg{flex:none}
+.ffm-studio-primary{background:#203e2e;border:0;border-radius:8px;padding:13px 17px;display:flex;align-items:center;justify-content:center;gap:13px;min-height:49px;color:#fff!important;font-weight:800;font-size:12px;text-align:center}
+.ffm-studio-primary:hover{background:#315b42}
+.ffm-studio-primary>svg:last-child{margin-left:auto}
+.ffm-studio-decision{border-top:1px dashed #d8e2d7;margin-top:25px;padding-top:17px;display:grid;gap:12px}
+.ffm-studio-decision-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ffm-studio-secondary,.ffm-studio-quiet-danger{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:39px;padding:9px 12px;font-size:11px;font-weight:800;border-radius:7px;border:1px solid #d5dfd3;background:white}
+.ffm-studio-secondary:hover{background:#eff4ee}
+.ffm-studio-quiet-danger{color:#af6955!important;border-color:#f1d5cc}
+.ffm-studio-quiet-danger:hover{background:#fff0eb}
+.ffm-studio-no-selection{display:flex;flex-direction:column;align-items:center;text-align:center;justify-content:center;padding:55px 20px;min-height:380px}
+.ffm-studio-orbit{width:126px;height:126px;border:1px dashed #b3c7b5;border-radius:50%;display:grid;place-items:center;color:#708b75;position:relative;margin-bottom:25px}
+.ffm-studio-orbit:before{position:absolute;content:'';width:91px;height:91px;border:1px solid #c3d7c7;border-radius:50%}
+.ffm-studio-orbit span{position:absolute;width:11px;height:11px;top:12px;right:22px;border-radius:50%;background:#f2a674}
+.ffm-studio-no-selection h3{font:400 30px 'Instrument Serif',Georgia,serif;margin:10px 0}
+.ffm-studio-no-selection p{max-width:280px;color:#89978a;font-size:12px}
+.ffm-studio-drawer-close,.ffm-studio-drawer-scrim{display:none}
+.ffm-studio-loading{padding:40px 20px;text-align:center;color:#78927d;font-size:12px}
+.ffm-studio-blank{display:flex;align-items:center;gap:10px;padding:29px 19px;font-size:12px;color:#7a897d;line-height:1.5}
+.ffm-studio-mod-layout{display:grid;grid-template-columns:minmax(250px,.67fr) minmax(0,1.33fr);gap:17px;align-items:start}
+.ffm-studio-mod-left{padding:25px 22px}
+.ffm-studio-mod-left h2{margin:9px 0 30px}
+.ffm-studio-mod-menu{display:grid;gap:8px}
+.ffm-studio-mod-menu button{display:flex;align-items:center;justify-content:space-between;gap:13px;padding:17px 14px;border-radius:8px;background:#f8f9f4;border:1px solid #e4eadf;text-align:left;font-size:12px;font-weight:750}
+.ffm-studio-mod-menu button span{flex:1}
+.ffm-studio-mod-menu button b{background:#e7eee3;padding:4px 10px;border-radius:20px;color:#51735b}
+.ffm-studio-mod-menu button.active{background:#e4eedf;border-color:#bfd1c0}
+.ffm-studio-mod-right{padding:25px 28px;min-height:400px}
+.ffm-studio-mod-record{display:flex;gap:15px;padding:20px 0;border-top:1px solid #e5ece4}
+.ffm-studio-mod-record>div{min-width:0;flex:1}
+.ffm-studio-mod-record strong{display:block;font-weight:750;font-size:13px;overflow-wrap:anywhere}
+.ffm-studio-mod-record p{font-size:12px;color:#617466}
+.ffm-studio-mod-record small{font-size:10px;color:#96a599}
+.ffm-studio-mod-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}
+.ffm-studio-approve{display:inline-flex;align-items:center;gap:7px;background:#e6efe2;color:#336343!important;padding:10px 13px;font-size:11px;font-weight:800;border-radius:7px;border:1px solid #c9ddc6}
+.ffm-studio-mod-empty{text-align:center;padding:45px 14px}
+.ffm-studio-mod-empty>div{height:78px;width:78px;background:#eef4e8;border-radius:50%;display:grid;place-items:center;margin:0 auto 15px;color:#60876b}
+.ffm-studio-mod-empty h3{font:400 33px 'Instrument Serif',Georgia,serif;margin:0 0 9px}
+.ffm-studio-mod-empty p{font-size:12px;max-width:330px;margin:0 auto;color:#8b998a}
+.ffm-studio-publish-layout{display:grid;grid-template-columns:minmax(260px,.77fr) minmax(0,1.23fr);gap:17px;align-items:start}
+.ffm-studio-publish-choice{padding:25px}
+.ffm-studio-publish-options{display:grid;gap:10px;margin-top:22px}
+.ffm-studio-publish-options button{width:100%;display:flex;align-items:center;gap:15px;border:1px solid #e2e8e1;border-radius:9px;background:#f8f9f5;text-align:left;padding:17px 15px}
+.ffm-studio-publish-options button.active{background:#e3eee0;border-color:#b9d1b8;box-shadow:inset 3px 0 0 #6d9b7a}
+.ffm-studio-publish-options button>svg{color:#5b8268}
+.ffm-studio-publish-options button>div{flex:1}
+.ffm-studio-publish-options button strong{display:block;font-size:12px}
+.ffm-studio-publish-options button small{display:block;color:#8f9e91;font-size:10px;margin-top:5px}
+.ffm-studio-publish-options button>span{color:#aab9a9;font-size:10px;font-weight:800}
+.ffm-studio-publish-quote{display:flex;gap:13px;align-items:start;border-top:1px solid #e2e8e1;margin-top:27px;padding-top:25px;color:#c08769}
+.ffm-studio-publish-quote p{max-width:190px;font:italic 22px/1.1 'Instrument Serif',Georgia,serif;color:#a16e5a}
+.ffm-studio-publish-form-panel{padding:clamp(22px,2.5vw,39px)}
+.ffm-studio-publish-form-panel>h2{font:400 clamp(33px,3vw,44px)/1.08 'Instrument Serif',Georgia,serif;margin:10px 0}
+.ffm-studio-publish-form-panel>p{color:#8d9b8f;font-size:12px;margin-bottom:27px}
+.ffm-studio-publish-confirm{display:flex;gap:12px;background:#f3f5ed;padding:14px;border-radius:8px;align-items:start;color:#647b65;font-size:11px;line-height:1.65}
+.ffm-studio-publish-confirm svg{flex:none}
+.ffm-studio-footer{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-top:1px solid var(--studio-stroke);background:#fdfcf8;padding:17px clamp(20px,4vw,66px);font-size:9px;letter-spacing:1px;font-weight:750;color:#94a195}
+.ffm-studio-footer>span:last-child{display:flex;align-items:center;gap:12px}
+.ffm-studio-notice{position:sticky;top:92px;z-index:10;display:flex;align-items:center;gap:12px;background:#e5f0e5;color:#376343;border:1px solid #cadfce;padding:13px 15px;border-radius:9px;margin-bottom:20px;box-shadow:0 10px 22px #273b2814;font-size:12px;line-height:1.5}
+.ffm-studio-notice.error{background:#fff0e9;color:#9c5041;border-color:#f0cfc0}
+.ffm-studio-notice>span{display:grid;place-items:center}
+.ffm-studio-notice button{margin-left:auto;border:0;background:transparent;display:grid;place-items:center}
+@media(min-width:1600px){.ffm-studio{grid-template-columns:276px minmax(0,1fr)}}
+@media(max-width:1200px){
+ .ffm-studio{grid-template-columns:220px minmax(0,1fr)}
+ .ffm-studio-rail{padding:24px 15px}
+ .ffm-studio-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ffm-studio-kpi{min-height:148px}
+ .ffm-studio-review-layout{grid-template-columns:minmax(260px,.9fr) minmax(320px,1fr)}
+ .ffm-studio-date{display:none}
+ .ffm-studio-hero h1{font-size:clamp(48px,5vw,66px)}
+}
+@media(max-width:850px){
+ .ffm-studio{display:block;min-height:100vh}
+ .ffm-studio-rail{display:none}
+ .ffm-studio-work{min-height:100vh}
+ .ffm-studio-top{height:69px;padding:0 20px;position:sticky;top:0;z-index:11}
+ .ffm-studio-breadcrumb{display:none}
+ .ffm-studio-mobile-brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:18px;letter-spacing:-.7px}
+ .ffm-studio-mobile-brand .ffm-studio-mark{width:30px;height:30px;color:#274b33}
+ .ffm-studio-menubutton{display:none}
+ .ffm-studio-top-end{gap:10px;margin-left:auto}
+ .ffm-studio-avatar{height:31px;width:31px}
+ .ffm-studio-mobile-tabs{display:flex;gap:7px;overflow-x:auto;padding:9px 15px;background:#fdfcf8;position:sticky;top:69px;z-index:10;border-bottom:1px solid var(--studio-stroke);scrollbar-width:none}
+ .ffm-studio-mobile-tabs::-webkit-scrollbar{display:none}
+ .ffm-studio-mobile-tabs button{display:flex;align-items:center;justify-content:center;gap:7px;flex:1;min-width:max-content;min-height:39px;border:0;background:transparent;padding:8px 14px;border-radius:9px;font-size:11px;font-weight:800;white-space:nowrap}
+ .ffm-studio-mobile-tabs button.active{background:#213d2c;color:#fff}
+ .ffm-studio-content{padding:22px 20px 65px}
+ .ffm-studio-review-layout{grid-template-columns:minmax(0,1fr)}
+ .ffm-studio-queue-list{max-height:none;min-height:200px}
+ .ffm-studio-detail-panel{display:none}
+ .ffm-studio-detail-panel.drawer-open{display:block;position:fixed;z-index:40;top:4dvh;left:0;right:0;bottom:0;max-height:none;overflow:auto;border-radius:24px 24px 0 0;padding:25px 22px 80px;box-shadow:0 -15px 70px #112b2842}
+ .ffm-studio-detail-panel.drawer-open:before{content:'';position:sticky;display:block;top:-14px;width:46px;height:5px;background:#d2d9cf;border-radius:5px;margin:-9px auto 22px}
+ .ffm-studio-drawer-close{display:grid;place-items:center;position:absolute;right:14px;top:12px;height:35px;width:35px;border:0;border-radius:50%;background:#eaf1e9;z-index:2}
+ .ffm-studio-drawer-scrim{display:block;position:fixed;inset:0;z-index:39;border:0;background:#0b251f88;backdrop-filter:blur(3px)}
+ .ffm-studio-mod-layout,.ffm-studio-publish-layout{grid-template-columns:1fr}
+ .ffm-studio-mod-menu{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ffm-studio-mod-menu button{min-width:0}
+ .ffm-studio-publish-options{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .ffm-studio-publish-options button{flex-direction:column;align-items:start;min-height:140px}
+ .ffm-studio-publish-options button>span{display:none}
+ .ffm-studio-publish-quote{display:none}
+}
+@media(max-width:560px){
+ .ffm-studio-top{padding:0 15px}
+ .ffm-studio-content{padding:17px 13px 60px}
+ .ffm-studio-hero{padding:28px 25px 32px;grid-template-columns:1fr;min-height:325px}
+ .ffm-studio-hero-text{position:relative;z-index:4}
+ .ffm-studio-hero h1{font-size:clamp(47px,13vw,69px)}
+ .ffm-studio-hero p{font-size:12px;max-width:250px}
+ .ffm-studio-hero-scene{position:absolute;inset:65px -90px -18px 27%;opacity:.58;margin:0;min-height:0}
+ .ffm-studio-hero-index{right:13px;top:13px;font-size:8px}
+ .ffm-studio-scene-tag{display:none}
+ .ffm-studio-section-title{margin-top:29px}
+ .ffm-studio-section-title h2{font-size:32px}
+ .ffm-studio-section-title>span{display:none}
+ .ffm-studio-kpis{gap:8px}
+ .ffm-studio-kpi{min-height:147px;padding:15px 13px}
+ .ffm-studio-kpi>span:first-child{font-size:9px;gap:6px;letter-spacing:.5px}
+ .ffm-studio-kpi>span:first-child svg{width:15px;height:15px}
+ .ffm-studio-kpi strong{font-size:45px}
+ .ffm-studio-kpi small{font-size:10px;line-height:1.3}
+ .ffm-studio-home-columns{grid-template-columns:1fr;margin-top:12px}
+ .ffm-studio-next{padding:22px 16px 10px}
+ .ffm-studio-panel-heading h2{font-size:30px}
+ .ffm-studio-manifesto{min-height:260px}
+ .ffm-studio-page-heading{min-height:130px;margin-bottom:15px}
+ .ffm-studio-page-heading h1{font-size:46px}
+ .ffm-studio-page-heading p{font-size:12px}
+ .ffm-studio-heading-illustration{display:none}
+ .ffm-studio-review-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;padding:4px;gap:3px}
+ .ffm-studio-review-tabs button{padding:9px 6px;justify-content:center;gap:4px;flex-direction:column;font-size:10px}
+ .ffm-studio-review-tabs button span{font-size:9px}
+ .ffm-studio-filterrow{padding:0 13px 13px}
+ .ffm-studio-queue-top{padding:0 14px 12px}
+ .ffm-studio-queue-item{padding:14px 12px;min-height:92px;gap:9px}
+ .ffm-studio-queue-item strong{font-size:12px}
+ .ffm-studio-queue-item small{font-size:10px}
+ .ffm-studio-detail-panel.drawer-open{top:8dvh;padding:26px 17px 100px}
+ .ffm-studio-form-pair{grid-template-columns:1fr}
+ .ffm-studio-mod-menu{grid-template-columns:1fr 1fr;gap:6px}
+ .ffm-studio-mod-menu button{padding:12px 9px;font-size:10px;gap:7px}
+ .ffm-studio-mod-menu button svg{display:none}
+ .ffm-studio-mod-right,.ffm-studio-mod-left,.ffm-studio-publish-choice,.ffm-studio-publish-form-panel{padding:21px 16px}
+ .ffm-studio-publish-options{grid-template-columns:1fr;gap:8px}
+ .ffm-studio-publish-options button{flex-direction:row;align-items:center;min-height:70px}
+ .ffm-studio-publish-options button small{font-size:10px}
+ .ffm-studio-publish-options button>span{display:block}
+ .ffm-studio-hero-text>button{font-size:11px}
+ .ffm-studio-footer{padding:17px 16px}
+ .ffm-studio-footer>span:last-child{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .ffm-studio *{animation-duration:.001ms!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+}
