@@ -1,0 +1,111 @@
+/* FFM Aktuell · less UI, more Frankfurt. A consciously small public journey.
+   No 3D rendering or infinite cards on the first screen. */
+.ffm-quick-home{background:#f8f8f3;color:#1b372c;min-height:100dvh;overflow:hidden}
+.ffm-quick-container{max-width:1180px;margin:0 auto;padding-left:28px;padding-right:28px}
+.ffm-quick-hero{min-height:420px;background:#eaf2eb;position:relative;display:flex;align-items:center;overflow:hidden}
+.ffm-quick-hero .ffm-quick-container{position:relative;width:100%;z-index:2;padding-top:50px;padding-bottom:90px}
+.ffm-quick-hero-top{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:30px}
+.ffm-quick-eyebrow{font-size:10px;letter-spacing:1.7px;font-weight:800;color:#557963}
+.ffm-quick-spark{display:inline-block;width:7px;height:7px;background:#dc8c69;border-radius:50%;margin-right:8px}
+.ffm-quick-geo{font-size:10px;letter-spacing:1.2px;color:#8ba697}
+.ffm-quick-hero h1{font:400 clamp(53px,7vw,89px)/1.04 'Instrument Serif',Georgia,serif;letter-spacing:-1.7px;max-width:850px;margin:0 0 19px}
+.ffm-quick-hero h1 em{font-weight:400;color:#c47757}
+.ffm-quick-hero p{font-size:15px;line-height:1.65;color:#657a6b;margin:0 0 29px;max-width:530px}
+.ffm-quick-search{width:100%;max-width:710px;background:#fff;display:flex;align-items:center;gap:15px;padding:8px 8px 8px 21px;border:1px solid #d9e2d9;border-radius:14px;box-shadow:0 16px 45px #163c2715;min-height:72px}
+.ffm-quick-search>svg{color:#54725d;flex:none}
+.ffm-quick-search input{border:0;background:transparent;flex:1;min-width:0;color:#1b372c;font-size:16px;outline:0}
+.ffm-quick-search input:focus-visible{outline:0}
+.ffm-quick-search input::placeholder{color:#91a197}
+.ffm-quick-search button{display:flex;align-items:center;justify-content:center;gap:6px;height:54px;padding:0 19px;background:#203f30;color:white;border:0;border-radius:10px;font-weight:800;font-size:14px}
+.ffm-quick-search button:hover{background:#37634a}
+.ffm-quick-hero-note{display:flex;align-items:center;gap:7px;color:#718576;font-size:11px;margin-top:17px}
+.ffm-quick-hero-note svg{flex:none;color:#6b967b}
+.ffm-quick-horizon{position:absolute;inset:auto 0 -2px;z-index:1;opacity:.55;pointer-events:none}
+.ffm-quick-horizon svg{display:block;width:100%;height:138px}
+.ffm-quick-choices{padding-top:47px;padding-bottom:45px}
+.ffm-quick-section-heading{display:flex;justify-content:space-between;align-items:end;gap:15px;margin-bottom:22px}
+.ffm-quick-section-heading h2{font:400 clamp(32px,4vw,47px)/1.08 'Instrument Serif',Georgia,serif;margin:8px 0 0;letter-spacing:-.6px}
+.ffm-quick-help{font-size:12px;color:#849485}
+.ffm-quick-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.ffm-quick-option{display:flex;align-items:center;gap:16px;min-height:88px;padding:17px 18px;border:1px solid #e4e6dd;background:#fff;border-radius:13px;text-align:left;font-weight:800;font-size:14px;transition:transform .17s,box-shadow .17s}
+.ffm-quick-option:hover{transform:translateY(-2px);box-shadow:0 10px 25px #21392b13}
+.ffm-quick-option-icon{display:grid;place-items:center;flex:none;width:48px;height:48px;border-radius:11px;color:#345e44;background:#f4ead8}
+.ffm-quick-option.mint .ffm-quick-option-icon{background:#dcebe0}
+.ffm-quick-option.rose .ffm-quick-option-icon{background:#f7e1d9;color:#995a4a}
+.ffm-quick-option.yellow .ffm-quick-option-icon{background:#f7edcd}
+.ffm-quick-option.blue .ffm-quick-option-icon{background:#e1e9ee}
+.ffm-quick-option.sage .ffm-quick-option-icon{background:#e4ede8}
+.ffm-quick-option-go{margin-left:auto;color:#89a295;flex:none}
+.ffm-quick-secondary-actions{display:flex;gap:14px 24px;align-items:center;flex-wrap:wrap;margin-top:24px}
+.ffm-quick-secondary-actions button{display:inline-flex;align-items:center;gap:7px;border:0;background:none;padding:6px 0;color:#345746;font-size:12px;font-weight:750}
+.ffm-quick-secondary-actions button:hover{text-decoration:underline}
+.ffm-quick-next{padding-top:35px;padding-bottom:58px;border-top:1px solid #e2e9e0}
+.ffm-quick-highlights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.ffm-quick-feature-block{border:1px solid #e3e8df;border-radius:14px;background:#fff;padding:23px 25px;min-height:215px}
+.ffm-quick-feature-heading{display:flex;align-items:center;gap:10px;color:#3c694e;margin-bottom:18px}
+.ffm-quick-feature-heading h3{font-size:16px;font-weight:800;margin:0}
+.ffm-quick-item-list{display:grid}
+.ffm-quick-list-item{display:flex;align-items:center;justify-content:space-between;gap:14px;border:0;background:transparent;border-top:1px solid #eef1e9;padding:13px 0;text-align:left}
+.ffm-quick-list-item span{min-width:0;display:grid;gap:4px}
+.ffm-quick-list-item strong{font-size:13px}
+.ffm-quick-list-item small{font-size:11px;color:#839286}
+.ffm-quick-list-item svg{color:#779585}
+.ffm-quick-empty{border-top:1px solid #edf0e9;padding-top:17px}
+.ffm-quick-empty p{font-size:13px;margin:0 0 14px;color:#7e8c80}
+.ffm-quick-empty button{display:flex;align-items:center;gap:7px;background:#e7f0e7;color:#31543d;border:0;border-radius:8px;padding:10px 12px;font-weight:800;font-size:12px;margin-bottom:10px}
+.ffm-quick-empty small{font-size:10px;line-height:1.5;color:#92a095;display:block}
+.ffm-quick-quiet{display:flex;align-items:center;justify-content:space-between;gap:28px;padding-top:31px;padding-bottom:34px;border-top:1px solid #e0e8de}
+.ffm-quick-quiet>div:first-child>svg{color:#bb785b}
+.ffm-quick-quiet h2{font:400 31px/1.15 'Instrument Serif',Georgia,serif;margin:7px 0}
+.ffm-quick-quiet p{font-size:12px;color:#87968a;margin:0}
+.ffm-quick-quiet-actions{display:grid;gap:9px}
+.ffm-quick-quiet-actions button{display:flex;align-items:center;justify-content:space-between;gap:15px;min-width:195px;border:1px solid #d9e6db;background:#fff;padding:12px 15px;border-radius:9px;font-size:12px;font-weight:800}
+.ffm-quick-extras{padding-bottom:42px}
+.ffm-quick-extras>summary{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:800;color:#567564;padding:13px 0}
+.ffm-quick-extras[open]>summary svg{transform:rotate(90deg)}
+.ffm-quick-extras .v3-home-news-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:10px 0}
+.ffm-quick-news{overflow:hidden;border:1px solid #e2e7dc;border-radius:10px;background:white}
+.ffm-quick-news img{width:100%;height:105px;object-fit:cover}
+.ffm-quick-news div{padding:11px 13px;display:grid;gap:5px}
+.ffm-quick-news small{font-size:9px;color:#a47f63;font-weight:800}
+.ffm-quick-news strong{font-size:12px}
+@media(max-width:760px){
+ .ffm-quick-hero{min-height:0}
+ .ffm-quick-hero .ffm-quick-container{padding-top:34px;padding-bottom:95px}
+ .ffm-quick-hero-top{margin-bottom:24px}
+ .ffm-quick-geo,.ffm-quick-help{display:none}
+ .ffm-quick-hero h1{font-size:clamp(49px,11vw,69px)}
+ .ffm-quick-hero p{font-size:13px}
+ .ffm-quick-search{min-height:64px}
+ .ffm-quick-search button{height:48px}
+ .ffm-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .ffm-quick-option{padding:11px 12px;min-height:76px;font-size:12px;gap:9px}
+ .ffm-quick-option-icon{height:41px;width:41px}
+ .ffm-quick-option-icon svg{width:21px;height:21px}
+ .ffm-quick-option-go{width:14px}
+ .ffm-quick-highlights{grid-template-columns:1fr}
+ .ffm-quick-quiet{align-items:start;flex-direction:column}
+ .ffm-quick-quiet-actions{width:100%;grid-template-columns:repeat(2,1fr)}
+ .ffm-quick-quiet-actions button{min-width:0}
+}
+@media(max-width:430px){
+ .ffm-quick-container{padding-left:18px;padding-right:18px}
+ .ffm-quick-hero .ffm-quick-container{padding-bottom:77px}
+ .ffm-quick-hero h1{letter-spacing:-1px}
+ .ffm-quick-search{gap:8px;padding-left:14px}
+ .ffm-quick-search input{font-size:14px}
+ .ffm-quick-search button{padding:0 11px;font-size:12px}
+ .ffm-quick-horizon svg{height:90px}
+ .ffm-quick-choices{padding-top:32px;padding-bottom:31px}
+ .ffm-quick-section-heading h2{font-size:32px}
+ .ffm-quick-option{min-height:79px;flex-wrap:wrap;align-content:center}
+ .ffm-quick-option-go{display:none}
+ .ffm-quick-hero-note{align-items:start;font-size:10px}
+ .ffm-quick-secondary-actions{gap:11px 15px}
+ .ffm-quick-secondary-actions button{font-size:11px}
+ .ffm-quick-next{padding-top:30px;padding-bottom:35px}
+ .ffm-quick-quiet-actions{grid-template-columns:1fr}
+ .ffm-quick-feature-block{padding:18px}
+ .ffm-quick-extras .v3-home-news-grid{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){.ffm-quick-home *{animation:none!important;transition:none!important}}
