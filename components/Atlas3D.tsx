@@ -4,6 +4,7 @@ import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {Layers3,LocateFixed,Minus,Plus,Check,X,Sun,Sunset} from 'lucide-react';
 import type {Map as LibreMap,GeoJSONSource} from 'maplibre-gl';
 import {KATEGORIEN,passendeRubrik} from '@/lib/ortskategorien';
+import {addRealLod2Layer} from '@/lib/real-lod2-layer';
 
 export type AtlasPlace={
  id:string;name:string;latitude:number|null;longitude:number|null;category:string;
@@ -193,7 +194,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
  const latestCandidates=useRef<AtlasPlace[]>([]);
  const latestPlaces=useRef(places),activeSelect=useRef<(p:AtlasPlace)=>void>(()=>{});
  latestPlaces.current=places;
- const [rawCandidates,setRawCandidates]=useState<AtlasPlace[]>([]);
+ const [rawCandidates,setRawCandidates]=useState<AtlasPlace[]>([]),[lod2Triangles,setLod2Triangles]=useState(0);
  const [luftbild,setLuftbild]=useState(false),[luftbildFehler,setLuftbildFehler]=useState(false);
  const [area,setArea]=useState('city'),[cat,setCat]=useState('Alle'),[mode,setMode]=useState<AtlasMode>('golden'),[is3D,set3D]=useState(true),[ready,setReady]=useState(false),[fallback,setFallback]=useState(false),[error,setError]=useState(false),[selected,setSelected]=useState<string|null>(null),[showDistricts,setShowDistricts]=useState(false);
  const state=useRef({mode:'golden' as AtlasMode,is3D:true});
@@ -264,7 +265,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     if(cancelled)return;
     hasStyle=true;setError(false);
     try{
-     if(!triedRaster){add3DBuildings(map);addLuftbild(map);setColorScheme(map,state.current.mode);addGeoPins(map);addCandidatePins(map);}
+     if(!triedRaster){add3DBuildings(map);addLuftbild(map);setColorScheme(map,state.current.mode);addGeoPins(map);addCandidatePins(map);addRealLod2Layer(map,setLod2Triangles);}
     }catch(e){console.warn('FFM Atlas optional 3D scene:',e);}
     // MapLibre 'style.load' only means style metadata loaded, NOT tiles.
     // 'idle' means the visible tile region has finished rendering.
@@ -322,6 +323,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   map.easeTo({pitch:is3D?56:0,bearing:is3D?(DISTRICTS.find(x=>x.id===area)?.bearing??-23):0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:850});
   if(!fallback&&map.getLayer('ffm-architecture'))map.setLayoutProperty('ffm-architecture','visibility',is3D&&!luftbild?'visible':'none');
   if(map.getLayer('ffm-luftbild'))map.setLayoutProperty('ffm-luftbild','visibility',luftbild?'visible':'none');
+  if(map.getLayer('ffm-real-lod2'))map.setLayoutProperty('ffm-real-lod2','visibility',is3D&&!luftbild?'visible':'none');
  },[mode,is3D,area,ready,fallback,luftbild]);
  useEffect(()=>{
   const map=mapRef.current;
@@ -390,7 +392,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     {DISTRICTS.map(d=><button type="button" key={d.id} onClick={()=>goDistrict(d.id)} className={area===d.id?'active':''}><span>{lang==='de'?d.de:d.en}</span>{area===d.id?<Check size={16}/>:<span className="atlas-district-dot"/>}</button>)}
    </div>}
   </div>
-  <div className="atlas-credits"><span>{luftbild?'Luftbild: © Land Hessen · DOP20 · Datenlizenz Deutschland Zero 2.0':t.credit}</span><span>{luftbild?'Amtliches Luftbild, keine Fototexturen auf Gebäuden':t.tip}</span></div>
+  <div className="atlas-credits"><span>{luftbild?'Luftbild: © Land Hessen · DOP20 · Datenlizenz Deutschland Zero 2.0':t.credit}</span><span>{luftbild?'Amtliches Luftbild, keine Fototexturen auf Gebäuden':lod2Triangles>0?'Echte LoD2 Dach- und Wandflächen · Innenstadt-Ausschnitt · Powered by Lodapi':t.tip}</span></div>
   {luftbildFehler&&<div className="atlas-luftbild-warning" role="status">Luftbild gerade nicht verfügbar. Stadtplan wird angezeigt.</div>}
   {!ready&&!error&&<div className="atlas-map-loading" role="status"><div className="atlas-loading-mark"><span/></div><strong>FFM ATLAS</strong><small>{t.loading}</small></div>}
   {error&&<div className="atlas-map-loading atlas-map-error" role="alert"><strong>{t.error}</strong><button onClick={()=>window.location.reload()}>{t.retry}</button></div>}
