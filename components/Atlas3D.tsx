@@ -175,6 +175,25 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   if(validCoords(place)){mapRef.current?.flyTo({center:[place.longitude as number,place.latitude as number],zoom:Math.max(mapRef.current.getZoom(),16.1),pitch:state.current.is3D?56:0,bearing:state.current.is3D?-22:0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:1350,offset:[0,variant==='hero'?-48:-66]});}
  },[variant]);
  activeSelect.current=moveTo;
+ const chooseCategory=useCallback((next:string)=>{
+  setCat(next);setSelected(null);
+  if(next==='Alle')return;
+  const candidates=latestPlaces.current.filter(p=>validCoords(p)&&isSelectedCategory(p,next));
+  if(candidates.length===1){
+   // A category with one featured POI should never present an empty-looking map.
+   // Its geo anchored dot and detail drawer are made immediately discoverable.
+   activeSelect.current(candidates[0]);
+  }else if(candidates.length>1&&mapRef.current){
+   const lons=candidates.map(p=>p.longitude as number),lats=candidates.map(p=>p.latitude as number);
+   const sw:[number,number]=[Math.min(...lons),Math.min(...lats)];
+   const ne:[number,number]=[Math.max(...lons),Math.max(...lats)];
+   const camera=mapRef.current.cameraForBounds([sw,ne],{padding:{top:150,bottom:190,left:54,right:54},maxZoom:15.6});
+   if(camera?.center&&camera.zoom!=null)mapRef.current.flyTo({
+    center:camera.center,zoom:camera.zoom,bearing:state.current.is3D?-22:0,
+    pitch:state.current.is3D?53:0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:1180
+   });
+  }
+ },[]);
  const goDistrict=useCallback((id:string)=>{
   setArea(id);setShowDistricts(false);setSelected(null);
   const d=DISTRICTS.find(x=>x.id===id)||DISTRICTS[0];
@@ -267,7 +286,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   </div>
   <div className="atlas-micro"><span className="atlas-red-dot"/> FRANKFURT AM MAIN <span className="atlas-micro-separator"/> 50°06&apos; N · 08°41&apos; E</div>
   <div className="atlas-category-tabs" role="group" aria-label={t.places}>
-   {CATS.map(item=><button type="button" key={item.value} className={cat===item.value?'selected':''} onClick={()=>{setCat(item.value);setSelected(null);}} aria-pressed={cat===item.value}>{lang==='de'?item.de:item.en}</button>)}
+   {CATS.map(item=><button type="button" key={item.value} className={cat===item.value?'selected':''} onClick={()=>chooseCategory(item.value)} aria-pressed={cat===item.value}>{lang==='de'?item.de:item.en}</button>)}
   </div>
   <div className="atlas-map-utilities">
    <button aria-label={t.zoomIn} title={t.zoomIn} onClick={()=>zoom(1)}><Plus size={20}/></button>

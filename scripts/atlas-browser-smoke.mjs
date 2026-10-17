@@ -37,30 +37,41 @@ async function scenario(name,viewport,url){
   await check(name+' district camera selection works',(await page.locator('.atlas-bottom-copy strong').first().textContent())?.includes('Sachsenhausen'));
   await page.locator('.atlas-category-tabs button').filter({hasText:'Kultur'}).first().click();
   await check(name+' category selection works',await page.locator('.atlas-category-tabs button').filter({hasText:'Kultur'}).first().getAttribute('aria-pressed')==='true');
-  const anchors=await page.evaluate(async()=>{
-    const map=window.__ffmAtlasQA;
-    if(!map||!map.getLayer('ffm-poi-dot'))return {reason:'no 3D point layer'};
-    const first=map.querySourceFeatures('ffm-curated-geo').find(x=>x.geometry.type==='Point');
-    if(!first||first.geometry.type!=='Point')return {reason:'no loaded geo points'};
-    const coords=first.geometry.coordinates;
-    const hit=()=>{
-      const projected=map.project(coords);
-      return map.queryRenderedFeatures(projected,{layers:['ffm-poi-dot']}).some(f=>f.properties?.id===first.properties.id);
-    };
-    map.jumpTo({center:[8.6773,50.1106],pitch:55,bearing:-24,zoom:14.95});
-    await new Promise(r=>setTimeout(r,800));
-    const before=hit();
-    map.panBy([95,62],{duration:0});
-    await new Promise(r=>setTimeout(r,800));
-    const after=hit();
-    const sameSource=map.querySourceFeatures('ffm-curated-geo').some(f=>f.properties.id===first.properties.id&&
-      f.geometry.type==='Point'&&f.geometry.coordinates[0]===coords[0]&&f.geometry.coordinates[1]===coords[1]);
-    return {before,after,sameSource,coords};
-  });
-  console.log(name+' geographical pin assertions:',JSON.stringify(anchors));
-  await check(name+' pin stays geographically anchored after pan',Boolean(anchors.before&&anchors.after&&anchors.sameSource));
   const p=await page.evaluate(async()=>{const r=await fetch('/api/places');return {status:r.status,data:await r.json()};});
   await check(name+' real places API',p.status===200&&Array.isArray(p.data.items));
+  const target=p.data.items?.find(x=>x.name==='Städel Museum')||p.data.items?.find(x=>x.category==='Kultur');
+  const anchors=await page.evaluate(async(target)=>{
+    const map=window.__ffmAtlasQA;
+    if(!map||!map.getLayer('ffm-poi-dot'))return {reason:'missing MapLibre geo dot layer'};
+    if(!target)return {reason:'missing a culture place'};
+    const original=[Number(target.longitude),Number(target.latitude)];
+    if(original.some(n=>!Number.isFinite(n)))return {reason:'invalid catalogue coordinates'};
+    // Measure the ground-projected hit itself, not the asynchronous tile cursor.
+    // In flat view a pin's center MUST match the point obtained from map.project.
+    const ready=()=>new Promise(r=>{let resolved=false;
+      const done=()=>{if(!resolved){resolved=true;r();}};
+      map.once('idle',done);setTimeout(done,2200);
+    });
+    map.jumpTo({center:original,zoom:16.8,pitch:0,bearing:0});
+    await ready();
+    const match=()=>{
+      const pos=map.project(original);
+      const around=[[pos.x-7,pos.y-7],[pos.x+7,pos.y+7]];
+      const hits=map.queryRenderedFeatures(around,{layers:['ffm-poi-dot']});
+      return hits.some(f=>String(f.properties?.id)===String(target.id));
+    };
+    const before=match();
+    const sourceMatches=map.querySourceFeatures('ffm-curated-geo').some(f=>
+      String(f.properties?.id)===String(target.id)&&f.geometry.type==='Point'&&
+      Math.abs(f.geometry.coordinates[0]-original[0])<0.0001&&
+      Math.abs(f.geometry.coordinates[1]-original[1])<0.0001);
+    map.panBy([65,40],{duration:0});
+    await ready();
+    const after=match();
+    return {before,after,sourceMatches,original};
+  },target);
+  console.log(name+' geographical pin assertions:',JSON.stringify(anchors));
+  await check(name+' pin stays geographically anchored after pan',Boolean(anchors.before&&anchors.after&&anchors.sourceMatches));
   await page.screenshot({path:'artifacts/atlas/'+name+'.png',fullPage:false});
   if(viewport.width<500){
    const widths=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,window:innerWidth}));
