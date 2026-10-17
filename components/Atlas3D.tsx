@@ -172,7 +172,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
  const filtered=useMemo(()=>places.filter(p=>validCoords(p)&&isSelectedCategory(p,cat)),[places,cat]);
  const moveTo=useCallback((place:AtlasPlace)=>{
   setSelected(place.id);
-  if(validCoords(place)){mapRef.current?.flyTo({center:[place.longitude as number,place.latitude as number],zoom:Math.max(mapRef.current.getZoom(),16.1),pitch:state.current.is3D?56:0,bearing:state.current.is3D?-22:0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:1350,padding:{top:110,bottom:variant==='hero'?190:240,left:24,right:24},retainPadding:false});}
+  if(validCoords(place)){mapRef.current?.flyTo({center:[place.longitude as number,place.latitude as number],zoom:Math.max(mapRef.current.getZoom(),16.1),pitch:state.current.is3D?56:0,bearing:state.current.is3D?-22:0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:1350,offset:[0,variant==='hero'?-48:-66]});}
  },[variant]);
  activeSelect.current=moveTo;
  const goDistrict=useCallback((id:string)=>{
