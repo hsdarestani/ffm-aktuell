@@ -1,0 +1,29 @@
+name: FFM Aktuell CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Tests
+        run: npm test
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Production build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: npm run build
+      - name: Validate compose
+        run: |
+          printf 'POSTGRES_PASSWORD=ci-only\nSESSION_SECRET=ci-only-long-session-key\n' > .env
+          docker compose config -q

@@ -1,0 +1,1 @@
+export default function NotFound(){return <main style={{minHeight:'70vh',display:'grid',placeItems:'center',fontFamily:'sans-serif'}}><div><h1>404</h1><p>Diese Seite gibt es nicht.</p><a href="/">← Zur Startseite</a></div></main>}

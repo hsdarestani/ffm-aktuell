@@ -1,0 +1,18 @@
+{
+  "name": "FFM Aktuell – Frankfurt erleben",
+  "short_name": "FFM Aktuell",
+  "description": "Deine Stadt. Neu entdeckt.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f3ed",
+  "theme_color": "#172b2b",
+  "lang": "de",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

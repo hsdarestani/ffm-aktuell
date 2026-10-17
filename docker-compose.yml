@@ -1,0 +1,44 @@
+name: ffm-aktuell
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ffm
+      POSTGRES_USER: ffm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Database password missing}
+    volumes:
+      - ffm_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ffm -d ffm"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 384m
+  web:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://ffm:${POSTGRES_PASSWORD}@db:5432/ffm
+      SESSION_SECRET: ${SESSION_SECRET:?Session secret missing}
+      NEXT_PUBLIC_SITE_URL: https://ffm-aktuell.smarbiz.sbs
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - default
+      - shared
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 8
+      start_period: 30s
+networks:
+  shared:
+    name: aplus-publisher_default
+    external: true
+volumes:
+  ffm_db:
