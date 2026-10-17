@@ -1,0 +1,26 @@
+name: Frankfurt Lodapi Probe
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/lodapi-probe.yml'
+      - 'scripts/lodapi-probe.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/lodapi-probe.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frankfurt-lodapi-geometry-sample
+          path: artifacts/lodapi/
+          retention-days: 7
