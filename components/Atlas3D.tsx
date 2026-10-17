@@ -187,8 +187,11 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    const lons=candidates.map(p=>p.longitude as number),lats=candidates.map(p=>p.latitude as number);
    const sw:[number,number]=[Math.min(...lons),Math.min(...lats)];
    const ne:[number,number]=[Math.max(...lons),Math.max(...lats)];
-   mapRef.current.fitBounds([sw,ne],{padding:{top:160,bottom:190,left:55,right:55},
-    maxZoom:15.6,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:1150});
+   const camera=mapRef.current.cameraForBounds([sw,ne],{padding:{top:150,bottom:190,left:54,right:54},maxZoom:15.6});
+   if(camera?.center&&camera.zoom!=null)mapRef.current.flyTo({
+    center:camera.center,zoom:camera.zoom,bearing:state.current.is3D?-22:0,
+    pitch:state.current.is3D?53:0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:1180
+   });
   }
  },[]);
  const goDistrict=useCallback((id:string)=>{
