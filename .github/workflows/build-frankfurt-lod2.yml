@@ -1,0 +1,29 @@
+name: Frankfurt LoD2 Offline 3D Modell
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-frankfurt-lod2.yml'
+      - 'scripts/build-lod2-preview.mjs'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Geo-referenced building surfaces (small Frankfurt center sample)
+        run: node scripts/build-lod2-preview.mjs
+      - name: Publish static LoD2 only to review data branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -C data/frankfurt-lod2-preview
+          git add public/lod2/frankfurt-preview.json
+          git commit -m "data: real Frankfurt LoD2 wall and roof polygon surfaces"
+          git push --force origin HEAD:refs/heads/data/frankfurt-lod2-preview
