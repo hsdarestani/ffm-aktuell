@@ -24,7 +24,7 @@ export default function AtlasPage(){
   {error&&<p className="atlas-standalone-note" role="alert">{error}</p>}
   <p className="atlas-standalone-note">Dreidimensionale Gebäude basieren auf Kartendaten von OpenStreetMap. Einzelne Gebäudehöhen können fehlen. Fotorealistische Fassaden sind nicht enthalten.</p>
   {selected&&<div className="atlas-detail-overlay" role="presentation" onClick={e=>{if(e.target===e.currentTarget)setSelected(null);}}><div className="atlas-detail-sheet" role="dialog" aria-modal="true" aria-label={selected.name}>
-   <button className="atlas-detail-close" aria-label=Schließen onClick={()=>setSelected(null)}><X size={20}/></button>
+   <button className="atlas-detail-close" aria-label="Schließen" onClick={()=>setSelected(null)}><X size={20}/></button>
    <span className="atlas-editorial-index">{selected.district||'Frankfurt'} · {selected.category}</span>
    <h2>{selected.name}</h2>
    <p>{selected.description_de||selected.description_en}</p>
