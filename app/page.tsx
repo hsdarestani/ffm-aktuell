@@ -5,7 +5,7 @@ import {Compass,MapPin,Map as MapIcon,Heart,CalendarDays,Users,UserRound,Search,
 import type {MapPlace} from '@/components/CityMap';
 import AtlasHome from '@/components/AtlasHome';
 import {KATEGORIEN,passendeRubrik,frischBestaetigt,statusLabel} from '@/lib/ortskategorien';
-import {VORSCHAU_HINWEIS,ortsbild,vorschauOrte,vorschauVeranstaltungen,vorschauBeitraege,vorschauPosts,vorschauAngebote} from '@/lib/vorschau';
+import {VORSCHAU_HINWEIS,ortsbild,vorschauOrte,vorschauVeranstaltungen,vorschauBeitraege,vorschauPosts,vorschauAngebote,vorschauGruppen} from '@/lib/vorschau';
 const Atlas3D=dynamic(()=>import('@/components/Atlas3D'),{ssr:false});
 type Place=MapPlace & {district:string,address:string,description_de:string,description_en:string,website:string|null,source_url:string|null,image_url?:string|null,demo?:true,verification_status?:'verified'|'unverified'|'disputed',activity_status?:'unknown'|'operating'|'temporarily_closed'|'permanently_closed',verified_at?:string|null,verification_source?:string|null,editorial_rank?:number|null,opening_hours_text?:string|null};
 type User={id:string,email:string,display_name:string,role:string};
@@ -83,7 +83,7 @@ export default function Home(){
 </main>}
 {page==='community'&&<main className="inner-page v3-community-page">
  <div className="page-title v3-page-head"><small>04 / MENSCHEN DER STADT</small><h1>Frankfurt verbindet<em>.</em></h1><p>Lieblingsorte, kleine Geschichten und ein Blick auf die Stadt durch andere Augen.</p></div>
- <div className="v3-community-layout"><section className="v3-community-posts"><div className="v3-section-head"><div><span className="v3-eyebrow">STIMMEN AUS FRANKFURT</span><h2>Unsere Geschichten.</h2></div></div><div className="v3-post-grid">{sichtbarePosts.map(p=><article className="v3-post-card" key={p.id}>
+ <section className="v4-groups-preview"><span className="v3-eyebrow">GEMEINSAM AKTIV</span><h2 className="v4-group-heading">Laufen. Spazieren. Lesen.</h2><p className="v4-group-sub">Entdecke, wie Frankfurter Gruppen künftig eigene Treffen präsentieren können. Die folgenden Profile sind Ideen für die Vorschau, keine bestätigten Anbieter.</p><div className="v4-group-grid">{vorschauGruppen.map(g=><article key={g.id} className="v4-group"><small>{g.typ} · MUSTERGRUPPE</small><h3>{g.name}</h3><p>{g.beschreibung}</p></article>)}</div></section><div className="v3-community-layout"><section className="v3-community-posts"><div className="v3-section-head"><div><span className="v3-eyebrow">STIMMEN AUS FRANKFURT</span><h2>Unsere Geschichten.</h2></div></div><div className="v3-post-grid">{sichtbarePosts.map(p=><article className="v3-post-card" key={p.id}>
   <div className="v3-post-image"><img src={ortsbild('',p.image_url)} alt="Stimmungsbild zum Beitrag" loading="lazy"/><span className="v3-image-note">Stimmungsbild</span></div>
   <div className="v3-post-content"><div className="v3-post-person"><span className="v3-avatar">{p.display_name.charAt(0).toUpperCase()}</span><div><strong>{p.display_name}</strong><small>{p.place_name||'Frankfurt'} · {date(p.created_at,lang)}</small></div></div><p>{p.body}</p>{p.demo&&<span className="v3-demo-label">Musterbeitrag · erfundenes Profil</span>}</div>
  </article>)}</div></section>
