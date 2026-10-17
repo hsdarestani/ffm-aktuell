@@ -93,5 +93,5 @@ export function addRealLod2Layer(map:LibreMap,onLoaded:(triangles:number)=>void)
    buffer=null;shader=null;count=0;
   }
  };
- map.addLayer(layer);
+ map.addLayer(layer,map.getLayer('ffm-poi-dot')?'ffm-poi-dot':undefined);
 }
