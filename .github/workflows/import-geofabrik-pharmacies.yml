@@ -1,0 +1,40 @@
+name: Frankfurter Apotheken aus Geofabrik extrahieren
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/import-geofabrik-pharmacies.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apotheken:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Osmium bereitstellen
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osmium-tool
+      - name: Geofabrik Hessen PBF laden (© OSM-Mitwirkende ODbL)
+        run: |
+          curl -L --fail --retry 2 --max-time 480 -o /tmp/hessen.osm.pbf https://download.geofabrik.de/europe/germany/hessen-latest.osm.pbf
+          test $(stat -c%s /tmp/hessen.osm.pbf) -gt 200000000
+      - name: Nur Apotheken mit Gebäude-/Wege-Koordinaten extrahieren
+        run: |
+          mkdir -p artifacts
+          osmium tags-filter /tmp/hessen.osm.pbf nwr/amenity=pharmacy -o /tmp/pharmacies.osm.pbf --overwrite
+          osmium export /tmp/pharmacies.osm.pbf -f geojson -o artifacts/pharmacies.geojson --overwrite
+          node scripts/import-geofabrik-pharmacies.mjs artifacts/pharmacies.geojson data/apotheken-import.sql
+      - name: Apotheken-Quelldatei in Review-Branch ablegen
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -C data/frankfurt-pharmacies
+          git add data/apotheken-import.sql data/apotheken-import-summary.json
+          git commit -m 'data: Frankfurt pharmacies from Geofabrik OSM (unverified)'
+          git push --force origin HEAD:refs/heads/data/frankfurt-pharmacies
