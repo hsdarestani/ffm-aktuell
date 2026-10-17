@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/import-osm-and-lod2.yml'
+      - 'scripts/prepare-osm-import.mjs'
   workflow_dispatch:
 permissions:
   contents: write
