@@ -37,6 +37,29 @@ ALTER TABLE places ADD COLUMN IF NOT EXISTS editorial_rank smallint NOT NULL DEF
 ALTER TABLE places ADD COLUMN IF NOT EXISTS opening_hours_text text;
 CREATE INDEX IF NOT EXISTS places_status_category_idx ON places(status,category);
 CREATE INDEX IF NOT EXISTS places_name_idx ON places USING gin(to_tsvector('simple',name||' '||description_de||' '||district));
+-- Separate crowd-sourced discovery index. Raw OSM candidates are never
+-- published/verified places, cannot receive favorites and never imply openNow.
+CREATE TABLE IF NOT EXISTS discovery_candidates (
+ osm_id text PRIMARY KEY,
+ name text NOT NULL,
+ category text NOT NULL,
+ latitude double precision NOT NULL CHECK(latitude BETWEEN 49.7 AND 50.4),
+ longitude double precision NOT NULL CHECK(longitude BETWEEN 8.2 AND 9.1),
+ address text NOT NULL DEFAULT '',
+ website text, phone text,
+ opening_hours text, last_osm_check text,
+ osm_url text NOT NULL,
+ source text NOT NULL DEFAULT 'OpenStreetMap · ODbL',
+ activity_status text NOT NULL DEFAULT 'unknown'
+  CHECK(activity_status IN ('unknown','temporarily_closed','permanently_closed')),
+ reviewed_status text NOT NULL DEFAULT 'unverified'
+  CHECK(reviewed_status IN ('unverified','hidden','needs_review')),
+ imported_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS discovery_category_name_idx ON discovery_candidates(category,name);
+CREATE INDEX IF NOT EXISTS discovery_geo_idx ON discovery_candidates(latitude,longitude);
+CREATE INDEX IF NOT EXISTS discovery_search_idx ON discovery_candidates USING gin
+ (to_tsvector('simple',name||' '||coalesce(address,'')));
 CREATE TABLE IF NOT EXISTS events (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL,
  description_de text NOT NULL DEFAULT '', description_en text NOT NULL DEFAULT '',

@@ -58,6 +58,41 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     const r=await query("SELECT id,name,category,district,description_de,description_en,address,latitude,longitude,website,image_url,source_url,verification_status,activity_status,verified_at,verification_source,editorial_rank,opening_hours_text FROM places WHERE status='published' AND activity_status!='permanently_closed' AND ($1='' OR category=$1) AND ($2='' OR district=$2) AND ($3='' OR (name||' '||description_de||' '||district) ILIKE '%'||$3||'%') AND ($4='' OR (verification_status='verified' AND activity_status='operating' AND verified_at BETWEEN now()-interval '30 days' AND now() AND ($4!='top' OR editorial_rank>0))) ORDER BY CASE WHEN verification_status='verified' AND activity_status='operating' AND verified_at > now()-interval '30 days' THEN 0 ELSE 1 END, editorial_rank DESC, name LIMIT 80",[category,district,search.slice(0,100),mode]);
     return ok({items:r.rows});
   }
+  if(method==='GET'&&path==='discovery'){
+    const category=trim(qs.get('category')).slice(0,70);
+    const search=trim(qs.get('q')).slice(0,90);
+    const requested=Number(qs.get('limit')||48);
+    const limit=Number.isFinite(requested)?Math.max(1,Math.min(100,Math.floor(requested))):48;
+    const requestedOffset=Number(qs.get('offset')||0);
+    const offset=Number.isFinite(requestedOffset)?Math.max(0,Math.min(10000,Math.floor(requestedOffset))):0;
+    const bounds=trim(qs.get('bbox')).split(',').map(Number);
+    const hasBBox=bounds.length===4&&bounds.every(Number.isFinite)&&
+      bounds[0]>=8.2&&bounds[2]<=9.1&&bounds[1]>=49.7&&bounds[3]<=50.4&&
+      bounds[0]<bounds[2]&&bounds[1]<bounds[3];
+    if(qs.has('bbox')&&!hasBBox)return bad('Ungültiger Kartenausschnitt');
+    const params=[category,search,hasBBox?bounds[0]:null,hasBBox?bounds[1]:null,hasBBox?bounds[2]:null,hasBBox?bounds[3]:null,limit,offset];
+    const where="WHERE reviewed_status='unverified' AND ($1='' OR category=$1) AND ($2='' OR name ILIKE '%'||$2||'%' OR address ILIKE '%'||$2||'%') AND ($3::float8 IS NULL OR (longitude BETWEEN $3 AND $5 AND latitude BETWEEN $4 AND $6))";
+    const [r,n]=await Promise.all([
+      query("SELECT osm_id AS id,osm_id,name,category,latitude,longitude,address,website,phone,opening_hours AS opening_hours_text,last_osm_check,osm_url AS source_url,activity_status,'unverified' AS verification_status,false AS demo,true AS candidate FROM discovery_candidates "+where+" ORDER BY category,name,osm_id LIMIT $7 OFFSET $8",params),
+      query("SELECT count(*)::int AS count FROM discovery_candidates "+where,params.slice(0,6))
+    ]);
+    return ok({items:r.rows,total:n.rows[0]?.count||0,limit,offset,source:'© OpenStreetMap-Mitwirkende · ODbL',verified:false,openingNowAvailable:false});
+  }
+  if(method==='GET'&&path==='discovery-map'){
+    const raw=trim(qs.get('bbox')).split(',').map(Number);
+    if(raw.length!==4||raw.some(v=>!Number.isFinite(v))||
+      raw[0]<8.2||raw[2]>9.1||raw[1]<49.7||raw[3]>50.4||raw[0]>=raw[2]||raw[1]>=raw[3])
+      return bad('Kartenausschnitt ungültig');
+    const cat=trim(qs.get('category'));
+    const validCategory=cat==='Apotheken Notdienst'?'Apotheken':cat;
+    const r=await query("SELECT osm_id AS id,osm_id,name,category,latitude,longitude,address,osm_url AS source_url,website,opening_hours AS opening_hours_text FROM discovery_candidates WHERE reviewed_status='unverified' AND longitude BETWEEN $1 AND $3 AND latitude BETWEEN $2 AND $4 AND ($5='' OR category=$5) ORDER BY osm_id LIMIT 1500",[raw[0],raw[1],raw[2],raw[3],validCategory==='Alle'?'':validCategory]);
+    return ok({items:r.rows,limited:r.rowCount===1500,verified:false,source:'© OpenStreetMap-Mitwirkende · ODbL'});
+  }
+  if(method==='GET'&&path==='pharmacy-notdienst'){
+    // External, official, dynamic duty rota. No guesses or caching duty data.
+    return ok({url:'https://www.aponet.de/notdienstsuche/60320-Frankfurt',source:'aponet · Bundesapothekerkammer',
+      notice:'Den aktuellen Apotheken-Notdienst bitte unmittelbar auf der offiziellen Seite prüfen. Kein Notdienst wurde hier als aktuell bestätigt.'});
+  }
   if(method==='GET'&&path==='events'){const r=await query("SELECT * FROM events WHERE status='published' AND starts_at>=now()-interval '1 day' ORDER BY starts_at LIMIT 40");return ok({items:r.rows});}
   if(method==='GET'&&path==='news'){const r=await query("SELECT * FROM news WHERE status='published' ORDER BY published_at DESC LIMIT 40");return ok({items:r.rows});}
   if(method==='GET'&&path==='posts'){const r=await query("SELECT p.id,p.body,p.media_url,p.created_at,u.display_name,pl.name AS place_name FROM posts p JOIN users u ON u.id=p.user_id LEFT JOIN places pl ON pl.id=p.place_id WHERE p.status='published' ORDER BY p.created_at DESC LIMIT 40");return ok({items:r.rows});}

@@ -1,6 +1,8 @@
 // FFM Aktuell — einheitliche Entdeckungsrubriken und überprüfbare Empfehlungen.
 export const KATEGORIEN=[
  {id:'Alle',label:'Alle',gruppe:'Alles',stichworte:[]},
+ {id:'Apotheken',label:'Apotheken',gruppe:'Gesundheit',stichworte:['apotheke','pharmacy']},
+ {id:'Apotheken Notdienst',label:'Apotheken-Notdienst',gruppe:'Gesundheit',stichworte:['apotheke','pharmacy']},
  {id:'Cafés',label:'Cafés',gruppe:'Essen & Trinken',stichworte:['café','cafe','coffee','kaffee']},
  {id:'Bars',label:'Bars',gruppe:'Essen & Trinken',stichworte:['bar','cocktail']},
  {id:'Clubs',label:'Nachtclubs',gruppe:'Nachtleben',stichworte:['nightclub','night club','club','disco','diskothek']},

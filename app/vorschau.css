@@ -225,3 +225,25 @@
 .v4-group small{font-size:9px;color:#8e756e;text-transform:uppercase;font-weight:700;letter-spacing:1px}
 @media(max-width:800px){.atlas-tools .atlas-air-button{font-size:10px;min-height:35px;padding:0 10px}.v4-group-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.v4-verification-controls small{flex-basis:100%}}
 @media(max-width:480px){.atlas-tools{gap:4px}.atlas-tools .atlas-air-button{font-size:9px;padding:0 7px;min-height:34px}.atlas-tools .atlas-dim-button{width:37px;height:34px}.atlas-tools .atlas-tone-button{width:37px;min-height:34px}.atlas-tools .atlas-tone-button span{display:none}.atlas-brand strong,.atlas-hero .atlas-brand strong{font-size:18px}.v4-group-grid{grid-template-columns:1fr 1fr;gap:10px}.v4-group{padding:15px;min-height:177px}.v4-group h3{font-size:25px}.v4-group p{font-size:11px}.atlas-luftbild-warning{top:120px}}
+
+/* Real imported catalogue: source-first, not imaginary venue photos. */
+.v5-candidate-section{margin-top:40px;padding-top:26px;border-top:1px solid #d7ddd4}
+.v5-source-title{font:400 48px/1.08 'Instrument Serif',Georgia,serif;margin:7px 0}
+.v5-candidate-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.v5-candidate-card{background:#fdfbf7;border:1px solid #e0e4d9;border-radius:11px;min-width:0;box-shadow:0 10px 25px #253c2d07;overflow:hidden}
+.v5-candidate-card button{display:flex;flex-direction:column;align-items:start;text-align:left;gap:11px;padding:18px;width:100%;height:100%;background:transparent;border:0;color:#2c4035}
+.v5-candidate-category{font-size:10px;color:#947568;font-weight:750;text-transform:uppercase;letter-spacing:1px}
+.v5-candidate-card strong{font:400 27px/1.09 'Instrument Serif',Georgia,serif;max-width:100%;word-wrap:break-word}
+.v5-candidate-card small{font-size:11px;color:#62776a;line-height:1.5}
+.v5-unverified{display:block;margin-top:auto;color:#826f61;font-size:9px;border-top:1px solid #e1e6dc;padding-top:11px;line-height:1.5}
+.v5-loading,.v5-source-foot{font-size:11px;color:#61776b;line-height:1.7;padding:14px 0}
+.v5-load-more{display:block;margin:22px auto;padding:13px 21px;border:1px solid #345345;border-radius:30px;background:#2b493c;color:white;font-weight:700;font-size:12px}
+.v5-load-more:disabled{opacity:.5}
+.v5-candidate-alert{background:#f5ebdb;border:1px solid #e1cfae;color:#634b36;font-size:12px;line-height:1.7;padding:12px;border-radius:8px}
+.v5-duty-notice{border:1px solid #b8cfbf;background:#e7f0e9;border-radius:13px;padding:20px 22px;margin:18px 0 27px;color:#2a4939}
+.v5-duty-notice strong{font-size:20px}
+.v5-duty-notice p{font-size:12px;line-height:1.7;margin:9px 0 18px}
+.v5-duty-notice a{display:inline-block;background:#2f563e;color:#fff;text-decoration:none;padding:12px 18px;border-radius:27px;font-size:12px;font-weight:650}
+@media(max-width:1090px){.v5-candidate-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:750px){.v5-candidate-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:420px){.v5-candidate-grid{gap:9px}.v5-candidate-card button{padding:13px;gap:8px}.v5-candidate-card strong{font-size:21px}.v5-source-title{font-size:40px}.v5-duty-notice{padding:17px}}
