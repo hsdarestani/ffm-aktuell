@@ -1,160 +1,147 @@
 'use client';
 
 import {useState,type FormEvent} from 'react';
-import {ArrowRight,ArrowUpRight,MapPin,Search,CalendarDays,BookOpen,Compass} from 'lucide-react';
+import {Search,MapPin,CalendarDays,BookOpen,Compass,Plus,Heart,Globe2} from 'lucide-react';
 
-type Place={
- id:string;name:string;category:string;district:string;
- description_de:string;description_en:string;address:string;
-};
+type Place={id:string;name:string;category:string;district:string;description_de:string;description_en:string;address:string};
 type Event={id:string;title:string;venue:string;starts_at:string};
 type News={id:string;title:string;published_at:string};
-type Props={
- lang:'de'|'en';places:Place[];events:Event[];news:News[];
- onDiscover:()=>void;onMap:()=>void;onEvents:()=>void;
- onCommunity:()=>void;onBusiness:()=>void;onPlace:(id:string)=>void;
- onCategory:(category:string)=>void;onSearch:(query:string)=>void;
-};
-const copy={
+type Props={lang:'de'|'en';places:Place[];events:Event[];news:News[];onDiscover:()=>void;onMap:()=>void;onEvents:()=>void;onCommunity:()=>void;onBusiness:()=>void;onPlace:(id:string)=>void;onCategory:(category:string)=>void;onSearch:(q:string)=>void};
+
+const labels={
  de:{
- eyebrow:'Dein Stadtguide für Frankfurt',title1:'Frankfurt.',title2:'Immer wieder neu.',
- intro:'Die schönsten Seiten der Stadt entdecken. Orte, Menschen und Geschichten, die Frankfurt besonders machen.',
- search:'Was möchtest du entdecken?',searchAction:'Suchen',photo:'Ein Blick auf Frankfurt am Main',
- photoCredit:'Stadtfotografie · Unsplash',
- index:'Eine Stadt. Viele Perspektiven.',indexSub:'Ob ein neuer Lieblingsort oder ein vertrauter Klassiker: Hier beginnt deine nächste Entdeckung.',
- explore:'Orte entdecken',categoriesTitle:'Entdecke nach Interesse',categoriesSub:'Was passt heute zu dir?',
- curated:'Orte, die es wert sind.',curatedSub:'Ein kleiner Anfang. Mit der Zeit wird daraus dein persönlicher Frankfurt-Guide.',
- allPlaces:'Alle Orte ansehen',placeAction:'Ort ansehen',neighborhood:'Stadtteil',
- journal:'Aus Frankfurt.',journalSub:'Aktuelle Veranstaltungen und Geschichten aus deiner Stadt.',
- events:'Veranstaltungen',news:'Stadtgeschichten',allEvents:'Zum Stadtjournal',
- emptyEvent:'Noch keine bestätigten Veranstaltungen veröffentlicht.',
- emptyNews:'Die ersten redaktionellen Beiträge folgen.',
- more:'Mehr entdecken',quote:'Frankfurt ist mehr als seine Skyline.',
- quoteBody:'Eine Stadt voller kleiner Entdeckungen, spannender Viertel und neuer Perspektiven.',
- community:'Deine Sicht auf Frankfurt.',communityBody:'Teile deine Entdeckungen und erfahre, was andere an dieser Stadt lieben.',
- communityCta:'Zur Community',business:'Ein Ort für lokale Unternehmen.',businessBody:'Mach dein Unternehmen für Menschen sichtbar, die Frankfurt neu entdecken möchten.',
- businessCta:'Für Unternehmen',end:'Mit Liebe zu Frankfurt. Unabhängig entdecken.',
- categories:[['Restaurants','Essen & Trinken','Restaurants'],['Kultur','Kunst & Kultur','Kultur'],['Natur','Draußen sein','Natur'],['Sehenswürdigkeiten','Besondere Orte','Sehenswürdigkeiten']]
+  label:'DEIN FRANKFURT. DEIN BLICK.',description:'Unabhängiger Stadtguide · Frankfurt am Main',
+  lead:'Eine Stadt,',accent:'tausend Blickwinkel.',
+  intro:'Die Orte, Menschen und Geschichten, die Frankfurt besonders machen. Sorgfältig ausgesucht, für das echte Leben in der Stadt.',
+  discover:'Stadt entdecken',map:'Stadtkarte',search:'Was möchtest du entdecken?',searchButton:'Suche starten',
+  sideLabel:'FRANKFURT AM MAIN',photo:'Am Main. Mitten im Leben.',photoCaption:'MAINUFER / FRANKFURT',location:'Zwischen zwei Ufern und tausend Geschichten.',
+  section1:'EIN GUTER ANFANG',selection:'Wonach ist dir?',selectionSub:'Einfach losziehen. Wir zeigen dir, was Frankfurt zu bieten hat.',
+  categoryLabels:[['Restaurants','Essen & Trinken'],['Kultur','Kunst & Kultur'],['Natur','Draußen'],['Sehenswürdigkeiten','Stadt erleben']],
+  section2:'DIE AUSWAHL',placesTitle:'Besondere Orte.',placesSub:'Nicht alles auf einmal. Lieber die Orte, die einen zweiten Blick verdienen.',
+  seeAll:'Alle Orte entdecken',open:'Ort entdecken',district:'STADTTEIL',noPlaces:'Neue Orte werden gerade redaktionell vorbereitet.',
+  interludeTop:'EINE STADT. VIELE SEITEN.',interlude:'Frankfurt hat mehr als eine Skyline.',interludeText:'Manchmal reicht es, einmal anders abzubiegen. Die schönsten Geschichten stehen selten auf dem Stadtplan.',
+  section3:'IMMER IN BEWEGUNG',storiesTitle:'Was die Stadt bewegt.',storiesSub:'Veranstaltungen, Gespräche und kleine Entdeckungen. Alles an einem Ort.',
+  events:'Veranstaltungen',news:'Stadtnotizen',eventEmpty:'Hier erscheinen die nächsten bestätigten Veranstaltungen.',newsEmpty:'Neue Stadtnotizen folgen in Kürze.',
+  readMore:'Stadtjournal öffnen',community:'Frankfurt gehört uns allen.',communityText:'Dein Lieblingscafé. Eine überraschende Ecke. Ein besonderer Moment. Teile deine Perspektive auf die Stadt.',
+  join:'Community entdecken',partner:'Dein Unternehmen. Teil der Stadt.',partnerText:'Werde dort sichtbar, wo Frankfurterinnen und Frankfurter ihre nächsten Lieblingsorte suchen.',partners:'Für Unternehmen',
+  rights:'Für die Stadt. Aus der Stadt.',photoSource:'Frankfurt am Main · Bild: Unsplash'
  },
  en:{
- eyebrow:'Your personal guide to Frankfurt',title1:'Frankfurt.',title2:'Always something new.',
- intro:'Discover the best of the city. Places, people and stories that make Frankfurt worth exploring.',
- search:'What would you like to discover?',searchAction:'Search',photo:'A view of Frankfurt am Main',
- photoCredit:'City photography · Unsplash',
- index:'One city. Many perspectives.',indexSub:'A new favorite or a familiar classic. Your next discovery starts here.',
- explore:'Explore places',categoriesTitle:'Explore by interest',categoriesSub:'What feels right today?',
- curated:'Places worth your time.',curatedSub:'A thoughtful beginning. Over time, your personal guide to Frankfurt.',
- allPlaces:'View all places',placeAction:'View place',neighborhood:'Neighborhood',
- journal:'From Frankfurt.',journalSub:'Events and stories from around the city.',
- events:'Events',news:'City stories',allEvents:'Explore the journal',
- emptyEvent:'No confirmed events have been published yet.',
- emptyNews:'The first editorial stories are coming soon.',
- more:'Discover more',quote:'Frankfurt is more than its skyline.',
- quoteBody:'A city of small discoveries, remarkable neighborhoods and fresh perspectives.',
- community:'Your perspective on Frankfurt.',communityBody:'Share what you discover and see what others love about this city.',
- communityCta:'Join the community',business:'A place for local businesses.',businessBody:'Help people who are discovering Frankfurt find your business.',
- businessCta:'For businesses',end:'Made for Frankfurt. Independently discovered.',
- categories:[['Restaurants','Food & drink','Restaurants'],['Kultur','Art & culture','Culture'],['Natur','Outdoors','Nature'],['Sehenswürdigkeiten','Places to see','Sights']]
+  label:'YOUR FRANKFURT. YOUR VIEW.',description:'Independent city guide · Frankfurt am Main',
+  lead:'One city,',accent:'a thousand perspectives.',
+  intro:'The places, people and stories that make Frankfurt worth knowing. Thoughtfully selected for real life in the city.',
+  discover:'Explore the city',map:'City map',search:'What would you like to discover?',searchButton:'Start searching',
+  sideLabel:'FRANKFURT AM MAIN',photo:'Life on the Main.',photoCaption:'RIVER MAIN / FRANKFURT',location:'Between two riverbanks and a thousand stories.',
+  section1:'A GOOD PLACE TO START',selection:'What are you in the mood for?',selectionSub:'Start somewhere. Let the city surprise you.',
+  categoryLabels:[['Restaurants','Food & drink'],['Kultur','Art & culture'],['Natur','Outdoors'],['Sehenswürdigkeiten','Discover the city']],
+  section2:'THE EDIT',placesTitle:'Places with character.',placesSub:'Not everything at once. Just the places worth a second look.',
+  seeAll:'Discover all places',open:'Discover place',district:'NEIGHBORHOOD',noPlaces:'New places are being prepared by our editorial team.',
+  interludeTop:'ONE CITY. MANY STORIES.',interlude:'Frankfurt is more than its skyline.',interludeText:'Sometimes all it takes is a different turn. The best stories rarely appear on a map.',
+  section3:'ALWAYS MOVING',storiesTitle:'Around the city.',storiesSub:'Events, conversations and small discoveries. All in one place.',
+  events:'Events',news:'City notes',eventEmpty:'The next confirmed events will appear here.',newsEmpty:'New editorial stories are coming soon.',
+  readMore:'Open city journal',community:'Frankfurt belongs to all of us.',communityText:'Your favorite café. A surprising corner. A special moment. Share your perspective on the city.',
+  join:'Explore community',partner:'Your business. Part of the city.',partnerText:'Be there when Frankfurt locals discover their next favorite place.',partners:'For businesses',
+  rights:'For the city. From the city.',photoSource:'Frankfurt am Main · Photo: Unsplash'
  }
 };
-function displayDate(date:string,lang:'de'|'en'){
- const d=new Date(date);
- return Number.isNaN(d.getTime())?'':d.toLocaleDateString(lang==='de'?'de-DE':'en-GB',{day:'2-digit',month:'short',year:'numeric'});
+
+function Mainlinie({className=''}:{className?:string}){
+ return <svg aria-hidden="true" className={'ml-river '+className} viewBox="0 0 520 88" fill="none"><path d="M3 63C91 3 146 8 206 40C261 70 303 84 371 49C426 21 467 20 517 45" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><circle cx="206" cy="40" r="4.5" fill="currentColor"/><circle cx="371" cy="49" r="4.5" fill="currentColor"/></svg>;
 }
+function localDate(date:string,lang:'de'|'en'){return new Date(date).toLocaleDateString(lang==='de'?'de-DE':'en-GB',{day:'2-digit',month:'short'});}
+function Accent(){return <span className="ml-dot" aria-hidden="true"/>;}
+
 export default function MinimalHome({lang,places,events,news,onDiscover,onMap,onEvents,onCommunity,onBusiness,onPlace,onCategory,onSearch}:Props){
- const t=copy[lang];
- const [term,setTerm]=useState('');
- const submit=(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();onSearch(term.trim());};
- return <main className="mh">
-  <section className="mh-hero" aria-labelledby="mh-title">
-   <div className="mh-hero-copy">
-    <div className="mh-location"><span className="mh-location-dot"/><span>Frankfurt am Main</span><span className="mh-location-sep">/</span><span>{t.eyebrow}</span></div>
-    <div className="mh-hero-message">
-     <h1 id="mh-title"><span>{t.title1}</span><em>{t.title2}</em></h1>
-     <p>{t.intro}</p>
-     <form className="mh-search" onSubmit={submit} role="search">
-      <label htmlFor="mh-search-term" className="sr-only">{t.search}</label>
-      <Search size={20} strokeWidth={1.7} aria-hidden="true"/>
-      <input id="mh-search-term" value={term} onChange={e=>setTerm(e.target.value)} placeholder={t.search} autoComplete="off"/>
-      <button type="submit" aria-label={t.searchAction}><ArrowRight size={20}/></button>
-     </form>
-     <div className="mh-hero-links">
-      <button onClick={onDiscover}>{t.explore}<ArrowUpRight size={16}/></button>
-      <button onClick={onMap}><MapPin size={15}/>{lang==='de'?'Karte ansehen':'View map'}</button>
+ const t=labels[lang], [search,setSearch]=useState('');
+ const submit=(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();onSearch(search.trim())};
+ return <main className="ml">
+   <section className="ml-hero" aria-labelledby="ml-hero-title">
+    <div className="ml-hero-main">
+     <div className="ml-overline"><span className="ml-overline-mark">ffm.</span><span>{t.description}</span></div>
+     <div className="ml-hero-center">
+      <span className="ml-eyebrow"><Accent/>{t.label}</span>
+      <h1 id="ml-hero-title"><span>{t.lead}</span><em>{t.accent}</em></h1>
+      <p className="ml-hero-intro">{t.intro}</p>
+      <form className="ml-search" role="search" onSubmit={submit}>
+       <label className="sr-only" htmlFor="ml-search-input">{t.search}</label>
+       <Search size={18} strokeWidth={1.7}/>
+       <input id="ml-search-input" value={search} onChange={e=>setSearch(e.target.value)} placeholder={t.search}/>
+       <button type="submit" title={t.searchButton} aria-label={t.searchButton}><span className="ml-search-submit-circle"><span/></span></button>
+      </form>
+      <div className="ml-hero-actions"><button className="ml-primary" onClick={onDiscover}><span>{t.discover}</span><span className="ml-primary-glyph"><Plus size={16} strokeWidth={1.6}/></span></button><button className="ml-text-action" onClick={onMap}><MapPin size={15} strokeWidth={1.6}/>{t.map}</button></div>
      </div>
+     <div className="ml-hero-foot"><span>50.1109° N / 8.6821° E</span><span>EDITION 01 · 2026</span></div>
     </div>
-    <div className="mh-hero-bottom"><span>50° 06′ N &nbsp; 8° 41′ E</span><span>FFM / AKTUELL</span></div>
-   </div>
-   <figure className="mh-hero-visual">
-     <img src="https://images.unsplash.com/photo-1661503847943-c6bb6a0101aa?auto=format&fit=crop&w=1500&q=85" alt={t.photo} loading="eager" fetchPriority="high" width="1300" height="1600"/>
-     <figcaption><span>01 / {t.photo}</span><span>{t.photoCredit}</span></figcaption>
-   </figure>
-  </section>
-  <div className="mh-divider"><div><span>FFM Aktuell</span><span className="mh-divider-line"/><span>{t.end}</span></div></div>
-
-  <section className="mh-section mh-discover" aria-labelledby="mh-interests">
-   <header className="mh-section-header">
-    <div><span className="mh-eyebrow">01 &nbsp; / &nbsp; {lang==='de'?'Entdecken':'Discover'}</span><h2 id="mh-interests">{t.categoriesTitle}</h2><p>{t.categoriesSub}</p></div>
-    <button className="mh-inline-link" onClick={onDiscover}>{t.allPlaces}<ArrowUpRight size={17}/></button>
-   </header>
-   <div className="mh-category-grid">{t.categories.map(([value,label,english],i)=><button key={value} onClick={()=>onCategory(value)} className="mh-category">
-     <span className="mh-category-index">{String(i+1).padStart(2,'0')}</span>
-     <span className="mh-category-name">{label}</span>
-     <ArrowUpRight size={19} strokeWidth={1.6} aria-hidden="true"/>
-   </button>)}</div>
-  </section>
-
-  <section className="mh-section mh-selection" aria-labelledby="mh-places">
-   <header className="mh-section-header">
-    <div><span className="mh-eyebrow">02 &nbsp; / &nbsp; {lang==='de'?'Ausgewählt':'Selected'}</span><h2 id="mh-places">{t.curated}</h2><p>{t.curatedSub}</p></div>
-    <button className="mh-inline-link" onClick={onDiscover}>{t.allPlaces}<ArrowUpRight size={17}/></button>
-   </header>
-   {places.length?<div className="mh-place-grid">{places.slice(0,4).map((place,i)=><button key={place.id} className="mh-place" onClick={()=>onPlace(place.id)}>
-    <div className="mh-place-top"><span>{String(i+1).padStart(2,'0')}</span><span><MapPin size={13}/>{place.district||'Frankfurt'}</span></div>
-    <div className="mh-place-main">
-     <span className="mh-place-category">{place.category}</span>
-     <h3>{place.name}</h3>
-     <p>{lang==='de'?place.description_de||place.description_en:place.description_en||place.description_de}</p>
+    <div className="ml-hero-visual">
+      <img src="https://images.unsplash.com/photo-1775127493662-2e0fb1138b9c?auto=format&fit=crop&w=1700&q=82" alt={lang==='de'?'Frankfurter Skyline hinter dem Main und der alten Brücke':'Frankfurt skyline beyond the Main river and the old bridge'} width="1200" height="1500" fetchPriority="high"/>
+      <div className="ml-photo-side">{t.sideLabel} <span>·</span> 069</div>
+      <div className="ml-photo-caption"><span>{t.photoCaption}</span><span>01 / 04</span></div>
     </div>
-    <span className="mh-place-bottom">{t.placeAction}<ArrowUpRight size={17}/></span>
-   </button>)}</div>:<p className="mh-empty">{lang==='de'?'Die ersten Orte werden vorbereitet.':'The first places are being prepared.'}</p>}
-  </section>
+   </section>
 
-  <section className="mh-photo-note" aria-labelledby="mh-photo-title">
-   <div className="mh-photo-note-image" role="img" aria-label={lang==='de'?'Frankfurter Straßen und Architektur':'Frankfurt streets and architecture'}/>
-   <div className="mh-photo-note-copy">
-    <span className="mh-eyebrow">Frankfurt am Main</span>
-    <h2 id="mh-photo-title">{t.quote}</h2>
-    <p>{t.quoteBody}</p>
-    <button className="mh-inline-link" onClick={onDiscover}>{t.more}<ArrowUpRight size={18}/></button>
-   </div>
-  </section>
+   <div className="ml-signet-strip"><div><span>FFM AKTUELL</span><Mainlinie/><span>{t.location}</span></div></div>
 
-  <section className="mh-section mh-journal" aria-labelledby="mh-journal">
-   <header className="mh-section-header">
-    <div><span className="mh-eyebrow">03 &nbsp; / &nbsp; Journal</span><h2 id="mh-journal">{t.journal}</h2><p>{t.journalSub}</p></div>
-    <button className="mh-inline-link" onClick={onEvents}>{t.allEvents}<ArrowUpRight size={17}/></button>
-   </header>
-   <div className="mh-journal-grid">
-     <div className="mh-journal-column">
-      <div className="mh-journal-title"><CalendarDays size={19} strokeWidth={1.5}/><h3>{t.events}</h3></div>
-      {events.length?events.slice(0,3).map(event=><button key={event.id} className="mh-journal-row" onClick={onEvents}>
-       <time dateTime={event.starts_at}>{displayDate(event.starts_at,lang)}</time>
-       <span><strong>{event.title}</strong><small>{event.venue}</small></span><ArrowUpRight size={17}/>
-      </button>):<p className="mh-journal-empty">{t.emptyEvent}</p>}
+   <section className="ml-container ml-categories" aria-labelledby="ml-categories-title">
+    <div className="ml-head-row">
+     <div><div className="ml-kicker"><span>01</span><span>{t.section1}</span></div><h2 id="ml-categories-title">{t.selection}</h2><p>{t.selectionSub}</p></div>
+     <span className="ml-head-counter">FRANKFURT<br/>AM MAIN</span>
+    </div>
+    <div className="ml-category-board">
+      {t.categoryLabels.map(([key,label],i)=><button type="button" onClick={()=>onCategory(key)} key={key} className="ml-category-tile">
+       <span className="ml-category-no">{String(i+1).padStart(2,'0')}</span>
+       <span className="ml-category-name">{label}</span>
+       <span className="ml-category-disc"><Plus size={15} strokeWidth={1.5}/></span>
+      </button>)}
+    </div>
+   </section>
+
+   <section className="ml-container ml-featured" aria-labelledby="ml-featured-title">
+     <div className="ml-head-row">
+       <div><div className="ml-kicker"><span>02</span><span>{t.section2}</span></div><h2 id="ml-featured-title">{t.placesTitle}</h2><p>{t.placesSub}</p></div>
+       <button className="ml-underlined" onClick={onDiscover}>{t.seeAll}<Accent/></button>
      </div>
-     <div className="mh-journal-column">
-      <div className="mh-journal-title"><BookOpen size={19} strokeWidth={1.5}/><h3>{t.news}</h3></div>
-      {news.length?news.slice(0,3).map(item=><button key={item.id} className="mh-journal-row" onClick={onEvents}>
-       <time dateTime={item.published_at}>{displayDate(item.published_at,lang)}</time><span><strong>{item.title}</strong></span><ArrowUpRight size={17}/>
-      </button>):<p className="mh-journal-empty">{t.emptyNews}</p>}
-     </div>
-   </div>
-  </section>
+     {places.length?<div className="ml-place-list">{places.slice(0,4).map((p,i)=><button className="ml-place-row" key={p.id} onClick={()=>onPlace(p.id)}>
+       <span className="ml-place-no">{String(i+1).padStart(2,'0')}</span>
+       <span className="ml-place-title"><strong>{p.name}</strong><small>{p.category}</small></span>
+       <span className="ml-place-district"><MapPin size={14} strokeWidth={1.5}/>{p.district||'Frankfurt am Main'}</span>
+       <span className="ml-place-open"><span className="ml-open-circle"><Plus size={18} strokeWidth={1.5}/></span><span className="sr-only">{t.open}</span></span>
+     </button>)}</div>:<div className="ml-empty">{t.noPlaces}</div>}
+   </section>
 
-  <section className="mh-community">
-   <div className="mh-community-item"><span className="mh-eyebrow">04 &nbsp; / &nbsp; Community</span><h2>{t.community}</h2><p>{t.communityBody}</p><button className="mh-inline-link" onClick={onCommunity}>{t.communityCta}<ArrowUpRight size={17}/></button></div>
-   <div className="mh-community-item"><span className="mh-eyebrow">05 &nbsp; / &nbsp; Local business</span><h2>{t.business}</h2><p>{t.businessBody}</p><button className="mh-inline-link" onClick={onBusiness}>{t.businessCta}<ArrowUpRight size={17}/></button></div>
-  </section>
+   <section className="ml-photo-story" aria-labelledby="ml-interlude-title">
+      <div className="ml-photo-story-img" role="img" aria-label="Stadtleben in Frankfurt"><div className="ml-image-index">FFM 02 / 04</div></div>
+      <div className="ml-photo-story-words">
+        <span className="ml-eyebrow"><Accent/>{t.interludeTop}</span>
+        <h2 id="ml-interlude-title">{t.interlude}</h2>
+        <Mainlinie/>
+        <p>{t.interludeText}</p>
+        <button className="ml-underlined" onClick={onDiscover}>{t.discover}<Accent/></button>
+      </div>
+   </section>
+
+   <section className="ml-container ml-journal" aria-labelledby="ml-journal-title">
+      <div className="ml-head-row">
+       <div><div className="ml-kicker"><span>03</span><span>{t.section3}</span></div><h2 id="ml-journal-title">{t.storiesTitle}</h2><p>{t.storiesSub}</p></div>
+       <button className="ml-underlined" onClick={onEvents}>{t.readMore}<Accent/></button>
+      </div>
+      <div className="ml-journal-grid">
+        <div className="ml-journal-col">
+         <div className="ml-journal-colhead"><CalendarDays size={17} strokeWidth={1.5}/>{t.events}</div>
+         {events.length?events.slice(0,3).map((ev,i)=><button onClick={onEvents} key={ev.id} className="ml-story-row"><span className="ml-story-time">{localDate(ev.starts_at,lang)}</span><span><strong>{ev.title}</strong><small>{ev.venue}</small></span><Plus size={16} strokeWidth={1.4}/></button>):<p className="ml-empty-text">{t.eventEmpty}</p>}
+        </div>
+        <div className="ml-journal-col">
+         <div className="ml-journal-colhead"><BookOpen size={17} strokeWidth={1.5}/>{t.news}</div>
+         {news.length?news.slice(0,3).map((n,i)=><button onClick={onEvents} key={n.id} className="ml-story-row"><span className="ml-story-time">{localDate(n.published_at,lang)}</span><span><strong>{n.title}</strong></span><Plus size={16} strokeWidth={1.4}/></button>):<p className="ml-empty-text">{t.newsEmpty}</p>}
+        </div>
+      </div>
+   </section>
+
+   <section className="ml-ending">
+     <div className="ml-ending-inner">
+      <div className="ml-ending-tile"><div className="ml-kicker"><span>04</span><span>COMMUNITY</span></div><h2>{t.community}</h2><p>{t.communityText}</p><button className="ml-underlined" onClick={onCommunity}>{t.join}<Accent/></button></div>
+      <div className="ml-ending-tile"><div className="ml-kicker"><span>05</span><span>LOKALE PARTNER</span></div><h2>{t.partner}</h2><p>{t.partnerText}</p><button className="ml-underlined" onClick={onBusiness}>{t.partners}<Accent/></button></div>
+     </div>
+     <div className="ml-ending-line"><Mainlinie/><span>MAINLINIE / FFM</span></div>
+   </section>
  </main>;
 }

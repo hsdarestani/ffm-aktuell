@@ -1,33 +1,25 @@
-# FFM Aktuell — Quiet City (visual system v2)
+# FFM Aktuell — MAINLINIE identity v3
 
-## Positioning
-A useful and confident Frankfurt city guide. Editorial, local and inviting without looking like a tourist agency, nightlife flyer or generic SaaS dashboard.
+## Position
+**FFM Aktuell: Frankfurt von innen.** Editorial city discovery with a custom, quiet visual signature. The brand's connective element is the River Main: a single hand-composed flowing line with two anchor points. It refers to the city's continuous connections between neighborhoods, people and activities; it is **not** a navigational arrow and does not claim to be a street map.
 
-Brand phrase: **Frankfurt. Immer wieder neu.**
+## Brand system
+- **Mainlinie:** recurring flowing line, two nodes and restrained use of warm mineral color. Appears in the wordmark, masthead divider, editorial interlude and footer.
+- **Typography:** DM Sans 400–700 for clear functional text; Instrument Serif sparingly for editorial headlines. Avoid display-heavy giant slab headings.
+- **Palette:** warm paper `#F6F5F1`, dark mineral `#292D2B`, muted wine `#735E63`, softly weathered sage `#A7AFA5`, fine-line grey `#DEDFD7`.
+- **Composition:** asymmetric editorial masthead + real city river photograph; precise number labels, place rows, 4-column taxonomy board, generous negative space. No fake 'live' indicators or dated opening hours.
+- **Microinteractions:** neutral circular point / plus within a circle; button text labels remain understandable. **No directional arrow icons on any route, cards, buttons, navigation, empty states or dialogs.**
+- **Mobile:** route-first discovery, 44px+ primary actions, mobile-safe editorial masthead, no horizontal scrolling except intentional category scrollers in legacy catalog.
 
-## Principles
-- Clarity first: purposeful whitespace, legible text sizes, clear hierarchy, direct primary actions.
-- Local character: city-specific photography and accurate local records; no stock representations of individual places.
-- Restrained palette: nearly-white #F8F8F5, forest ink #26342E, neutral grey-green #626E66 and a single muted clay accent #AB6050.
-- Type: DM Sans for all interface content; Instrument Serif for a selective poetic emphasis, never forced onto buttons or forms.
-- Reduce noise: no autoplay media, hero animations, decorative city maps, neon, huge serial numbers, outline headings, faux live counters or invented badges.
-- Functional discovery: homepage search goes to the real database-backed listings filter; category links and featured places open existing working views.
-- Robust mobile design: 360px and up, readable text, 44px minimum touch targets for primary controls, no horizontal overflow, clear map/search navigation.
+## Live application architecture
+`components/MinimalHome.tsx` implements a fully composed production homepage with working callbacks for search, place detail, categories, map, editorial, community and business. `app/page.tsx` retains the existing API-powered content, auth, moderation and management flows, while removing old directional iconography across all views. `app/brand.css` contains the identity system loaded after baseline functional CSS. Custom SVG mark and wordmark are in `public`.
 
-## Photography
-Both images are **real photographs of Frankfurt am Main**, by their named authors, used under the Unsplash License.
+## Photographic sources
+Both city atmosphere photos are from Unsplash and are not represented as photos of a specific listed venue:
+- Hero — **Frankfurt Riverfront Skyline**, cargo boat and historic Main crossing. Unsplash: https://unsplash.com/photos/modern-skyscrapers-and-historic-buildings-on-riverbank-FSXkHIny_Fg ; image id `photo-1775127493662-2e0fb1138b9c`.
+- Interlude — **Frankfurt Street Crossing**, Leonhard Niederwimmer. Unsplash: https://unsplash.com/photos/a-city-street-with-tall-buildings-0Cor_Y24BdM ; image id `photo-1661503847943-c6bb6a0101aa`.
 
-- Hero, a city street with tall buildings by **Leonhard Niederwimmer**: https://unsplash.com/photos/a-city-street-with-tall-buildings-0Cor_Y24BdM
-- Editorial second image, pedestrian street and high-rises by **Leon Seibert**: https://unsplash.com/photos/people-walking-on-pedestrian-lane-near-high-rise-buildings-during-daytime-3FiG6P7lWAs
-- Both images are displayed as city atmosphere, not as photographs of an unrelated venue or as proof of the listing's accuracy.
-- Provider data/images should be licensed and verified before adding location-specific imagery.
-- Image hosting uses Unsplash CDN; cache/privacy suitability must be reviewed before general production release.
+Images are city atmospheres used under Unsplash's published license. For long-term production, consider hosting licensed, optimized images on first-party assets and recording appropriate author attribution.
 
-## Implementation
-- `components/MinimalHome.tsx`: redesigned landing with editorial hero, working search, categories, verified place summaries, journal and community/B2B links.
-- `app/brand.css`: compact consistent visual layer loaded after the original functional styles.
-- `app/page.tsx`: existing state, API calls, auth, community and admin stay intact.
-- `app/brand-lab/page.tsx`: old concept gallery redirects back home.
-- `public/icon.svg`, `public/ffm-wordmark.svg`, site metadata and PWA colors now follow the restrained mark.
-
-This is a designed implementation, not a formally approved identity. Test actual user flows and get stakeholder approval before declaring brand final.
+## Caveats
+Brand requires client approval. Platform release scope remains incomplete per `docs/ROADMAP.md`; visual refinement does not imply publication of unverified places, ratings, offers, hours or events. Account deletion, GDPR/DSA policies, billing and native clients remain separate workstreams.
