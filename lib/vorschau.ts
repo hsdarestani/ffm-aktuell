@@ -73,3 +73,11 @@ export const vorschauAngebote:VorschauAngebot[]=[
  {id:'muster-a2',title:'Eine kleine Auszeit im Viertel',details:'Musterangebot für eine Wohlfühlaktion. Kein echter Rabatt.',business_name:'Beispielbetrieb in Bornheim',image_url:bilder.natur,demo:true},
  {id:'muster-a3',title:'Genuss zu zweit',details:'So könnten kulinarische Angebote dargestellt werden. Keine Einlösung möglich.',business_name:'Beispielrestaurant in Sachsenhausen',image_url:bilder.speisen,demo:true}
 ];
+
+/** Gruppen sind ausschließlich beispielhafte Anwendungsfälle, keine existierenden Veranstalter. */
+export const vorschauGruppen=[
+ {id:'g-laufen',name:'Gemeinsam am Main laufen',typ:'Laufgruppe',beschreibung:'Regelmäßig laufen, neue Menschen kennenlernen und die Stadt in Bewegung erleben.'},
+ {id:'g-spazieren',name:'Frankfurt zu Fuß entdecken',typ:'Spaziergruppe',beschreibung:'Entspannte Runden durch Viertel, Parks und entlang des Mains.'},
+ {id:'g-lesen',name:'Seitenweise Frankfurt',typ:'Lesegruppe',beschreibung:'Bücher austauschen und gemeinsam über neue Geschichten sprechen.'},
+ {id:'g-fussball',name:'Fußball nach Feierabend',typ:'Sportgruppe',beschreibung:'Menschen für gemeinsame Sportstunden finden, ohne Vereinspflicht.'}
+] as const;
