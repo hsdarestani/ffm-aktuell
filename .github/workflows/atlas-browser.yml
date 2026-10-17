@@ -1,0 +1,35 @@
+name: FFM Atlas Browser QA
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/atlas-browser.yml'
+      - 'scripts/atlas-browser-smoke.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser runner
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+      - name: Test live Atlas
+        env:
+          ATLAS_BASE_URL: https://ffm-aktuell.smarbiz.sbs
+        run: node scripts/atlas-browser-smoke.mjs
+      - name: Preserve browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffm-atlas-browser-captures
+          path: artifacts/atlas/
+          if-no-files-found: ignore
+          retention-days: 14
