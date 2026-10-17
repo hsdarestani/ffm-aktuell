@@ -150,6 +150,34 @@ function addGeoPins(map:LibreMap){
    'text-allow-overlap':true},
   paint:{'text-color':'#26362f','text-halo-color':'#f9f6f0','text-halo-width':2}});
 }
+const OSM_SOURCE='ffm-osm-raw-pois';
+function geoCandidateFeatures(places:AtlasPlace[]){
+ return {type:'FeatureCollection' as const,features:places.filter(validCoords).map(p=>({
+  type:'Feature' as const,properties:{id:p.id,name:p.name,category:p.category,
+   address:p.address||'',verified:'false'},
+  geometry:{type:'Point' as const,coordinates:[p.longitude as number,p.latitude as number]}
+ }))};
+}
+function addCandidatePins(map:LibreMap){
+ if(map.getSource(OSM_SOURCE))return;
+ map.addSource(OSM_SOURCE,{type:'geojson',data:geoCandidateFeatures([]),
+  cluster:true,clusterMaxZoom:16,clusterRadius:47});
+ map.addLayer({id:'ffm-osm-clusters',type:'circle',source:OSM_SOURCE,
+  filter:['has','point_count'],paint:{
+   'circle-color':'#345448','circle-opacity':0.86,
+   'circle-radius':['step',['get','point_count'],17,30,24,120,31],
+   'circle-stroke-color':'#fff7e9','circle-stroke-width':2}});
+ map.addLayer({id:'ffm-osm-cluster-count',type:'symbol',source:OSM_SOURCE,
+  filter:['has','point_count'],layout:{'text-field':['get','point_count_abbreviated'],
+   'text-size':12,'text-allow-overlap':true},
+  paint:{'text-color':'#fff9f1'}});
+ map.addLayer({id:'ffm-osm-points',type:'circle',source:OSM_SOURCE,
+  filter:['!', ['has','point_count']],
+  paint:{'circle-radius':['interpolate',['linear'],['zoom'],12,3.5,17,7],
+   'circle-color':['case',['==',['get','category'],'Apotheken'],'#257a73','#8b6a57'],
+   'circle-opacity':0.95,'circle-stroke-color':'#fff7e9','circle-stroke-width':1.5,
+   'circle-pitch-alignment':'map'}});
+}
 function updateSelectedPin(map:LibreMap,selected:string|null){
  if(!map.getLayer('ffm-poi-dot'))return;
  const match=['==',['get','id'],selected??'__none__'];
@@ -162,12 +190,15 @@ function updateSelectedPin(map:LibreMap,selected:string|null){
 export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props){
  const t=UI[lang];
  const mapDiv=useRef<HTMLDivElement>(null),mapRef=useRef<LibreMap|null>(null);
+ const latestCandidates=useRef<AtlasPlace[]>([]);
  const latestPlaces=useRef(places),activeSelect=useRef<(p:AtlasPlace)=>void>(()=>{});
  latestPlaces.current=places;
+ const [rawCandidates,setRawCandidates]=useState<AtlasPlace[]>([]);
  const [luftbild,setLuftbild]=useState(false),[luftbildFehler,setLuftbildFehler]=useState(false);
  const [area,setArea]=useState('city'),[cat,setCat]=useState('Alle'),[mode,setMode]=useState<AtlasMode>('golden'),[is3D,set3D]=useState(true),[ready,setReady]=useState(false),[fallback,setFallback]=useState(false),[error,setError]=useState(false),[selected,setSelected]=useState<string|null>(null),[showDistricts,setShowDistricts]=useState(false);
  const state=useRef({mode:'golden' as AtlasMode,is3D:true});
- const selectedPlace=places.find(p=>p.id===selected);
+ const selectedPlace=[...places,...rawCandidates].find(p=>p.id===selected);
+ const selectedIsOSM=Boolean(selectedPlace&&/^(node|way|relation)\//.test(selectedPlace.id));
  const filtered=useMemo(()=>places.filter(p=>validCoords(p)&&isSelectedCategory(p,cat)),[places,cat]);
  const moveTo=useCallback((place:AtlasPlace)=>{
   setSelected(place.id);
@@ -233,7 +264,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     if(cancelled)return;
     hasStyle=true;setError(false);
     try{
-     if(!triedRaster){add3DBuildings(map);addLuftbild(map);setColorScheme(map,state.current.mode);addGeoPins(map);}
+     if(!triedRaster){add3DBuildings(map);addLuftbild(map);setColorScheme(map,state.current.mode);addGeoPins(map);addCandidatePins(map);}
     }catch(e){console.warn('FFM Atlas optional 3D scene:',e);}
     // MapLibre 'style.load' only means style metadata loaded, NOT tiles.
     // 'idle' means the visible tile region has finished rendering.
@@ -242,6 +273,19 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    };
    map.on('style.load',onStyle);
       map.on('click',e=>{
+    if(map.getLayer('ffm-osm-clusters')){
+     const cluster=map.queryRenderedFeatures(e.point,{layers:['ffm-osm-clusters']})[0];
+     if(cluster){const id=Number(cluster.properties?.cluster_id);const g=cluster.geometry;
+      if(g.type==='Point'&&Number.isFinite(id)){(map.getSource(OSM_SOURCE) as import('maplibre-gl').GeoJSONSource)
+        .getClusterExpansionZoom(id).then(zoom=>map.easeTo({center:g.coordinates as [number,number],zoom:Math.min(zoom,19),duration:650})).catch(()=>{});}
+      return;
+     }
+    }
+    if(map.getLayer('ffm-osm-points')){
+      const point=map.queryRenderedFeatures(e.point,{layers:['ffm-osm-points']})[0];
+      if(point){const id=String(point.properties?.id||'');const p=latestCandidates.current.find(v=>v.id===id);
+       if(p){setSelected(p.id);map.flyTo({center:[p.longitude as number,p.latitude as number],zoom:Math.max(15.8,map.getZoom()),duration:800})}return;}
+    }
     if(!map.getLayer('ffm-poi-dot'))return;
     const feature=map.queryRenderedFeatures(e.point,{layers:['ffm-poi-dot']})[0];
     const id=feature?.properties?.id as string|undefined;
@@ -251,7 +295,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    });
    map.on('mousemove',e=>{
     if(map.getLayer('ffm-poi-dot'))map.getCanvas().style.cursor=
-     map.queryRenderedFeatures(e.point,{layers:['ffm-poi-dot']}).length?'pointer':'';
+     (map.queryRenderedFeatures(e.point,{layers:['ffm-poi-dot']}).length||(map.getLayer('ffm-osm-points')&&map.queryRenderedFeatures(e.point,{layers:['ffm-osm-points','ffm-osm-clusters']}).length))?'pointer':'';
    });
    // E2E-only inspection, never activated on ordinary visitor pages.
    if(new URLSearchParams(window.location.search).has('atlasQA')){
@@ -279,6 +323,30 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   if(!fallback&&map.getLayer('ffm-architecture'))map.setLayoutProperty('ffm-architecture','visibility',is3D&&!luftbild?'visible':'none');
   if(map.getLayer('ffm-luftbild'))map.setLayoutProperty('ffm-luftbild','visibility',luftbild?'visible':'none');
  },[mode,is3D,area,ready,fallback,luftbild]);
+ useEffect(()=>{
+  const map=mapRef.current;
+  if(!ready||fallback||!map||!map.getSource(OSM_SOURCE))return;
+  let cancelled=false,timer:number|undefined,active:AbortController|null=null;
+  const load=()=>{
+   if(cancelled)return;
+   active?.abort();active=new AbortController();
+   const b=map.getBounds(),bounds=[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()];
+   if(bounds[0]<8.2||bounds[2]>9.1||bounds[1]<49.7||bounds[3]>50.4)return;
+   const params=new URLSearchParams({bbox:bounds.join(','),category:cat});
+   fetch('/api/discovery-map?'+params,{signal:active.signal})
+    .then(r=>r.ok?r.json():Promise.reject(new Error('Kartendaten fehlen')))
+    .then(data=>{
+      if(cancelled||!map.getSource(OSM_SOURCE))return;
+      const items=(data.items||[]).map((x:AtlasPlace)=>({...x,description_de:
+       'Eintrag aus OpenStreetMap. Öffnungszeiten und Betriebsstatus nicht aktuell bestätigt.'}));
+      latestCandidates.current=items;setRawCandidates(items);
+      (map.getSource(OSM_SOURCE) as GeoJSONSource).setData(geoCandidateFeatures(items));
+    }).catch(()=>{});
+  };
+  const moved=()=>{if(timer!==undefined)window.clearTimeout(timer);timer=window.setTimeout(load,280)};
+  map.on('moveend',moved);load();
+  return()=>{cancelled=true;if(timer!==undefined)window.clearTimeout(timer);active?.abort();map.off('moveend',moved)};
+ },[ready,fallback,cat]);
  useEffect(()=>{
   const map=mapRef.current;
   if(!ready||!map||!map.getSource(POI_SOURCE))return;
@@ -312,8 +380,8 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   <div className="atlas-bottom">
    {selectedPlace?<div className="atlas-selection" role="region" aria-label={selectedPlace.name}>
      <button type="button" onClick={()=>setSelected(null)} className="atlas-selection-close" aria-label="Schließen"><X size={17}/></button>
-     <div className="atlas-selection-text"><span>{selectedPlace.district||'Frankfurt'} · {selectedPlace.category}</span><strong>{selectedPlace.name}</strong><small>{lang==='de'?selectedPlace.description_de||selectedPlace.address:selectedPlace.description_en||selectedPlace.address}</small></div>
-     <button type="button" onClick={()=>onSelect?.(selectedPlace.id)} className="atlas-selection-cta">{t.select}<span className="atlas-selection-circle"><Plus size={18}/></span></button>
+     <div className="atlas-selection-text"><span>{selectedPlace.district||'Frankfurt'} · {selectedPlace.category}</span><strong>{selectedPlace.name}</strong><small>{selectedIsOSM?'Noch nicht geprüfter OSM-Eintrag · kein bestätigter Öffnungsstatus':(lang==='de'?selectedPlace.description_de||selectedPlace.address:selectedPlace.description_en||selectedPlace.address)}</small></div>
+     <button type="button" onClick={()=>{if(selectedIsOSM){const p=selectedPlace.id.split('/');window.open('https://www.openstreetmap.org/'+p[0]+'/'+p[1],'_blank','noopener,noreferrer')}else onSelect?.(selectedPlace.id)}} className="atlas-selection-cta">{selectedIsOSM?'OSM-Quelle ansehen':t.select}<span className="atlas-selection-circle"><Plus size={18}/></span></button>
     </div>:<div className="atlas-explore-card">
      <div className="atlas-bottom-copy"><span>{lang==='de'?'DEIN NÄCHSTER STADT-MOMENT':'YOUR NEXT CITY MOMENT'}</span><strong>{DISTRICTS.find(d=>d.id===area)?.[lang]||'Frankfurt'}</strong><small>{ready?`${counts} ${lang==='de'?'Orte entdecken':'places to explore'}`:t.loading}</small></div>
      <button type="button" onClick={()=>setShowDistricts(x=>!x)} className="atlas-district-toggle" aria-expanded={showDistricts}><Layers3 size={18}/><span>{t.choose}</span><span className="atlas-mini-plus"><Plus size={15}/></span></button>
