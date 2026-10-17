@@ -2,7 +2,7 @@
 // Probe official Hessen INSPIRE LoD2 feature JSON geometry; never fabricate building models.
 import {writeFile,mkdir} from 'node:fs/promises';
 const root='https://www.geoportal.hessen.de/spatial-objects/831/collections/bu-core3d:Building/items';
-const url=root+'?bbox=8.672,50.107,8.674,50.109&limit=3&f=json';
+const url=root+'?bbox=8.672,50.107,8.674,50.109&limit=5&f=json';
 const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),45000);
 try{
  const res=await fetch(url,{signal:ctl.signal,headers:{Accept:'application/geo+json,application/json'}});
