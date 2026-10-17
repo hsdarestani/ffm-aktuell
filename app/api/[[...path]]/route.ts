@@ -60,12 +60,17 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   }
   if(method==='POST'&&path==='admin/activate'){
     rate(req,'admin-activate');
+    const input=await payload(req) as Record<string,unknown>|null;
+    const pw=input?.password;
+    // User-friendly German error for mobile autofill / direct API requests.
+    if(typeof pw!=='string'||pw.length<16)return bad('Das Passwort muss mindestens 16 Zeichen lang sein.');
+    if(pw.length>128)return bad('Das Passwort darf höchstens 128 Zeichen lang sein.');
     const b=parse(z.object({
       token:z.string().min(36).max(100),
       email:email,
       display_name:z.string().trim().min(2).max(80).default('FFM Redaktion'),
       password:z.string().min(16).max(128)
-    }),await payload(req));
+    }),input);
     const digest=createHash('sha256').update(b.token).digest('hex');
     const client=await pool.connect();
     let accountId:string;

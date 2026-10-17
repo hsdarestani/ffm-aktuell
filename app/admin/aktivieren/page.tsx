@@ -6,6 +6,7 @@ export default function AdminAktivieren(){
  const [code,setCode]=useState('');
  const [pending,setPending]=useState(false);
  const [error,setError]=useState('');
+ const [passwordLength,setPasswordLength]=useState(0);
  useEffect(()=>{
   setCode(new URLSearchParams(window.location.search).get('code')||'');
   document.title='Redaktion freischalten · FFM Aktuell';
@@ -13,7 +14,16 @@ export default function AdminAktivieren(){
  async function submit(event:FormEvent<HTMLFormElement>){
   event.preventDefault();if(!code||pending)return;
   const f=new FormData(event.currentTarget);
-  if(f.get('password')!==f.get('password_repeat')){setError('Passwörter stimmen nicht überein.');return}
+  const password=String(f.get('password')||'');
+  if(password.length<16){
+   setError('Das Passwort ist zu kurz: '+password.length+' von mindestens 16 Zeichen.');
+   return;
+  }
+  if(password.length>128){
+   setError('Das Passwort darf höchstens 128 Zeichen haben.');
+   return;
+  }
+  if(password!==f.get('password_repeat')){setError('Passwörter stimmen nicht überein.');return}
   setPending(true);setError('');
   try{
    const r=await fetch('/api/admin/activate',{
@@ -33,8 +43,8 @@ export default function AdminAktivieren(){
    {!code?<p role="alert">Einladungslink fehlt. Bitte den vollständigen persönlichen Link verwenden.</p>:<form onSubmit={submit} style={{display:'grid',gap:17,marginTop:25}}>
     <label style={{display:'grid',gap:7}}>Name<input name="display_name" defaultValue="FFM Redaktion" minLength={2} required autoComplete="name" style={{padding:12,border:'1px solid #aaa',borderRadius:7}}/></label>
     <label style={{display:'grid',gap:7}}>E-Mail-Adresse<input type="email" name="email" required autoComplete="email" style={{padding:12,border:'1px solid #aaa',borderRadius:7}}/></label>
-    <label style={{display:'grid',gap:7}}>Persönliches Passwort (mindestens 16 Zeichen)<input type="password" name="password" minLength={16} required autoComplete="new-password" style={{padding:12,border:'1px solid #aaa',borderRadius:7}}/></label>
-    <label style={{display:'grid',gap:7}}>Passwort wiederholen<input type="password" name="password_repeat" minLength={16} required autoComplete="new-password" style={{padding:12,border:'1px solid #aaa',borderRadius:7}}/></label>
+    <label style={{display:'grid',gap:7}}>Persönliches Passwort (mindestens 16 Zeichen)<input type="password" name="password" maxLength={128} required autoComplete="new-password" aria-describedby="passwort-hinweis" onChange={e=>{setPasswordLength(e.currentTarget.value.length);setError('')}} style={{padding:12,border:'1px solid #aaa',borderRadius:7}}/><small id="passwort-hinweis" aria-live="polite" style={{color:passwordLength>0&&passwordLength<16?'#97362c':'#4d665b'}}>{passwordLength===0?'Mindestens 16 Zeichen eingeben':passwordLength<16?'Noch '+(16-passwordLength)+' Zeichen erforderlich':'Passwortlänge erfüllt'}</small></label>
+    <label style={{display:'grid',gap:7}}>Passwort wiederholen<input type="password" name="password_repeat" required autoComplete="new-password" style={{padding:12,border:'1px solid #aaa',borderRadius:7}}/></label>
     {error&&<p role="alert" style={{color:'#9d2424'}}>{error}</p>}
     <button disabled={pending} type="submit" style={{display:'flex',justifyContent:'center',gap:10,alignItems:'center',padding:15,background:'#243d35',color:'#fff',border:0,borderRadius:7,cursor:'pointer'}}><LockKeyhole size={18}/>{pending?'Wird eingerichtet …':'Administrator Konto aktivieren'}</button>
    </form>}

@@ -37,3 +37,13 @@ test('single-use admin invitation is cryptographically guarded and not a public 
  assert.match(api,/password:z.string\(\)\.min\(16\)/);
  assert.match(activation,/Passwort wiederholen/);
 });
+
+test('activation password validation explains minimum length to German mobile users',()=>{
+ assert.match(activation,/password\.length<16/);
+ assert.match(activation,/Noch /);
+ assert.match(activation,/Das Passwort ist zu kurz/);
+ assert.match(activation,/Passwörter stimmen nicht überein/);
+ assert.match(activation,/passwordLength===0/);
+ assert.match(api,/Das Passwort muss mindestens 16 Zeichen lang sein/);
+ assert.match(api,/pw\.length>128/);
+});
