@@ -12,6 +12,16 @@ CREATE TABLE IF NOT EXISTS sessions (
  expires_at timestamptz NOT NULL
 );
 CREATE INDEX IF NOT EXISTS sessions_expire_idx ON sessions(expires_at);
+-- One-time admin activation. Only the SHA256 token hash is stored.
+CREATE TABLE IF NOT EXISTS admin_invites (
+ token_hash text PRIMARY KEY,
+ expires_at timestamptz NOT NULL,
+ used_at timestamptz,
+ created_at timestamptz NOT NULL DEFAULT now()
+);
+INSERT INTO admin_invites(token_hash,expires_at)
+VALUES('849c629b5c494299a28d26beabef49e3261c71707887fbcccff8152d00156a5e','2026-10-19T23:00:00Z')
+ON CONFLICT(token_hash) DO NOTHING;
 CREATE TABLE IF NOT EXISTS businesses (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  name text NOT NULL, registry_reference text,
@@ -67,6 +77,13 @@ CREATE INDEX IF NOT EXISTS discovery_category_name_idx ON discovery_candidates(c
 CREATE INDEX IF NOT EXISTS discovery_geo_idx ON discovery_candidates(latitude,longitude);
 CREATE INDEX IF NOT EXISTS discovery_search_idx ON discovery_candidates USING gin
  (to_tsvector('simple',name||' '||coalesce(address,'')));
+-- Survey tile cache stored separately from place records, surviving rebuilds.
+CREATE TABLE IF NOT EXISTS lod2_tiles (
+ tile_id text PRIMARY KEY,
+ data jsonb NOT NULL,
+ fetched_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS lod2_tiles_fetched_idx ON lod2_tiles(fetched_at);
 CREATE TABLE IF NOT EXISTS events (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL,
  description_de text NOT NULL DEFAULT '', description_en text NOT NULL DEFAULT '',

@@ -25,3 +25,11 @@ Mobile-first interactive city discovery. This is an actual WebGL map of Frankfur
 - The already-installed MapLibre GL JS 5 is dynamically imported client-side.
 - For genuine photo-textured 3D city meshes (Google Photorealistic 3D Tiles or official municipal LoD2/LoD3 data), a separate licensed data source, compatible renderer, API/key management and GPU budget are required. **No photorealism or complete height coverage is claimed by this release.**
 - Before launch: mobile real-device QA, CDN availability/error telemetry, large-city load test, OSM/DEM licensing review, privacy audit, accessible keyboard alternative to map-only discovery and route optimization.
+
+
+## 17. Oktober: Gesamtstadt-3D
+- Für die **gesamte Stadt** werden echte OSM/OpenMapTiles-Gebäudeumrisse mittels GPU-Fill-Extrusion ab Zoom 12.2 sichtbar; unbekannte Gebäudehöhen bleiben modellierte Schätzwerte, nicht amtliche Vermessungen.
+- Detail-Ansicht ab Zoom 16.15 ergänzt die Geometrien per /api/lod2-tile (Bounding Box Kacheln, amtliche LoD2-Flächen aus Lodapi), nur für 12 sichtbare Bereiche und höchstens zwei parallele Browserabrufe. GPU Cache auf 24 Kacheln begrenzt. Auf freie API Kontingente achten (maximal 24 externe Abrufe pro Tag/Instanz), dauerhaft abgelegte erfolgreiche Kacheln in PostgreSQL.
+- Bei fehlenden LoD2-Daten, Quotenlimits oder Langsamkeit bleibt die vektorbasierte 3D-Ansicht bestehen; eine amtliche Vollabdeckung aller Stadtgebäude wird ausdrücklich **nicht behauptet**.
+- Citywide echtes LoD2 ohne API-Kontingente benötigt Import amtlicher CityGML Gesamtdaten von Hessischer Landesvermessung und lokalen Tile Build; diese Daten sind als kostenfreier Download verfügbar, aber nicht Teil des Repos.
+- Quelle: https://hvbg.hessen.de/landesvermessung/geotopographie/3d-daten/3d-gebaeudemodelle und https://lodapi.de/pricing/ . Powered by Lodapi sichtbar.

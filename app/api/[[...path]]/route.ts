@@ -1,4 +1,5 @@
 import {NextRequest,NextResponse} from 'next/server';
+import {createHash} from 'node:crypto';
 import {z} from 'zod';
 import {pool,query} from '@/lib/db';
 import {beginSession,endSession,hashPassword,verifyPassword,sessionUser,trustedOrigin,User} from '@/lib/auth';
@@ -56,6 +57,34 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     const r=await query('SELECT id,password_hash FROM users WHERE email=$1',[b.email.toLowerCase()]);
     if(!r.rows[0]||!verifyPassword(b.password,r.rows[0].password_hash))return bad('Invalid credentials',401);
     const res=ok({success:true});await beginSession(r.rows[0].id,res);return res;
+  }
+  if(method==='POST'&&path==='admin/activate'){
+    rate(req,'admin-activate');
+    const b=parse(z.object({
+      token:z.string().min(36).max(100),
+      email:email,
+      display_name:z.string().trim().min(2).max(80).default('FFM Redaktion'),
+      password:z.string().min(16).max(128)
+    }),await payload(req));
+    const digest=createHash('sha256').update(b.token).digest('hex');
+    const client=await pool.connect();
+    let accountId:string;
+    try{
+      await client.query('BEGIN');
+      const invite=await client.query('SELECT token_hash FROM admin_invites WHERE token_hash=$1 AND used_at IS NULL AND expires_at>now() FOR UPDATE',[digest]);
+      if(!invite.rowCount){await client.query('ROLLBACK');return bad('Einladungslink ist ungültig, abgelaufen oder verbraucht.',403)}
+      const created=await client.query(
+        "INSERT INTO users(email,password_hash,display_name,role) VALUES($1,$2,$3,'admin') ON CONFLICT(email) DO NOTHING RETURNING id",
+        [b.email.trim().toLowerCase(),hashPassword(b.password),b.display_name]);
+      if(!created.rowCount){await client.query('ROLLBACK');return bad('E-Mail-Adresse ist bereits vergeben.',409)}
+      accountId=created.rows[0].id;
+      await client.query('UPDATE admin_invites SET used_at=now() WHERE token_hash=$1',[digest]);
+      await client.query("INSERT INTO audit_log(actor_id,action,target_type,target_id) VALUES($1,'admin:one-time-activation','user',$1)",[accountId]);
+      await client.query('COMMIT');
+    }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
+    const response=ok({success:true,role:'admin'},201);
+    await beginSession(accountId!,response);
+    return response;
   }
   if(method==='POST'&&path==='auth/logout'){
     const res=ok({success:true});await endSession(req,res);return res;
