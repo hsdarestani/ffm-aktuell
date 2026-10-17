@@ -1,0 +1,25 @@
+name: Frankfurt LoD2 Apotheken LIVE Prüfung
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ffm-lod2-apotheken-qa.yml'
+      - 'scripts/ffm-lod2-apotheken-qa.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Chromium installieren
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+      - name: Produktionsseite, Apotheken und LoD2 prüfen
+        run: node scripts/ffm-lod2-apotheken-qa.mjs
