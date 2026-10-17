@@ -22,7 +22,7 @@ for(const d of [{name:'Mobil',width:390,height:844},{name:'Desktop',width:1440,h
   });
   verify(d.name+' WMS-Modus einschaltbar',await button.getAttribute('aria-pressed')==='true');
   verify(d.name+' Luftbild-Layer tatsächlich sichtbar',layer?.source&&layer.layer==='visible',JSON.stringify(layer));
-  verify(d.name+' amtliche Hessen-Bildkacheln geladen',good>=3,JSON.stringify({good,bad,requests,layer,reason:reason.slice(0,4)}));
+  verify(d.name+' amtliche Hessen-Bildkacheln geladen',good>0&&layer.loaded===true,JSON.stringify({good,bad,requests,layer,reason:reason.slice(0,4)}));
   if(!layer.loaded)console.warn('HINWEIS '+d.name+': Bildkacheln teilweise noch nicht vollständig geladen – langsamere WMS-Verbindung möglich.');
   verify(d.name+' Luftbild zeigt 2D-Modus',await page.locator('.atlas-dim-button').getAttribute('aria-pressed')==='false');
   verify(d.name+' keine sichtbare Fehlermeldung',await page.locator('.atlas-luftbild-warning').count()===0);
