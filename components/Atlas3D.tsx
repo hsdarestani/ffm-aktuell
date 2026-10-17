@@ -3,6 +3,7 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {Layers3,LocateFixed,Minus,Plus,Check,X,Sun,Sunset} from 'lucide-react';
 import type {Map as LibreMap,GeoJSONSource} from 'maplibre-gl';
+import {KATEGORIEN,passendeRubrik} from '@/lib/ortskategorien';
 
 export type AtlasPlace={
  id:string;name:string;latitude:number|null;longitude:number|null;category:string;
@@ -28,33 +29,30 @@ const DISTRICTS:Area[]=[
  {id:'bornheim',de:'Bornheim',en:'Bornheim',center:[8.7118,50.1256],zoom:15.7,bearing:-26},
  {id:'ostend',de:'Ostend',en:'Ostend',center:[8.7095,50.1097],zoom:15.5,bearing:16}
 ];
-const CATS=[
- {value:'Alle',de:'Alle',en:'All'},
- {value:'Restaurants',de:'Essen',en:'Food'},
- {value:'Kultur',de:'Kultur',en:'Culture'},
- {value:'Natur',de:'Draußen',en:'Outdoors'},
- {value:'Sehenswürdigkeiten',de:'Sehenswert',en:'Highlights'}
-] as const;
+const CATS=KATEGORIEN;
 const UI={
  de:{title:'Frankfurt entdecken.',subtitle:'Eine Stadt. Unzählige Perspektiven.',focus:'Deine Stadt in 3D',hint:'Ziehen, drehen und zoomen',map:'3D Stadtatlas',places:'Orte',district:'Viertel',select:'Ort ansehen',choose:'Stadtteil wählen',view:'Ansicht',day:'Tag',golden:'Abend',zoomIn:'Vergrößern',zoomOut:'Verkleinern',reset:'Frankfurt zentrieren',mode3d:'3D',mode2d:'2D',loading:'Die Stadt wird geladen …',error:'Die Karte konnte nicht geladen werden.',retry:'Neu laden',empty:'In dieser Auswahl gibt es noch keine veröffentlichten Orte.',tip:'Gebäudehöhen aus OpenStreetMap, wo vorhanden',credit:'© OpenStreetMap · OpenMapTiles · OpenFreeMap',back:'Zurück zur Stadt'},
  en:{title:'Discover Frankfurt.',subtitle:'One city. A thousand perspectives.',focus:'Your city in 3D',hint:'Drag, rotate and zoom',map:'3D City Atlas',places:'Places',district:'Neighborhoods',select:'View place',choose:'Choose a district',view:'View',day:'Day',golden:'Evening',zoomIn:'Zoom in',zoomOut:'Zoom out',reset:'Center Frankfurt',mode3d:'3D',mode2d:'2D',loading:'Loading your city …',error:'The map could not be loaded.',retry:'Reload map',empty:'There are no published places in this category yet.',tip:'Building heights from OpenStreetMap where available',credit:'© OpenStreetMap · OpenMapTiles · OpenFreeMap',back:'Back to the city'}
 };
 const VECTOR_STYLE='https://tiles.openfreemap.org/styles/bright';
+// Official Hessian 20cm orthophotos. Free use under Datenlizenz Deutschland Zero 2.0.
+// This imagery is aerial photography (2D), NOT textured 3D / live satellite data.
+const LUFTBILD='https://www.gds-srv.hessen.de/cgi-bin/lika-services/ogc-free-images.ows?language=ger&SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=he_dop_rgb&STYLES=&FORMAT=image/jpeg&SRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=512&HEIGHT=512';
+function addLuftbild(map:LibreMap){
+ if(map.getSource('ffm-hessen-dop'))return;
+ map.addSource('ffm-hessen-dop',{type:'raster',tiles:[LUFTBILD],tileSize:512,minzoom:0,maxzoom:19,
+  attribution:'© Hessische Verwaltung für Bodenmanagement und Geoinformation · DOP20 (dl-zero-de/2.0)'});
+ const under=map.getLayer('ffm-architecture')?'ffm-architecture':map.getStyle().layers?.find(l=>l.type==='symbol')?.id;
+ map.addLayer({id:'ffm-luftbild',type:'raster',source:'ffm-hessen-dop',layout:{visibility:'none'},paint:{'raster-opacity':1,'raster-fade-duration':280}},under);
+}
+
 const fallbackRaster={
  version:8 as const,
  sources:{osm:{type:'raster' as const,tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],tileSize:256,attribution:'© OpenStreetMap contributors'}},
  layers:[{id:'osm',type:'raster' as const,source:'osm'}]
 };
 const validCoords=(p:AtlasPlace)=>p.latitude!=null&&p.longitude!=null&&Number.isFinite(p.latitude)&&Number.isFinite(p.longitude)&&p.latitude>=49.95&&p.latitude<=50.25&&p.longitude>=8.35&&p.longitude<=8.95;
-function isSelectedCategory(p:AtlasPlace,cat:string){
- if(cat==='Alle')return true;
- const c=p.category.toLowerCase();
- if(cat==='Restaurants')return /restaurant|café|cafe|brunch|bar|food|essen|gastronom/i.test(c);
- if(cat==='Kultur')return /kultur|museum|kunst|theater|music|musik|kultur/i.test(c);
- if(cat==='Natur')return /natur|park|garden|garten|outdoor|grün/i.test(c);
- if(cat==='Sehenswürdigkeiten')return /sehenswürd|sight|attraktion|landmark|monument/i.test(c);
- return c===cat.toLowerCase();
-}
+function isSelectedCategory(p:AtlasPlace,cat:string){return passendeRubrik(p,cat);}
 /** MapLibre's existing vector data is recolored in place. Unlike a tinted raster
  * overlay, this preserves 3D geometry and legible vector streets at every bearing. */
 function setColorScheme(map:LibreMap,mode:AtlasMode){
@@ -166,6 +164,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
  const mapDiv=useRef<HTMLDivElement>(null),mapRef=useRef<LibreMap|null>(null);
  const latestPlaces=useRef(places),activeSelect=useRef<(p:AtlasPlace)=>void>(()=>{});
  latestPlaces.current=places;
+ const [luftbild,setLuftbild]=useState(false),[luftbildFehler,setLuftbildFehler]=useState(false);
  const [area,setArea]=useState('city'),[cat,setCat]=useState('Alle'),[mode,setMode]=useState<AtlasMode>('golden'),[is3D,set3D]=useState(true),[ready,setReady]=useState(false),[fallback,setFallback]=useState(false),[error,setError]=useState(false),[selected,setSelected]=useState<string|null>(null),[showDistricts,setShowDistricts]=useState(false);
  const state=useRef({mode:'golden' as AtlasMode,is3D:true});
  const selectedPlace=places.find(p=>p.id===selected);
@@ -234,7 +233,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     if(cancelled)return;
     hasStyle=true;setError(false);
     try{
-     if(!triedRaster){add3DBuildings(map);setColorScheme(map,state.current.mode);addGeoPins(map);}
+     if(!triedRaster){add3DBuildings(map);addLuftbild(map);setColorScheme(map,state.current.mode);addGeoPins(map);}
     }catch(e){console.warn('FFM Atlas optional 3D scene:',e);}
     // MapLibre 'style.load' only means style metadata loaded, NOT tiles.
     // 'idle' means the visible tile region has finished rendering.
@@ -258,9 +257,10 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    if(new URLSearchParams(window.location.search).has('atlasQA')){
     (window as unknown as {__ffmAtlasQA?:LibreMap}).__ffmAtlasQA=map;
    }
-   map.on('style.load',onStyle);
    map.on('error',e=>{
-    if(cancelled||hasStyle)return;
+    if(cancelled)return;
+    if(String(e.error?.message||'').includes('gds-srv.hessen.de')){setLuftbildFehler(true);setLuftbild(false);return;}
+    if(hasStyle)return;
     console.warn('FFM Atlas base map:',e.error);
     if(!triedRaster){
      triedRaster=true;setFallback(true);
@@ -276,8 +276,9 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   state.current={mode,is3D};
   if(!fallback)setColorScheme(map,mode);
   map.easeTo({pitch:is3D?56:0,bearing:is3D?(DISTRICTS.find(x=>x.id===area)?.bearing??-23):0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:850});
-  if(!fallback&&map.getLayer('ffm-architecture'))map.setLayoutProperty('ffm-architecture','visibility',is3D?'visible':'none');
- },[mode,is3D,area,ready,fallback]);
+  if(!fallback&&map.getLayer('ffm-architecture'))map.setLayoutProperty('ffm-architecture','visibility',is3D&&!luftbild?'visible':'none');
+  if(map.getLayer('ffm-luftbild'))map.setLayoutProperty('ffm-luftbild','visibility',luftbild?'visible':'none');
+ },[mode,is3D,area,ready,fallback,luftbild]);
  useEffect(()=>{
   const map=mapRef.current;
   if(!ready||!map||!map.getSource(POI_SOURCE))return;
@@ -295,12 +296,13 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    <div className="atlas-brand"><span className="atlas-brand-id">ffm<span>.</span></span><div><small>FRANKFURT AM MAIN</small><strong>{lang==='de'?'Deine Stadt. Neu entdeckt.':'Rediscover your city.'}</strong></div></div>
    <div className="atlas-tools">
     <button type="button" className={'atlas-tone-button'+(mode==='golden'?' active':'')} onClick={()=>setMode(x=>x==='day'?'golden':'day')} title={mode==='day'?t.golden:t.day} aria-label={mode==='day'?t.golden:t.day}>{mode==='day'?<Sunset size={17}/>:<Sun size={17}/>}<span>{mode==='day'?t.golden:t.day}</span></button>
+    <button type="button" className={'atlas-air-button'+(luftbild?' active':'')} aria-pressed={luftbild} onClick={()=>{setLuftbildFehler(false);setLuftbild(v=>!v)}} title="Amtliche Luftbilder statt Kartenzeichnung">{luftbild?'Stadtplan':'Luftbild'}</button>
     <button type="button" className="atlas-dim-button" aria-pressed={is3D} onClick={()=>set3D(x=>!x)} title={t.view}>{is3D?'3D':'2D'}</button>
    </div>
   </div>
   <div className="atlas-micro"><span className="atlas-red-dot"/> FRANKFURT AM MAIN <span className="atlas-micro-separator"/> 50°06&apos; N · 08°41&apos; E</div>
   <div className="atlas-category-tabs" role="group" aria-label={t.places}>
-   {CATS.map(item=><button type="button" key={item.value} className={cat===item.value?'selected':''} onClick={()=>chooseCategory(item.value)} aria-pressed={cat===item.value}>{lang==='de'?item.de:item.en}</button>)}
+   {CATS.map(item=><button type="button" key={item.id} className={cat===item.id?'selected':''} onClick={()=>chooseCategory(item.id)} aria-pressed={cat===item.id}>{item.label}</button>)}
   </div>
   <div className="atlas-map-utilities">
    <button aria-label={t.zoomIn} title={t.zoomIn} onClick={()=>zoom(1)}><Plus size={20}/></button>
@@ -309,7 +311,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   </div>
   <div className="atlas-bottom">
    {selectedPlace?<div className="atlas-selection" role="region" aria-label={selectedPlace.name}>
-     <button type="button" onClick={()=>setSelected(null)} className="atlas-selection-close" aria-label="Close"><X size={17}/></button>
+     <button type="button" onClick={()=>setSelected(null)} className="atlas-selection-close" aria-label="Schließen"><X size={17}/></button>
      <div className="atlas-selection-text"><span>{selectedPlace.district||'Frankfurt'} · {selectedPlace.category}</span><strong>{selectedPlace.name}</strong><small>{lang==='de'?selectedPlace.description_de||selectedPlace.address:selectedPlace.description_en||selectedPlace.address}</small></div>
      <button type="button" onClick={()=>onSelect?.(selectedPlace.id)} className="atlas-selection-cta">{t.select}<span className="atlas-selection-circle"><Plus size={18}/></span></button>
     </div>:<div className="atlas-explore-card">
@@ -320,7 +322,8 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     {DISTRICTS.map(d=><button type="button" key={d.id} onClick={()=>goDistrict(d.id)} className={area===d.id?'active':''}><span>{lang==='de'?d.de:d.en}</span>{area===d.id?<Check size={16}/>:<span className="atlas-district-dot"/>}</button>)}
    </div>}
   </div>
-  <div className="atlas-credits"><span>{t.credit}</span><span>{t.tip}</span></div>
+  <div className="atlas-credits"><span>{luftbild?'Luftbild: © Land Hessen · DOP20 · Datenlizenz Deutschland Zero 2.0':t.credit}</span><span>{luftbild?'Amtliches Luftbild, keine Fototexturen auf Gebäuden':t.tip}</span></div>
+  {luftbildFehler&&<div className="atlas-luftbild-warning" role="status">Luftbild gerade nicht verfügbar. Stadtplan wird angezeigt.</div>}
   {!ready&&!error&&<div className="atlas-map-loading" role="status"><div className="atlas-loading-mark"><span/></div><strong>FFM ATLAS</strong><small>{t.loading}</small></div>}
   {error&&<div className="atlas-map-loading atlas-map-error" role="alert"><strong>{t.error}</strong><button onClick={()=>window.location.reload()}>{t.retry}</button></div>}
  </section>;
