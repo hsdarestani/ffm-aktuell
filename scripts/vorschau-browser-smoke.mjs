@@ -14,6 +14,15 @@ const pages=[
 ];
 for(const device of [{name:'mobil',width:390,height:844},{name:'rechner',width:1440,height:900}]){
  const context=await browser.newContext({viewport:{width:device.width,height:device.height},deviceScaleFactor:1});
+ // Der 3D-Atlas wird getrennt in der Atlas-Browserprüfung mit WebGL geprüft.
+ // Diese Prüfung testet die restlichen Seiten auf dem Rechner ohne GPU-Überlastung.
+ if(device.width>=800)await context.addInitScript(()=>{
+  const original=HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext=function(kind,...args){
+   if(kind==='webgl'||kind==='webgl2'||kind==='experimental-webgl')return null;
+   return original.call(this,kind,...args);
+  };
+ });
  const page=await context.newPage(),exceptions=[];
  page.on('pageerror',e=>exceptions.push(e.message));
  try{
