@@ -1,4 +1,5 @@
 name: FFM Atlas Browser QA
+# Post-deploy QA: records cinematic camera and geo-pinned POI behavior on mobile and desktop.
 on:
   push:
     branches: [main]
