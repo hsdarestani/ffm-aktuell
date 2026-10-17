@@ -5,7 +5,6 @@ import {LockKeyhole} from 'lucide-react';
 
 export default function Redaktion(){
  const [role,setRole]=useState<'loading'|'admin'|'denied'>('loading');
- const [revision,setRevision]=useState(0);
  useEffect(()=>{
   let active=true;
   fetch('/api/me',{cache:'no-store',credentials:'same-origin'}).then(r=>r.json())
@@ -13,7 +12,7 @@ export default function Redaktion(){
    .catch(()=>{if(active)setRole('denied')});
   return()=>{active=false};
  },[]);
- if(role==='admin')return <AdminStudio onChanged={()=>setRevision(v=>v+1)} key={revision}/>;
+ if(role==='admin')return <AdminStudio onChanged={()=>{}}/>;
  return <main className="ffm-studio-access">
   <div className="ffm-studio-access-card">
    <span>FFM AKTUELL · STADTSTUDIO</span>
