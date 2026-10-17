@@ -11,7 +11,7 @@ export const BILD_HINWEIS='Stimmungsbild';
 export const bilder={
  skyline:'https://images.unsplash.com/photo-1775127493662-2e0fb1138b9c?auto=format&fit=crop&w=1100&q=80',
  frankfurt:'https://images.unsplash.com/photo-1661503847943-c6bb6a0101aa?auto=format&fit=crop&w=1100&q=80',
- museum:'https://www.staedelmuseum.de/files/images/_trans/03-Ueber-das-Staedel/03.3-Garten/_image_hd/2022_StaedelGarten_Aussenansicht_13.jpg',
+ museum:'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=1100&q=80',
  natur:'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1100&q=80',
  speisen:'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1100&q=80',
  kaffe:'https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1100&q=80',
