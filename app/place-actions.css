@@ -1,0 +1,44 @@
+/* FFM action-first location detail: three effortless actions, optional depth.
+   Keep the OSM embedded map and truthful verification state untouched. */
+.v3-site .place-dialog>.dialog-body{padding:27px 29px 30px}
+.ffm-place-actions{margin:17px 0 12px;max-width:100%}
+.ffm-place-action-core{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ffm-place-action{
+ min-width:0;min-height:70px;padding:11px 5px;border-radius:13px;
+ background:#eef3eb;border:1px solid #dde9dd;
+ display:flex;flex-direction:column;justify-content:center;align-items:center;gap:7px;
+ color:#294938;font-size:12px;font-weight:800;text-align:center;
+ transition:background .12s,transform .12s
+}
+.ffm-place-action:hover{background:#dfeee0;transform:translateY(-1px)}
+.ffm-place-action:focus-visible,.ffm-place-action-links a:focus-visible,.ffm-place-action-more button:focus-visible{outline:3px solid #438a5f;outline-offset:2px}
+.ffm-place-action-route{background:#204833;color:#fff;border-color:#204833}
+.ffm-place-action-route:hover{background:#346b4b}
+.ffm-place-action.disabled{opacity:.55;background:#e7ebe7;color:#637467}
+.ffm-place-action-links{display:flex;flex-wrap:wrap;gap:8px;margin:11px 0}
+.ffm-place-action-links a{display:inline-flex;align-items:center;gap:7px;padding:10px 11px;font-size:11px;font-weight:750;color:#385d45;border-radius:9px;background:#f0f3ee;border:1px solid #e0e7de}
+.ffm-place-action-links a:hover{background:#e0ede2}
+.ffm-place-action-more{margin:11px 0 15px;border-top:1px solid #e7eae5;border-bottom:1px solid #e7eae5;padding:7px 0}
+.ffm-place-action-more>summary{display:flex;align-items:center;justify-content:space-between;cursor:pointer;list-style:none;padding:9px 3px;font-size:12px;font-weight:750;color:#496755}
+.ffm-place-action-more>summary::-webkit-details-marker{display:none}
+.ffm-place-action-more[open]>summary svg{transform:rotate(180deg)}
+.ffm-place-action-more-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 14px}
+.ffm-place-action-more-buttons button{display:flex;justify-content:center;align-items:center;gap:7px;background:#f2f5ef;padding:13px 6px;border:1px solid #dfe9df;border-radius:9px;color:#34553f;font-size:11px;font-weight:750}
+.ffm-place-action-more-buttons button:hover{background:#e3ede3}
+.ffm-place-action-form{padding:14px;background:#f5f8f3;border-radius:12px;display:grid;gap:11px;margin:8px 0}
+.ffm-place-action-form label{display:grid;gap:7px;font-size:11px;font-weight:750;color:#406049}
+.ffm-place-action-form textarea,.ffm-place-action-form select{width:100%;font:inherit;border:1px solid #cad9cb;padding:12px;border-radius:8px;background:white;color:#203b2d;resize:vertical;font-size:13px}
+.ffm-place-action-form p{color:#63796b;font-size:10px;line-height:1.5;margin:0}
+.ffm-place-action-form button[type=submit]{background:#244e37;border:0;border-radius:9px;color:white;font-size:12px;font-weight:800;padding:13px}
+.ffm-place-action-form button:disabled{opacity:.55}
+@media(max-width:800px){
+ .v3-site .place-dialog>.dialog-body{padding:19px 20px 25px}
+ .ffm-place-action{min-height:61px;font-size:11px}
+ .ffm-place-actions{margin:14px 0 10px}
+ .ffm-place-action-core{gap:7px}
+}
+@media(max-width:420px){
+ .v3-site .place-dialog>.dialog-body{padding:17px 16px 23px}
+ .ffm-place-action-more-buttons{grid-template-columns:1fr 1fr}
+}
+@media(prefers-reduced-motion:reduce){.ffm-place-action{transition:none}}
