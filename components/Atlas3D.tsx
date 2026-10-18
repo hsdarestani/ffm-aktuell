@@ -507,10 +507,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
       <strong>{selectedPlace.name}</strong>
       {selectedPlace.address&&<small title={selectedPlace.address}>{selectedPlace.address}</small>}
      </div>
-     <button type="button" onClick={()=>{
-      if(selectedIsOSM){const p=selectedPlace.id.split('/');if(['node','way','relation'].includes(p[0])&&/^\d+$/.test(p[1]||''))window.open('https://www.openstreetmap.org/'+p[0]+'/'+p[1],'_blank','noopener,noreferrer')}
-      else onSelect?.(selectedPlace.id);
-     }} className="atlas-selection-cta">{selectedIsOSM?'OSM ansehen':t.select}<Plus size={16}/></button>
+     <button type="button" onClick={()=>onSelect?.(selectedPlace.id)} className="atlas-selection-cta">{'Details'}<Plus size={16}/></button>
     </div>:<div className="atlas-explore-card">
      <div className="atlas-bottom-copy"><strong>{DISTRICTS.find(d=>d.id===area)?.[lang]||'Frankfurt'}</strong></div>
      <button type="button" onClick={()=>setShowDistricts(x=>!x)} className="atlas-district-toggle" aria-label="Stadtteil wählen" aria-expanded={showDistricts}><Layers3 size={17}/><span>Viertel</span><Plus size={15}/></button>
