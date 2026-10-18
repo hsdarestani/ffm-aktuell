@@ -86,8 +86,8 @@ try{
   const response=await fetch(site+'/api/'+route,{headers:cookie?{Cookie:cookie}:undefined});
   return {status:response.status,body:await response.json()};
  };
- const saved=await post('favorites',client,{place_id:testOsm,active:true});
- if(saved.status!==200)throw Error('OSM save failed: '+JSON.stringify(saved));
+ const savedMark=await post('favorites',client,{place_id:testOsm,active:true});
+ if(savedMark.status!==200)throw Error('OSM save failed: '+JSON.stringify(savedMark));
  const savedDetails=await get('favorites/details',client);
  if(!savedDetails.body.items.some(v=>v.id===testOsm&&v.candidate===true))throw Error('OSM save missing from Meine Orte');
  const rawRating=await post('reviews',client,{place_id:testOsm,rating:5,body:'A real test comment pending editorial approval.'});
