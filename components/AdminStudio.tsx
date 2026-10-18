@@ -21,10 +21,10 @@ type Notice={kind:'success'|'error';text:string};
 type IconComponent=typeof LayoutDashboard;
 const emptyQueue:Queue={businesses:[],claims:[],places:[],deals:[],posts:[]};
 const NAV:{view:View;label:string;small:string;icon:IconComponent;index:string}[]=[
- {view:'overview',label:'Stadtpult',small:'Übersicht',icon:LayoutDashboard,index:'01'},
+ {view:'overview',label:'Heute',small:'Heute',icon:LayoutDashboard,index:'01'},
  {view:'review',label:'Orte prüfen',small:'Prüfen',icon:MapPinned,index:'02'},
  {view:'moderation',label:'Freigaben',small:'Freigaben',icon:ShieldCheck,index:'03'},
- {view:'publish',label:'Veröffentlichen',small:'Erstellen',icon:SquarePen,index:'04'}
+ {view:'publish',label:'Erstellen',small:'Erstellen',icon:SquarePen,index:'04'}
 ];
 const queueNames:{key:keyof Queue;title:string;singular:string}[]=[
  {key:'businesses',title:'Unternehmen',singular:'business'},
@@ -88,6 +88,7 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
  const [revision,setRevision]=useState(0);
  const [queueSection,setQueueSection]=useState<keyof Queue>('businesses');
  const [mobileMenu,setMobileMenu]=useState(false);
+ const [detailDecision,setDetailDecision]=useState(false);
  const [newPlaceId,setNewPlaceId]=useState('');
 
  const refresh=useCallback(()=>{setRevision(n=>n+1);onChanged()},[onChanged]);
@@ -132,8 +133,8 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
  }
  const currentCount=queueNames.reduce((n,{key})=>n+(queue[key]?.length||0),0);
  const hasReviewTarget=Boolean(selected);
- const openCandidate=(item:Candidate)=>{setSelected(item);setSelectedDue(null);setReason('');setDrawer(true)};
- const openDue=(item:Due)=>{setSelectedDue(item);setDrawer(true);setReason('')};
+ const openCandidate=(item:Candidate)=>{setSelected(item);setSelectedDue(null);setReason('');setDetailDecision(false);setDrawer(true)};
+ const openDue=(item:Due)=>{setSelectedDue(item);setDrawer(true);setReason('');setDetailDecision(false)};
  const handleDecision=async(decision:'hide'|'needs_review')=>{
   if(!selected||reason.trim().length<10){setNotice({kind:'error',text:'Bitte den Grund in mindestens 10 Zeichen beschreiben.'});return}
   if(decision==='hide'&&!window.confirm('Diesen OSM Kandidaten wirklich ausblenden?'))return;
@@ -204,10 +205,11 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
  const actual=reviewMode==='existing'?due:[]; const totalPages=Math.max(1,Math.ceil(total/25));
  const reviewDetail=selectedDue?(
   <div key={selectedDue.id} className="ffm-studio-detail">
-   <div className="ffm-studio-detail-top"><Caption>BESTANDSPRÜFUNG · ERNEUERN</Caption><span className="ffm-studio-pill warn">Erneut prüfen</span></div>
+   <div className="ffm-studio-detail-top"><Caption>ERNEUT PRÜFEN</Caption><span className="ffm-studio-pill warn">Fällig</span></div>
    <h2>{selectedDue.name}</h2><p className="ffm-studio-muted">{selectedDue.category} · Letzte Prüfung: {selectedDue.verified_at?new Date(selectedDue.verified_at).toLocaleDateString('de-DE'):'Keine'}</p>
-   <p className="ffm-studio-note"><ShieldAlert size={17}/> Der Betriebsstatus muss anhand einer unabhängigen Quelle erneut bestätigt werden.</p>
-   <form className="ffm-studio-form" onSubmit={submitExisting}>
+   <p className="ffm-studio-note"><ShieldAlert size={17}/> Quelle erneut prüfen.</p>
+   <button type="button" className="ffm-simple-start" aria-expanded={detailDecision} onClick={()=>setDetailDecision(v=>!v)}><FileCheck2 size={19}/>{detailDecision?"Prüfung schließen":"Prüfung starten"}<ChevronRight size={19}/></button>
+   {detailDecision&&<form className="ffm-studio-form ffm-simple-review-form" onSubmit={submitExisting}>
     <div className="ffm-studio-form-pair">
      <Field label="Betriebsstatus"><select name="activity_status"><option value="operating">In Betrieb</option><option value="temporarily_closed">Vorübergehend geschlossen</option><option value="permanently_closed">Dauerhaft geschlossen</option><option value="unknown">Unklar</option></select></Field>
      <Field label="Prüfweg"><select name="verification_method"><option value="betreiber_webseite">Offizielle Betreiberseite</option><option value="betreiber_kontakt">Betreiberkontakt</option><option value="behoerde">Behörde</option></select></Field>
@@ -215,36 +217,37 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
     <Field label="Unabhängiger Quellenlink (HTTPS)"><input name="verification_source" type="url" required placeholder="https://..." defaultValue={selectedDue.verification_source||''}/></Field>
     <Field label="Prüfprotokoll" hint="Mindestens 25 Zeichen · Wer hat was und wann geprüft?"><textarea name="verification_note" required minLength={25} maxLength={2000} rows={3} defaultValue={selectedDue.verification_note||''}/></Field>
     <div className="ffm-studio-checks"><label><input type="checkbox" name="confirms_existence" required/> Existenz geprüft</label><label><input type="checkbox" name="confirms_address" required/> Standort geprüft</label><label><input type="checkbox" name="confirms_status" required/> Betriebsstatus geprüft</label></div>
-    <div className="ffm-studio-form-pair"><Field label="Redaktionelle Priorität"><input type="number" name="editorial_rank" min={0} max={100} defaultValue={0}/></Field><Field label="Bestätigte Öffnungszeiten"><input name="opening_hours_text" placeholder="Optional"/></Field></div>
+    <details className="ffm-simple-more-fields"><summary><Plus size={17}/> Weitere Angaben</summary><div className="ffm-studio-form-pair"><Field label="Redaktionelle Priorität"><input type="number" name="editorial_rank" min={0} max={100} defaultValue={0}/></Field><Field label="Bestätigte Öffnungszeiten"><input name="opening_hours_text" placeholder="Optional"/></Field></div></details>
     <button className="ffm-studio-primary" disabled={busy}><FileCheck2 size={18}/> Prüfung speichern <ArrowRight size={18}/></button>
-   </form>
+   </form>}
   </div>
  ):selected?(
   <div key={selected.osm_id} className="ffm-studio-detail">
-   <div className="ffm-studio-detail-top"><Caption>QUELLENAKTE · {selected.osm_id.toUpperCase()}</Caption><span className="ffm-studio-pill warn">Ungeprüft</span></div>
+   <div className="ffm-studio-detail-top"><Caption>ORTSDATEN</Caption><span className="ffm-studio-pill warn">Ungeprüft</span></div>
    <div className="ffm-studio-detail-name"><h2>{selected.name}</h2><div className="ffm-studio-location-mark"><MapPin size={20}/></div></div>
    <p className="ffm-studio-muted">{selected.category} · {selected.address||'Noch keine Adresse hinterlegt'}</p>
-   <div className="ffm-studio-geo-line"><span><MapPin size={14}/> {Number(selected.latitude).toFixed(4)}° N, {Number(selected.longitude).toFixed(4)}° O</span><span><Clock3 size={14}/> OSM {selected.last_osm_check||'Datum unbekannt'}</span></div>
-   <div className="ffm-studio-source-strip"><span className="ffm-studio-source-dot"/> <div><strong>Quellenlage prüfen</strong><small>OpenStreetMap ist ein Hinweis, kein Nachweis für laufenden Betrieb.</small></div></div>
-   <div className="ffm-studio-linkline"><a href={safeLink(selected.osm_url)||'#'} target="_blank" rel="noreferrer">OSM ansehen <ExternalLink size={14}/></a>{safeLink(selected.website)&&<a href={safeLink(selected.website)!} target="_blank" rel="noreferrer">Betreiberseite <ExternalLink size={14}/></a>}</div>
-   <form className="ffm-studio-form" onSubmit={submitCandidate}>
-    <div className="ffm-studio-formheading"><Caption>01 / ORIGINALQUELLE</Caption><h3>Beleg statt Behauptung.</h3></div>
+   <details className="ffm-simple-geo"><summary>Weitere Ortsdaten <ChevronRight size={15}/></summary><div className="ffm-studio-geo-line"><span><MapPin size={14}/> {Number(selected.latitude).toFixed(4)}° N, {Number(selected.longitude).toFixed(4)}° O</span><span><Clock3 size={14}/> OSM {selected.last_osm_check||'Datum unbekannt'}</span></div></details>
+   <div className="ffm-studio-source-strip"><ShieldAlert size={17}/><span>Betrieb noch nicht bestätigt.</span></div>
+   <div className="ffm-studio-linkline">{safeLink(selected.osm_url)&&<a href={safeLink(selected.osm_url)!} target="_blank" rel="noopener noreferrer">OSM <ExternalLink size={14}/></a>}{safeLink(selected.website)&&<a href={safeLink(selected.website)!} target="_blank" rel="noopener noreferrer">Webseite <ExternalLink size={14}/></a>}</div>
+   <button type="button" className="ffm-simple-start" aria-expanded={detailDecision} onClick={()=>setDetailDecision(v=>!v)}><FileCheck2 size={19}/>{detailDecision?"Prüfung schließen":"Prüfung starten"}<ChevronRight size={19}/></button>
+   {detailDecision&&<form className="ffm-studio-form ffm-simple-review-form" onSubmit={submitCandidate}>
+    <div className="ffm-studio-formheading"><h3>Quelle bestätigen</h3></div>
     <Field label="Unabhängiger Quellenlink (HTTPS)"><input name="verification_source" type="url" required placeholder="https://offizielle-betreiberseite.de" defaultValue={safeLink(selected.website)?.startsWith('https://')?selected.website||'':''}/></Field>
     <Field label="Wie wurde geprüft?"><select name="verification_method"><option value="betreiber_webseite">Offizielle Betreiberseite</option><option value="betreiber_kontakt">Betreiber persönlich kontaktiert</option><option value="behoerde">Amtliche Quelle</option></select></Field>
     <Field label="Prüfnotiz" hint="Mindestens 25 Zeichen. Beschreibe die aktuelle Quelle und das Datum."><textarea name="verification_note" minLength={25} maxLength={2000} rows={3} required placeholder="Quelle und Datum der Bestätigung, geprüfter Standort, aktueller Betrieb ..."/></Field>
-    <div className="ffm-studio-formheading"><Caption>02 / DREI KONTROLLEN</Caption><h3>Dreimal sicher.</h3></div>
+    <div className="ffm-studio-formheading"><h3>3 Kontrollen</h3></div>
     <div className="ffm-studio-checks"><label><input type="checkbox" name="confirms_existence" required/> Existenz unabhängig bestätigt</label><label><input type="checkbox" name="confirms_address" required/> Identität und Adresse verglichen</label><label><input type="checkbox" name="confirms_operation" required/> Aktuellen Betrieb nachgewiesen</label></div>
-    <div className="ffm-studio-form-pair">
+    <details className="ffm-simple-more-fields"><summary><Plus size={17}/> Weitere Angaben</summary><div className="ffm-studio-form-pair">
      <Field label="Redaktionelle Priorität"><input type="number" name="editorial_rank" min={0} max={100} defaultValue={0}/></Field>
      <Field label="Geprüfte reguläre Öffnungszeiten"><input name="opening_hours_text" maxLength={300} placeholder="Optional"/></Field>
-    </div>
-    <p className="ffm-studio-safety"><CircleHelp size={15}/> Freigabe bestätigt nicht, dass ein Ort genau jetzt geöffnet ist.</p>
+    </div></details>
+    
     <button type="submit" disabled={busy} className="ffm-studio-primary"><CheckCheck size={18}/>{busy?'Wird gespeichert …':'Mit Beleg freigeben'}<ArrowRight size={18}/></button>
-   </form>
-   <div className="ffm-studio-decision"><Caption>NICHT FREIGEBEN?</Caption>
+   </form>}
+   <details className="ffm-studio-decision ffm-simple-danger"><summary><Flag size={15}/> Rückfrage oder ausblenden <ChevronRight size={16}/></summary>
     <Field label="Grund für Rückfrage oder Ausblendung"><textarea value={reason} onChange={e=>setReason(e.target.value)} minLength={10} rows={2} placeholder="Mindestens 10 Zeichen"/></Field>
     <div className="ffm-studio-decision-row"><button disabled={busy} type="button" className="ffm-studio-secondary" onClick={()=>void handleDecision('needs_review')}><Flag size={16}/> Rückfrage</button><button disabled={busy} type="button" className="ffm-studio-quiet-danger" onClick={()=>void handleDecision('hide')}><EyeOff size={16}/> Ausblenden</button></div>
-   </div>
+   </details>
   </div>
  ):<div className="ffm-studio-no-selection"><div className="ffm-studio-orbit"><Compass size={40}/><span/></div><Caption>DIE STADT WARTET</Caption><h3>Wähle einen Ort.</h3><p>Links eine Adresse öffnen, Quelle prüfen und eine sichere Entscheidung treffen.</p></div>;
 
@@ -254,14 +257,14 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
     <div className="ffm-studio-brand"><Mark/><div><strong>ffm<span>.</span>aktuell</strong><small>STADTSTUDIO / REDAKTION</small></div></div>
     <button className="ffm-studio-closemenu" onClick={()=>setMobileMenu(false)} aria-label="Menü schließen"><X size={20}/></button>
    </div>
-   <div className="ffm-studio-rail-caption">DEIN KONTROLLRAUM <span>01 — 04</span></div>
+   
    <nav className="ffm-studio-rail-nav" aria-label="Redaktionsbereiche">
     {NAV.map(n=><button type="button" key={n.view} className={view===n.view?'active':''} aria-current={view===n.view?'page':undefined} onClick={()=>navigate(n.view)}>
      <n.icon size={19} strokeWidth={1.8}/><span>{n.label}</span><small>{n.index}</small></button>)}
    </nav>
    <div className="ffm-studio-rail-bottom">
-    <div className="ffm-studio-rail-art"><Skyline/><span>50° 06′ N · 8° 40′ O</span></div>
-    <div className="ffm-studio-rail-note"><span className="ffm-studio-status-dot"/> <div><strong>Redaktion am Puls</strong><small>Keine automatische Freigabe.</small></div></div>
+    
+    
     <a href="/" className="ffm-studio-back">Zur Stadtansicht <ArrowUpRight size={15}/></a>
    </div>
   </aside>
@@ -269,8 +272,8 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
   <div className="ffm-studio-work">
    <header className="ffm-studio-top">
     <div className="ffm-studio-mobile-brand"><Mark/><span>ffm<span>.</span>stadtstudio</span></div>
-    <div className="ffm-studio-breadcrumb">FFM AKTUELL <span>/</span> STADTSTUDIO <span>/</span> {NAV.find(n=>n.view===view)?.label.toUpperCase()}</div>
-    <div className="ffm-studio-top-end"><DateStamp/><button type="button" title="Aktualisieren" aria-label="Daten aktualisieren" className="ffm-studio-refresh" onClick={refresh}><RefreshCw size={18}/></button><span className="ffm-studio-avatar">R</span></div>
+    <div className="ffm-studio-breadcrumb"><strong>FFM</strong> <span>/</span> {NAV.find(n=>n.view===view)?.label}</div>
+    <div className="ffm-studio-top-end"><button type="button" title="Aktualisieren" aria-label="Daten aktualisieren" className="ffm-studio-refresh" onClick={refresh}><RefreshCw size={18}/></button><span className="ffm-studio-avatar">R</span></div>
     <button type="button" className="ffm-studio-menubutton" aria-label="Menü öffnen" aria-expanded={mobileMenu} onClick={()=>setMobileMenu(v=>!v)}><Menu size={23}/></button>
    </header>
    <div className="ffm-studio-mobile-tabs">{NAV.map(n=><button type="button" key={n.view} onClick={()=>navigate(n.view)} aria-current={view===n.view?'page':undefined} className={view===n.view?'active':''}><n.icon size={17}/>{n.small}</button>)}</div>
@@ -279,46 +282,59 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
     {notice&&<div role={notice.kind==='error'?'alert':'status'} className={'ffm-studio-notice '+notice.kind}><span>{notice.kind==='success'?<Check size={18}/>:<ShieldAlert size={18}/>}</span>{notice.text}<button type="button" onClick={()=>setNotice(null)} aria-label="Meldung schließen"><X size={16}/></button></div>}
 
     {view==='overview'&&<>
-     <section className="ffm-studio-hero">
-      <div className="ffm-studio-hero-text"><Caption>FRANKFURT · DEIN REDAKTIONSRAUM</Caption><h1>Die Stadt.<br/><em>Dein Blick.</em></h1><p>Jeder geprüfte Ort macht Frankfurt ein Stück echter. Hier beginnt die Arbeit hinter den Entdeckungen.</p><button type="button" onClick={()=>navigate('review')}>Jetzt Orte prüfen <ArrowUpRight size={19}/></button></div>
-      <div className="ffm-studio-hero-scene"><div className="ffm-studio-sun"/><Skyline large/><div className="ffm-studio-route" aria-hidden="true"><span/><span/><span/></div><span className="ffm-studio-scene-tag">FFM / 001 <span>DIE REDAKTION DER STADT</span></span></div>
-      <span className="ffm-studio-hero-index">01 / DAS STADTPULT</span>
-     </section>
-     <div className="ffm-studio-section-title"><div><Caption>REDAKTION IN ZAHLEN</Caption><h2>Was die Stadt bewegt<span>.</span></h2></div><span>Stand: jetzt · keine Live Öffnungsdaten</span></div>
-     <div className="ffm-studio-kpis">
-      <button type="button" onClick={()=>{setReviewMode('unverified');navigate('review')}} className="ffm-studio-kpi highlighted"><span><Compass size={19}/> OFFENE ORTE</span><strong>{loading?'···':fmt(stats?.kandidaten)}</strong><small>Warten auf Quellenprüfung <ArrowUpRight size={16}/></small><span className="ffm-studio-kpi-arc" aria-hidden="true"/></button>
-      <button type="button" onClick={()=>{setReviewMode('needs_review');navigate('review')}} className="ffm-studio-kpi"><span><Flag size={19}/> RÜCKFRAGEN</span><strong>{loading?'···':fmt(stats?.rueckfragen)}</strong><small>Weitere Angaben benötigt <ArrowUpRight size={16}/></small></button>
-      <button type="button" onClick={()=>{setReviewMode('existing');navigate('review')}} className="ffm-studio-kpi"><span><Clock3 size={19}/> ERNEUT PRÜFEN</span><strong>{loading?'···':fmt(stats?.offen_zur_pruefung)}</strong><small>Bestehende Orte kontrollieren <ArrowUpRight size={16}/></small></button>
-      <button type="button" onClick={()=>navigate('moderation')} className="ffm-studio-kpi"><span><ShieldCheck size={19}/> FREIGABEN</span><strong>{loading?'···':fmt(currentCount)}</strong><small>Vorgänge in der Moderation <ArrowUpRight size={16}/></small></button>
-     </div>
-     <div className="ffm-studio-home-columns">
-      <CityPanel className="ffm-studio-next">
-       <div className="ffm-studio-panel-heading"><div><Caption>ALS NÄCHSTES</Caption><h2>Auf dem Prüfstand.</h2></div><button type="button" onClick={()=>navigate('review')}>Alle ansehen <ArrowUpRight size={17}/></button></div>
-       {loadingList?<div className="ffm-studio-loading">Einträge laden …</div>:candidates.length?candidates.slice(0,4).map((item,i)=><button type="button" onClick={()=>{setReviewMode('unverified');navigate('review');openCandidate(item)}} className="ffm-studio-next-row" key={item.osm_id}><span>{String(i+1).padStart(2,'0')}</span><div><strong>{item.name}</strong><small>{item.category} · {item.address||'Frankfurt'}</small></div><ArrowUpRight size={17}/></button>):<div className="ffm-studio-blank"><CheckCheck size={21}/> Keine offenen Kandidaten in dieser Auswahl.</div>}
-      </CityPanel>
-      <CityPanel className="ffm-studio-manifesto"><div className="ffm-studio-manifesto-decoration"><Sparkles size={18}/> DAS FFM PRINZIP</div><h2>Echte Stadt.<br/><em>Echte Quellen.</em></h2><p>Keine erfundenen Bewertungen. Keine ungeprüften Öffnungszeiten. Kein „jetzt offen“ ohne aktuellen Nachweis.</p><div><span>01 BELEGEN</span><span>02 ABGLEICHEN</span><span>03 FREIGEBEN</span></div></CityPanel>
-     </div>
-     <div className="ffm-studio-home-bottom"><span><span className="ffm-studio-status-dot"/> {fmt(stats?.aktuell_geprueft)} Orte in den letzten 30 Tagen geprüft</span><span>{fmt(stats?.apotheken)} OSM Apotheken · Notdienst ungeprüft</span></div>
-    </>}
+ <section className="ffm-simple-intro" aria-labelledby="ffm-simple-today">
+  <div><span className="ffm-simple-kicker"><span className="ffm-studio-status-dot"/> FFM REDAKTION</span><h1 id="ffm-simple-today">Was steht <em>an?</em></h1></div>
+  <span className="ffm-simple-todaydate">{today()}</span>
+ </section>
+ <section className="ffm-simple-actions" aria-label="Womit möchtest du beginnen?">
+  <button type="button" className="ffm-simple-action mint" onClick={()=>{setReviewMode('unverified');navigate('review')}}>
+   <span className="ffm-simple-action-icon"><MapPin size={29}/></span>
+   <strong>Orte prüfen</strong><span className="ffm-simple-action-count">{loading?'…':fmt(stats?.kandidaten)}</span>
+   <ChevronRight size={21} className="ffm-simple-action-arrow"/>
+  </button>
+  <button type="button" className="ffm-simple-action peach" onClick={()=>navigate('moderation')}>
+   <span className="ffm-simple-action-icon"><ShieldCheck size={29}/></span>
+   <strong>Freigaben</strong><span className="ffm-simple-action-count">{loading?'…':fmt(currentCount)}</span>
+   <ChevronRight size={21} className="ffm-simple-action-arrow"/>
+  </button>
+  <button type="button" className="ffm-simple-action blue" onClick={()=>navigate('publish')}>
+   <span className="ffm-simple-action-icon"><Plus size={31}/></span>
+   <strong>Neu erstellen</strong><span className="ffm-simple-action-caption">Ort, Beitrag, Event</span>
+   <ChevronRight size={21} className="ffm-simple-action-arrow"/>
+  </button>
+ </section>
+ <div className="ffm-simple-stats">
+  <button onClick={()=>{setReviewMode('needs_review');navigate('review')}}><Flag size={16}/><strong>{fmt(stats?.rueckfragen)}</strong><span>Rückfragen</span><ChevronRight size={16}/></button>
+  <button onClick={()=>{setReviewMode('existing');navigate('review')}}><Clock3 size={16}/><strong>{fmt(stats?.offen_zur_pruefung)}</strong><span>Erneut prüfen</span><ChevronRight size={16}/></button>
+  <span><CheckCheck size={16}/><strong>{fmt(stats?.aktuell_geprueft)}</strong><span>Frisch geprüft</span></span>
+ </div>
+ <section className="ffm-simple-next" aria-labelledby="ffm-simple-next-title">
+  <div className="ffm-simple-next-head"><h2 id="ffm-simple-next-title">Nächste Orte</h2><button onClick={()=>navigate('review')}>Alle <ArrowRight size={17}/></button></div>
+  {loadingList?<p role="status" className="ffm-studio-loading">Wird geladen …</p>:
+   candidates.length?candidates.slice(0,3).map(item=><button type="button" key={item.osm_id} className="ffm-simple-next-item" onClick={()=>{setReviewMode('unverified');navigate('review');openCandidate(item)}}>
+    <span className="ffm-simple-next-pin"><MapPin size={18}/></span><span><strong>{item.name}</strong><small>{item.category}</small></span><ChevronRight size={18}/>
+   </button>):<p className="ffm-studio-blank">Keine offenen Orte.</p>}
+ </section>
+ </>}
 
-    {view==='review'&&<>
-     <div className="ffm-studio-page-heading"><div><Caption>02 / QUELLEN. STATT. VERMUTUNGEN.</Caption><h1>Orte unter der <em>Lupe.</em></h1><p>Hinweise durchsehen, Originalquellen abgleichen, dann sicher freigeben.</p></div><div className="ffm-studio-heading-illustration"><Compass size={48}/><span/></div></div>
+ {view==='review'&&<>
+     <div className="ffm-studio-page-heading"><div><h1>Orte prüfen<span>.</span></h1></div></div>
      <div className="ffm-studio-review-tabs" role="tablist" aria-label="Prüfbereiche">
       {[{id:'unverified',label:'Noch ungeprüft',count:stats?.kandidaten},{id:'needs_review',label:'Rückfragen',count:stats?.rueckfragen},{id:'existing',label:'Erneut prüfen',count:stats?.offen_zur_pruefung}].map(r=><button key={r.id} type="button" role="tab" aria-selected={reviewMode===r.id} className={reviewMode===r.id?'active':''} onClick={()=>{setReviewMode(r.id as ReviewMode);setPage(0);setDrawer(false);setSelectedDue(null)}}>{r.label}<span>{fmt(r.count)}</span></button>)}
      </div>
      <div className="ffm-studio-review-layout">
       <CityPanel className="ffm-studio-queue-panel">
-       <div className="ffm-studio-queue-top"><Caption>{reviewMode==='existing'?'BESTAND':'QUELLEN EINGANG'}</Caption><span>{reviewMode==='existing'?fmt(due.length):fmt(total)} EINTRÄGE</span></div>
+       <div className="ffm-studio-queue-top"><strong>{reviewMode==='existing'?"Erneut prüfen":"Orte"}</strong><span>{reviewMode==='existing'?fmt(due.length):fmt(total)}</span></div>
        {reviewMode!=='existing'&&<>
         <div className="ffm-studio-filterrow"><div className="ffm-studio-search"><Search size={18}/><input aria-label="Orte suchen" placeholder="Name oder Adresse suchen" value={search} onChange={e=>setSearch(e.target.value)}/>{search&&<button type="button" onClick={()=>setSearch('')} aria-label="Suche leeren"><X size={15}/></button>}</div>
         <label className="ffm-studio-categoryfilter"><Filter size={17}/><select aria-label="Kategorie" value={category} onChange={e=>{setCategory(e.target.value);setPage(0)}}><option value="">Alle Kategorien</option>{KATEGORIEN.filter(c=>c.id!=='Alle').map(c=><option value={c.id} key={c.id}>{c.label}</option>)}</select></label></div>
        </>}
        <div className="ffm-studio-queue-list">
         {reviewMode==='existing'?(
-         actual.length?actual.map((item,i)=><button type="button" key={item.id} className={'ffm-studio-queue-item '+(selectedDue?.id===item.id?'selected':'')} onClick={()=>openDue(item)}><span className="ffm-studio-item-index">{String(i+1).padStart(2,'0')}</span><div><strong>{item.name}</strong><small>{item.category}</small><span className="ffm-studio-inline-warn"><Clock3 size={12}/> Prüfung überfällig</span></div><ChevronRight size={18}/></button>)
+         actual.length?actual.map((item,i)=><button type="button" key={item.id} className={'ffm-studio-queue-item '+(selectedDue?.id===item.id?'selected':'')} onClick={()=>openDue(item)}><span className="ffm-studio-item-index">{String(i+1).padStart(2,'0')}</span><div><strong>{item.name}</strong><small>{item.category}</small></div><ChevronRight size={18}/></button>)
          :<div className="ffm-studio-blank"><Check size={19}/> Keine fälligen Bestandsprüfungen.</div>
         ):(
-         loadingList?<div className="ffm-studio-loading">Orte werden geladen …</div>:candidates.length?candidates.map((item,i)=><button type="button" key={item.osm_id} className={'ffm-studio-queue-item '+(selected?.osm_id===item.osm_id&&!selectedDue?'selected':'')} onClick={()=>openCandidate(item)}><span className="ffm-studio-item-index">{String(page*25+i+1).padStart(2,'0')}</span><div><strong>{item.name}</strong><small>{item.category} · {item.address||'Frankfurt am Main'}</small><span className="ffm-studio-inline-warn"><span/> Quelle noch nicht bestätigt</span></div><ChevronRight size={18}/></button>):<div className="ffm-studio-blank"><Search size={21}/> Keine passenden Einträge. Andere Suche versuchen.</div>
+         loadingList?<div className="ffm-studio-loading">Orte werden geladen …</div>:candidates.length?candidates.map((item,i)=><button type="button" key={item.osm_id} className={'ffm-studio-queue-item '+(selected?.osm_id===item.osm_id&&!selectedDue?'selected':'')} onClick={()=>openCandidate(item)}><span className="ffm-studio-item-index">{String(page*25+i+1).padStart(2,'0')}</span><div><strong>{item.name}</strong><small>{item.category} · {item.address||'Frankfurt'}</small></div><ChevronRight size={18}/></button>):<div className="ffm-studio-blank"><Search size={21}/> Keine passenden Einträge. Andere Suche versuchen.</div>
         )}
        </div>
        {reviewMode!=='existing'&&<div className="ffm-studio-pagination"><span>Seite {page+1} von {totalPages}</span><div><button type="button" disabled={page===0} onClick={()=>{setPage(p=>p-1);setDrawer(false)}} aria-label="Vorherige Seite"><ChevronLeft size={18}/></button><button type="button" disabled={page+1>=totalPages} onClick={()=>{setPage(p=>p+1);setDrawer(false)}} aria-label="Nächste Seite"><ChevronRight size={18}/></button></div></div>}
@@ -332,39 +348,44 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
     </>}
 
     {view==='moderation'&&<>
-     <div className="ffm-studio-page-heading"><div><Caption>03 / QUALITÄT VOR TEMPO</Caption><h1>Die letzte <em>Instanz.</em></h1><p>Einträge bewusst freigeben oder ablehnen. Jede Entscheidung wirkt sich auf die Stadtansicht aus.</p></div><div className="ffm-studio-heading-illustration"><ShieldCheck size={47}/></div></div>
-     <div className="ffm-studio-mod-layout"><CityPanel className="ffm-studio-mod-left"><Caption>WAS WARTET AUF DICH?</Caption><h2>{fmt(currentCount)} offene Vorgänge</h2><div className="ffm-studio-mod-menu">{queueNames.map(q=><button type="button" key={q.key} className={queueSection===q.key?'active':''} onClick={()=>setQueueSection(q.key)}><span>{q.title}</span><b>{fmt(queue[q.key]?.length)}</b><ChevronRight size={17}/></button>)}</div></CityPanel>
-     <CityPanel className="ffm-studio-mod-right"><div className="ffm-studio-panel-heading"><div><Caption>ANTRÄGE UND MELDUNGEN</Caption><h2>{queueNames.find(q=>q.key===queueSection)?.title}</h2></div><span className="ffm-studio-pill">{queue[queueSection]?.length||0} offen</span></div>
-      {queue[queueSection]?.length?queue[queueSection].map((item,i)=><article key={item.id} className="ffm-studio-mod-record"><span className="ffm-studio-item-index">{String(i+1).padStart(2,'0')}</span><div><strong>{item.name||item.title||item.body||[item.business_name,item.place_name].filter(Boolean).join(' · ')||'Eintrag'}</strong>{item.note&&<p>{item.note}</p>}<small>Vorschlag der Stadtgemeinschaft · Manuelle Freigabe</small><div className="ffm-studio-mod-actions"><button disabled={busy} type="button" className="ffm-studio-approve" onClick={()=>void moderation(queueSection,item,true)}><Check size={16}/> Freigeben</button><button disabled={busy} type="button" className="ffm-studio-quiet-danger" onClick={()=>void moderation(queueSection,item,false)}><X size={16}/> Ablehnen</button></div></div></article>):<div className="ffm-studio-mod-empty"><div><CheckCheck size={32}/></div><h3>Alles durchgesehen.</h3><p>In diesem Bereich gibt es momentan keine offenen Vorgänge. Danke fürs sorgfältige Prüfen.</p></div>}
+     <div className="ffm-studio-page-heading"><div><h1>Freigaben<span>.</span></h1></div></div>
+     <div className="ffm-studio-mod-layout"><CityPanel className="ffm-studio-mod-left"><h2>{fmt(currentCount)} offen</h2><div className="ffm-studio-mod-menu">{queueNames.map(q=><button type="button" key={q.key} className={queueSection===q.key?'active':''} onClick={()=>setQueueSection(q.key)}><span>{q.title}</span><b>{fmt(queue[q.key]?.length)}</b><ChevronRight size={17}/></button>)}</div></CityPanel>
+     <CityPanel className="ffm-studio-mod-right"><div className="ffm-studio-panel-heading"><h2>{queueNames.find(q=>q.key===queueSection)?.title}</h2></div>
+      {queue[queueSection]?.length?queue[queueSection].map((item,i)=><article key={item.id} className="ffm-studio-mod-record"><span className="ffm-studio-item-index">{String(i+1).padStart(2,'0')}</span><div><strong>{item.name||item.title||item.body||[item.business_name,item.place_name].filter(Boolean).join(' · ')||'Eintrag'}</strong>{item.note&&<p>{item.note}</p>}<div className="ffm-studio-mod-actions"><button disabled={busy} type="button" className="ffm-studio-approve" onClick={()=>void moderation(queueSection,item,true)}><Check size={16}/> Freigeben</button><button disabled={busy} type="button" className="ffm-studio-quiet-danger" onClick={()=>void moderation(queueSection,item,false)}><X size={16}/> Ablehnen</button></div></div></article>):<div className="ffm-studio-mod-empty"><div><CheckCheck size={32}/></div><h3>Alles erledigt.</h3></div>}
      </CityPanel></div>
     </>}
 
     {view==='publish'&&<>
-     <div className="ffm-studio-page-heading"><div><Caption>04 / DEIN PLATZ IN DER STADT</Caption><h1>Neues sichtbar <em>machen.</em></h1><p>Orte, Stadtgeschichten und Termine. Klar getrennt und mit einer Veröffentlichungskontrolle.</p></div><div className="ffm-studio-heading-illustration"><Plus size={45}/></div></div>
-     <div className="ffm-studio-publish-layout"><CityPanel className="ffm-studio-publish-choice"><Caption>WAS MÖCHTEST DU ERSTELLEN?</Caption><div className="ffm-studio-publish-options">
-      {[{mode:'place',title:'Einen Ort',description:'Geschäft, Café, Verein oder Treffpunkt',icon:MapPin,index:'01'},{mode:'news',title:'Eine Geschichte',description:'Neues aus Frankfurt erzählen',icon:Newspaper,index:'02'},{mode:'event',title:'Ein Ereignis',description:'Veranstaltung in den Kalender bringen',icon:CalendarDays,index:'03'}].map(o=><button type="button" key={o.mode} className={publishMode===o.mode?'active':''} onClick={()=>{setPublishMode(o.mode as PublishMode);setNotice(null)}}><o.icon size={21}/><div><strong>{o.title}</strong><small>{o.description}</small></div><span>{o.index}</span></button>)}
-      </div><div className="ffm-studio-publish-quote"><Sparkles size={22}/><p>Große Städte leben von den kleinen Entdeckungen.</p></div></CityPanel>
-     <CityPanel className="ffm-studio-publish-form-panel"><Caption>{publishMode==='place'?'NEUER ORT':publishMode==='news'?'NEUE STADTGESCHICHTE':'NEUE VERANSTALTUNG'}</Caption><h2>{publishMode==='place'?'Eine neue Adresse.':publishMode==='news'?'Was gibt’s Neues?':'Die Stadt hat was vor.'}</h2><p>Die Angaben werden nach deiner Bestätigung direkt veröffentlicht.</p>
+     <div className="ffm-studio-page-heading"><div><h1>Erstellen<span>.</span></h1></div></div>
+     <div className="ffm-studio-publish-layout"><CityPanel className="ffm-studio-publish-choice"><div className="ffm-studio-publish-options">
+      {[{mode:'place',title:'Ort',icon:MapPin,index:'01'},{mode:'news',title:'Beitrag',icon:Newspaper,index:'02'},{mode:'event',title:'Event',icon:CalendarDays,index:'03'}].map(o=><button type="button" key={o.mode} className={publishMode===o.mode?'active':''} onClick={()=>{setPublishMode(o.mode as PublishMode);setNotice(null)}}><o.icon size={26}/><strong>{o.title}</strong></button>)}
+      </div></CityPanel>
+     <CityPanel className="ffm-studio-publish-form-panel"><h2>{publishMode==='place'?"Neuer Ort":publishMode==='news'?"Neuer Beitrag":"Neues Event"}</h2>
       <form key={publishMode+'-'+newPlaceId} className="ffm-studio-form" onSubmit={publish}>
        {publishMode==='place'?<>
         <Field label="Name des Orts"><input name="name" required maxLength={150} placeholder="Zum Beispiel: Stadtteilcafé ..."/></Field>
-        <div className="ffm-studio-form-pair"><Field label="Kategorie"><select name="category">{KATEGORIEN.filter(c=>c.id!=='Alle').map(c=><option key={c.id} value={c.id}>{c.label}</option>)}</select></Field><Field label="Stadtteil"><input name="district" maxLength={100} placeholder="z. B. Bornheim"/></Field></div>
+        <Field label="Kategorie"><select name="category">{KATEGORIEN.filter(c=>c.id!=='Alle').map(c=><option key={c.id} value={c.id}>{c.label}</option>)}</select></Field>
         <Field label="Adresse"><input name="address" maxLength={200} placeholder="Straße und Hausnummer"/></Field>
+        <details className="ffm-simple-more-fields"><summary><Plus size={17}/> Weitere Angaben</summary><div className="ffm-simple-more-content">
+        <Field label="Stadtteil"><input name="district" maxLength={100} placeholder="z. B. Bornheim"/></Field>
         <Field label="Kurzbeschreibung"><textarea name="description_de" rows={3} maxLength={2000} placeholder="Was macht diesen Ort besonders?"/></Field>
         <div className="ffm-studio-form-pair"><Field label="Breitengrad"><input type="number" step="any" name="latitude" placeholder="50.1109"/></Field><Field label="Längengrad"><input type="number" step="any" name="longitude" placeholder="8.6821"/></Field></div>
         <div className="ffm-studio-form-pair"><Field label="Offizielle Internetseite"><input type="url" name="website" placeholder="https://..."/></Field><Field label="Quellenlink"><input type="url" name="source_url" placeholder="https://..."/></Field></div>
+        </div></details>
        </>:publishMode==='news'?<>
         <Field label="Titel"><input name="title" required maxLength={150} placeholder="Was ist passiert?"/></Field>
         <Field label="Dein Stadtbeitrag"><textarea name="body_de" rows={7} maxLength={10000} placeholder="Erzähle deine Geschichte aus Frankfurt ..."/></Field>
-        <Field label="Quelle"><input type="url" name="source_url" placeholder="https://..."/></Field>
+        <details className="ffm-simple-more-fields"><summary><Plus size={17}/> Quellenlink ergänzen</summary><div className="ffm-simple-more-content"><Field label="Quelle"><input type="url" name="source_url" placeholder="https://..."/></Field></div></details>
        </>:<>
         <Field label="Titel der Veranstaltung"><input name="title" required maxLength={150} placeholder="Name der Veranstaltung"/></Field>
         <Field label="Veranstaltungsort"><input name="venue" required maxLength={150} placeholder="Wo findet es statt?"/></Field>
         <Field label="Datum und Uhrzeit"><input name="starts_at" type="datetime-local" required/></Field>
+        <details className="ffm-simple-more-fields"><summary><Plus size={17}/> Beschreibung & Link</summary><div className="ffm-simple-more-content">
         <Field label="Beschreibung"><textarea name="description_de" rows={4} maxLength={3000} placeholder="Für wen ist dieses Event und was erwartet die Gäste?"/></Field>
         <Field label="Ticket oder Infoseite"><input type="url" name="ticket_url" placeholder="https://..."/></Field>
+        </div></details>
        </>}
-       <div className="ffm-studio-publish-confirm"><ShieldCheck size={20}/><span>Prüfe deine Angaben vor dem Veröffentlichen. Bei Ortsdaten bedeutet ein neuer Eintrag nicht automatisch „geprüft“ oder „jetzt geöffnet“.</span></div>
+       <div className="ffm-studio-publish-confirm"><ShieldCheck size={18}/><span>Direkt öffentlich. Angaben vorher prüfen.</span></div>
        <button className="ffm-studio-primary" disabled={busy}>{busy?'Wird veröffentlicht …':'Jetzt veröffentlichen'} <ArrowRight size={18}/></button>
       </form>
      </CityPanel></div>
