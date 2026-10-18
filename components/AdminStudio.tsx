@@ -16,10 +16,10 @@ type Stats={kandidaten:number;rueckfragen:number;ausgeblendet:number;apotheken:n
 type Due={id:string;name:string;category:string;verified_at:string|null;verification_source?:string|null;verification_note?:string|null};
 type Place={id:string;name:string;category:string;address?:string;verification_status:string;activity_status:string};
 type QueueItem={id:string;name?:string;title?:string;body?:string;business_name?:string;place_name?:string;note?:string;rating?:number;review_id?:string};
-type Queue=Record<'businesses'|'claims'|'places'|'deals'|'posts'|'reports'|'reviews'|'reviewReports',QueueItem[]>;
+type Queue=Record<'businesses'|'claims'|'places'|'deals'|'posts'|'reports'|'reviews'|'reviewReports'|'comments',QueueItem[]>;
 type Notice={kind:'success'|'error';text:string};
 type IconComponent=typeof LayoutDashboard;
-const emptyQueue:Queue={businesses:[],claims:[],places:[],deals:[],posts:[],reports:[],reviews:[],reviewReports:[]};
+const emptyQueue:Queue={businesses:[],claims:[],places:[],deals:[],posts:[],reports:[],reviews:[],reviewReports:[],comments:[]};
 const NAV:{view:View;label:string;small:string;icon:IconComponent;index:string}[]=[
  {view:'overview',label:'Heute',small:'Heute',icon:LayoutDashboard,index:'01'},
  {view:'review',label:'Orte prüfen',small:'Prüfen',icon:MapPinned,index:'02'},
@@ -34,7 +34,8 @@ const queueNames:{key:keyof Queue;title:string;singular:string}[]=[
  {key:'posts',title:'Beiträge',singular:'post'},
  {key:'reports',title:'Ortsmeldungen',singular:'report'},
  {key:'reviews',title:'Bewertungen',singular:'review'},
- {key:'reviewReports',title:'Gemeldete Bewertungen',singular:'reviewReport'}
+ {key:'reviewReports',title:'Gemeldete Bewertungen',singular:'reviewReport'},
+ {key:'comments',title:'Kommentare',singular:'comment'}
 ];
 const fmt=(value:number|undefined)=>new Intl.NumberFormat('de-DE').format(value||0);
 const safeLink=(value:string|null|undefined)=>{try{const u=new URL(value||'');return ['http:','https:'].includes(u.protocol)?u.toString():null}catch{return null}};

@@ -21,6 +21,13 @@ This is an implementation ledger, **not** a claim of complete product delivery. 
 - **Still open:** end-to-end browser interaction and moderate/reject tests on STRATO after deploy
 - No arbitrary image URLs or public upload until storage, content scanning, rights/takedown process and retention are approved
 
+## Phase 2b: Community interaction (this PR)
+- Real published posts can be liked/unliked once per signed-in account; persistent visible counts
+- Comments require sign-in and editorial approval before public display or counting
+- No writes or social engagement controls on any imaginary demo profile or post
+- Minimal inline like/reply controls keep the public page easy to navigate
+- Real API + disposable PostgreSQL tests cover moderation and user-scoped likes
+
 ## Phase 2: User community, ratings, real media
 - Moderated photos/video upload with object storage and ownership / license checks, copyright consent, takedown workflow
 - Star reviews, brief tips, public replies, reporting, filtering, abuse control; verified visit proof rules require explicit approval

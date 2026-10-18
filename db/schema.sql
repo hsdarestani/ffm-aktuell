@@ -107,6 +107,27 @@ CREATE TABLE IF NOT EXISTS posts (
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS candidate_osm_id text REFERENCES discovery_candidates(osm_id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS posts_candidate_idx ON posts(candidate_osm_id) WHERE candidate_osm_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS posts_status_time_idx ON posts(status,created_at DESC);
+-- Likes and moderated replies belong only to actual published user posts.
+-- Demo posts are frontend-only and can never be liked or replied to.
+CREATE TABLE IF NOT EXISTS post_likes (
+ user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ post_id uuid NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(user_id,post_id)
+);
+CREATE INDEX IF NOT EXISTS post_likes_post_idx ON post_likes(post_id);
+CREATE TABLE IF NOT EXISTS post_comments (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ post_id uuid NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+ user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ body text NOT NULL CHECK(char_length(body) BETWEEN 3 AND 800),
+ status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','published','rejected')),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ reviewed_by uuid REFERENCES users(id) ON DELETE SET NULL,
+ reviewed_at timestamptz
+);
+CREATE INDEX IF NOT EXISTS post_comments_post_idx ON post_comments(post_id,created_at DESC) WHERE status='published';
+CREATE INDEX IF NOT EXISTS post_comments_review_idx ON post_comments(status,created_at);
 CREATE TABLE IF NOT EXISTS favorites (
  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  place_id uuid NOT NULL REFERENCES places(id) ON DELETE CASCADE, created_at timestamptz NOT NULL DEFAULT now(),

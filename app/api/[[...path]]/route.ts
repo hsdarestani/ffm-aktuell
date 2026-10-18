@@ -171,7 +171,17 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     ]);
     return ok({summary:summary.rows[0],items:items.rows});
   }
-  if(method==='GET'&&path==='posts'){const r=await query("SELECT p.id,p.body,p.media_url,p.created_at,u.display_name,COALESCE(pl.name,dc.name) AS place_name FROM posts p JOIN users u ON u.id=p.user_id LEFT JOIN places pl ON pl.id=p.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=p.candidate_osm_id WHERE p.status='published' ORDER BY p.created_at DESC LIMIT 40");return ok({items:r.rows});}
+  if(method==='GET'&&path==='posts'){
+    const r=await query("SELECT p.id,p.body,p.media_url,p.created_at,LEFT(u.display_name,1) AS display_name,COALESCE(pl.name,dc.name) AS place_name,(SELECT count(*)::int FROM post_likes l WHERE l.post_id=p.id) AS likes_count,(SELECT count(*)::int FROM post_comments c WHERE c.post_id=p.id AND c.status='published') AS comments_count,EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id=p.id AND l.user_id=$1) AS liked FROM posts p JOIN users u ON u.id=p.user_id LEFT JOIN places pl ON pl.id=p.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=p.candidate_osm_id WHERE p.status='published' ORDER BY p.created_at DESC LIMIT 40",[user?.id||null]);
+    return ok({items:r.rows});
+  }
+  if(method==='GET'&&path==='comments'){
+    const postId=qs.get('post_id')||'';if(!id.safeParse(postId).success)return bad('Invalid post ID');
+    const post=await query("SELECT id FROM posts WHERE id=$1 AND status='published'",[postId]);
+    if(!post.rowCount)return bad('Post not found',404);
+    const r=await query("SELECT c.id,c.body,c.created_at,LEFT(u.display_name,1) AS display_name FROM post_comments c JOIN users u ON u.id=c.user_id WHERE c.post_id=$1 AND c.status='published' ORDER BY c.created_at ASC LIMIT 60",[postId]);
+    return ok({items:r.rows});
+  }
   if(method==='GET'&&path==='deals'){const r=await query("SELECT d.id,d.title,d.details,d.valid_until,b.name AS business_name,p.name AS place_name FROM deals d JOIN businesses b ON b.id=d.business_id LEFT JOIN places p ON p.id=d.place_id WHERE d.status='published' AND (d.valid_until IS NULL OR d.valid_until>now()) ORDER BY d.created_at DESC LIMIT 40");return ok({items:r.rows});}
   if(method==='GET'&&path==='location'){
     const place_id=trim(qs.get('id'));
@@ -254,6 +264,25 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       [b.review_id,u.id,b.reason,b.message]);
     if(!r.rowCount)return bad('Already reported',409);
     await audit(u,'review:reported','venue_review',b.review_id);
+    return ok({id:r.rows[0].id,status:'pending'},201);
+  }
+  if(method==='POST'&&path==='post-likes'){
+    rate(req,'post-like');const u=need(user);
+    const b=parse(z.object({post_id:id,active:z.boolean()}),await payload(req));
+    const visible=await query("SELECT id FROM posts WHERE id=$1 AND status='published'",[b.post_id]);
+    if(!visible.rowCount)return bad('Post not found',404);
+    if(b.active)await query("INSERT INTO post_likes(user_id,post_id) VALUES($1,$2) ON CONFLICT DO NOTHING",[u.id,b.post_id]);
+    else await query("DELETE FROM post_likes WHERE user_id=$1 AND post_id=$2",[u.id,b.post_id]);
+    const count=await query("SELECT count(*)::int AS count FROM post_likes WHERE post_id=$1",[b.post_id]);
+    return ok({success:true,liked:b.active,count:count.rows[0].count});
+  }
+  if(method==='POST'&&path==='comments'){
+    rate(req,'post-comment');const u=need(user);
+    const b=parse(z.object({post_id:id,body:z.string().trim().min(3).max(800)}),await payload(req));
+    const visible=await query("SELECT id FROM posts WHERE id=$1 AND status='published'",[b.post_id]);
+    if(!visible.rowCount)return bad('Post not found',404);
+    const r=await query("INSERT INTO post_comments(post_id,user_id,body) VALUES($1,$2,$3) RETURNING id,status",[b.post_id,u.id,b.body]);
+    await audit(u,'comment:submitted','post_comment',r.rows[0].id);
     return ok({id:r.rows[0].id,status:'pending'},201);
   }
   if(method==='POST'&&path==='posts'){
@@ -362,7 +391,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     }catch(e){await tx.query('ROLLBACK');throw e}finally{tx.release()}
   }
   if(method==='GET'&&path==='admin/queue'){
-    admin(user);const [b,c,p,d,posts,reports,reviews,reviewReports]=await Promise.all([
+    admin(user);const [b,c,p,d,posts,reports,reviews,reviewReports,comments]=await Promise.all([
       query("SELECT id,name,status,created_at FROM businesses WHERE status='pending' ORDER BY created_at"),
       query("SELECT c.id,c.status,c.note,b.name AS business_name,p.name AS place_name FROM claims c JOIN businesses b ON b.id=c.business_id JOIN places p ON p.id=c.place_id WHERE c.status='pending'"),
       query("SELECT id,name,category FROM places WHERE status='pending'"),
@@ -370,8 +399,9 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       query("SELECT id,body FROM posts WHERE status='pending'"),
       query("SELECT r.id,r.reason,r.message AS note,COALESCE(p.name,dc.name) AS place_name FROM place_reports r LEFT JOIN places p ON p.id=r.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=r.osm_id WHERE r.status='pending' ORDER BY r.created_at LIMIT 60"),
       query("SELECT r.id,r.rating,r.body,COALESCE(p.name,dc.name) AS place_name FROM venue_reviews r LEFT JOIN places p ON p.id=r.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=r.osm_id WHERE r.status='pending' ORDER BY r.created_at LIMIT 80"),
-      query("SELECT rr.id,rr.review_id,rr.reason,rr.message AS note,vr.body,COALESCE(p.name,dc.name) AS place_name FROM venue_review_reports rr JOIN venue_reviews vr ON vr.id=rr.review_id LEFT JOIN places p ON p.id=vr.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=vr.osm_id WHERE rr.status='pending' ORDER BY rr.created_at LIMIT 60")
-    ]);return ok({businesses:b.rows,claims:c.rows,places:p.rows,deals:d.rows,posts:posts.rows,reports:reports.rows,reviews:reviews.rows,reviewReports:reviewReports.rows});
+      query("SELECT rr.id,rr.review_id,rr.reason,rr.message AS note,vr.body,COALESCE(p.name,dc.name) AS place_name FROM venue_review_reports rr JOIN venue_reviews vr ON vr.id=rr.review_id LEFT JOIN places p ON p.id=vr.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=vr.osm_id WHERE rr.status='pending' ORDER BY rr.created_at LIMIT 60"),
+      query("SELECT c.id,c.body,LEFT(p.body,80) AS title FROM post_comments c JOIN posts p ON p.id=c.post_id WHERE c.status='pending' ORDER BY c.created_at LIMIT 80")
+    ]);return ok({businesses:b.rows,claims:c.rows,places:p.rows,deals:d.rows,posts:posts.rows,reports:reports.rows,reviews:reviews.rows,reviewReports:reviewReports.rows,comments:comments.rows});
   }
   if(method==='POST'&&path==='admin/moderate-review'){
     const u=admin(user);const b=parse(z.object({id,approve:z.boolean()}),await payload(req));
@@ -407,8 +437,8 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     return ok({success:true});
   }
   if(method==='POST'&&path==='admin/review'){
-    const u=admin(user);const b=parse(z.object({type:z.enum(['business','claim','place','deal','post']),id:id,approve:z.boolean()}),await payload(req));
-    const map={business:['businesses','approved'],claim:['claims','approved'],place:['places','published'],deal:['deals','published'],post:['posts','published']} as const;
+    const u=admin(user);const b=parse(z.object({type:z.enum(['business','claim','place','deal','post','comment']),id:id,approve:z.boolean()}),await payload(req));
+    const map={business:['businesses','approved'],claim:['claims','approved'],place:['places','published'],deal:['deals','published'],post:['posts','published'],comment:['post_comments','published']} as const;
     const [table,yes]=map[b.type];const target=b.approve?yes:'rejected';
     if(b.type==='claim'&&b.approve){
       const claim=await query('SELECT business_id,place_id FROM claims WHERE id=$1',[b.id]);
