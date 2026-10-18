@@ -104,6 +104,8 @@ CREATE TABLE IF NOT EXISTS posts (
  status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','published','rejected')),
  created_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS candidate_osm_id text REFERENCES discovery_candidates(osm_id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS posts_candidate_idx ON posts(candidate_osm_id) WHERE candidate_osm_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS posts_status_time_idx ON posts(status,created_at DESC);
 CREATE TABLE IF NOT EXISTS favorites (
  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
