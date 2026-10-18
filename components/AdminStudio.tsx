@@ -15,11 +15,11 @@ type Candidate={osm_id:string;name:string;category:string;address:string|null;we
 type Stats={kandidaten:number;rueckfragen:number;ausgeblendet:number;apotheken:number;aktuell_geprueft:number;offen_zur_pruefung:number};
 type Due={id:string;name:string;category:string;verified_at:string|null;verification_source?:string|null;verification_note?:string|null};
 type Place={id:string;name:string;category:string;address?:string;verification_status:string;activity_status:string};
-type QueueItem={id:string;name?:string;title?:string;body?:string;business_name?:string;place_name?:string;note?:string};
-type Queue=Record<'businesses'|'claims'|'places'|'deals'|'posts'|'reports',QueueItem[]>;
+type QueueItem={id:string;name?:string;title?:string;body?:string;business_name?:string;place_name?:string;note?:string;rating?:number;review_id?:string};
+type Queue=Record<'businesses'|'claims'|'places'|'deals'|'posts'|'reports'|'reviews'|'reviewReports',QueueItem[]>;
 type Notice={kind:'success'|'error';text:string};
 type IconComponent=typeof LayoutDashboard;
-const emptyQueue:Queue={businesses:[],claims:[],places:[],deals:[],posts:[],reports:[]};
+const emptyQueue:Queue={businesses:[],claims:[],places:[],deals:[],posts:[],reports:[],reviews:[],reviewReports:[]};
 const NAV:{view:View;label:string;small:string;icon:IconComponent;index:string}[]=[
  {view:'overview',label:'Heute',small:'Heute',icon:LayoutDashboard,index:'01'},
  {view:'review',label:'Orte prüfen',small:'Prüfen',icon:MapPinned,index:'02'},
@@ -32,7 +32,9 @@ const queueNames:{key:keyof Queue;title:string;singular:string}[]=[
  {key:'places',title:'Orte',singular:'place'},
  {key:'deals',title:'Angebote',singular:'deal'},
  {key:'posts',title:'Beiträge',singular:'post'},
- {key:'reports',title:'Ortsmeldungen',singular:'report'}
+ {key:'reports',title:'Ortsmeldungen',singular:'report'},
+ {key:'reviews',title:'Bewertungen',singular:'review'},
+ {key:'reviewReports',title:'Gemeldete Bewertungen',singular:'reviewReport'}
 ];
 const fmt=(value:number|undefined)=>new Intl.NumberFormat('de-DE').format(value||0);
 const safeLink=(value:string|null|undefined)=>{try{const u=new URL(value||'');return ['http:','https:'].includes(u.protocol)?u.toString():null}catch{return null}};
@@ -174,6 +176,16 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
  }
  async function moderation(type:keyof Queue,item:QueueItem,approve:boolean){
   if(!approve&&!window.confirm('Diesen Eintrag wirklich ablehnen?'))return;
+  if(type==='reviews'){
+   await action('admin/moderate-review',{id:item.id,approve},
+    approve?'Bewertung veröffentlicht.':'Bewertung abgelehnt.');
+   return;
+  }
+  if(type==='reviewReports'){
+   await action('admin/moderate-review-report',{id:item.id,reviewed:approve},
+    approve?'Meldung geprüft, Bewertung bleibt bis zu einer eigenen Entscheidung sichtbar.':'Meldung zurückgewiesen.');
+   return;
+  }
   if(type==='reports'){
    await action('admin/review-report',{id:item.id,reviewed:approve},
     approve?'Meldung geprüft. Den Ortsstatus nur nach unabhängiger Verifikation ändern.':'Meldung zurückgewiesen.');
@@ -357,7 +369,17 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
      <div className="ffm-studio-page-heading"><div><h1>Freigaben<span>.</span></h1></div></div>
      <div className="ffm-studio-mod-layout"><CityPanel className="ffm-studio-mod-left"><h2>{fmt(currentCount)} offen</h2><div className="ffm-studio-mod-menu">{queueNames.map(q=><button type="button" key={q.key} className={queueSection===q.key?'active':''} onClick={()=>setQueueSection(q.key)}><span>{q.title}</span><b>{fmt(queue[q.key]?.length)}</b><ChevronRight size={17}/></button>)}</div></CityPanel>
      <CityPanel className="ffm-studio-mod-right"><div className="ffm-studio-panel-heading"><h2>{queueNames.find(q=>q.key===queueSection)?.title}</h2></div>
-      {queue[queueSection]?.length?queue[queueSection].map((item,i)=><article key={item.id} className="ffm-studio-mod-record"><span className="ffm-studio-item-index">{String(i+1).padStart(2,'0')}</span><div><strong>{item.name||item.title||item.body||[item.business_name,item.place_name].filter(Boolean).join(' · ')||'Eintrag'}</strong>{item.note&&<p>{item.note}</p>}<div className="ffm-studio-mod-actions"><button disabled={busy} type="button" className="ffm-studio-approve" onClick={()=>void moderation(queueSection,item,true)}><Check size={16}/> {queueSection==='reports'?'Geprüft':'Freigeben'}</button><button disabled={busy} type="button" className="ffm-studio-quiet-danger" onClick={()=>void moderation(queueSection,item,false)}><X size={16}/> {queueSection==='reports'?'Unbegründet':'Ablehnen'}</button></div></div></article>):<div className="ffm-studio-mod-empty"><div><CheckCheck size={32}/></div><h3>Alles erledigt.</h3></div>}
+      {queue[queueSection]?.length?queue[queueSection].map((item,i)=><article key={item.id} className="ffm-studio-mod-record"><span className="ffm-studio-item-index">{String(i+1).padStart(2,'0')}</span><div><strong>{item.name||item.title||item.body||[item.business_name,item.place_name].filter(Boolean).join(' · ')||'Eintrag'}</strong>
+       {item.rating&&<p>{'★'.repeat(item.rating)}{'☆'.repeat(5-item.rating)}</p>}
+       {item.note&&<p>{item.note}</p>}
+       {item.place_name&&<small>Ort: {item.place_name}</small>}<div className="ffm-studio-mod-actions"><button disabled={busy} type="button" className="ffm-studio-approve" onClick={()=>void moderation(queueSection,item,true)}><Check size={16}/> {queueSection==='reports'||queueSection==='reviewReports'?'Geprüft':'Freigeben'}</button><button disabled={busy} type="button" className="ffm-studio-quiet-danger" onClick={()=>void moderation(queueSection,item,false)}><X size={16}/> {queueSection==='reports'||queueSection==='reviewReports'?'Unbegründet':'Ablehnen'}</button>{queueSection==='reviewReports'&&item.review_id&&<button
+       disabled={busy} className="ffm-studio-quiet-danger" type="button" onClick={()=>{
+        const reason=window.prompt('Grund für die Entfernung (mind. 10 Zeichen):');
+        if(!reason||reason.trim().length<10)return;
+        if(window.confirm('Diese veröffentlichte Bewertung wirklich entfernen?')){
+         void action('admin/remove-review',{id:item.review_id,reason:reason.trim()},'Bewertung entfernt.');
+        }
+       }}>Bewertung entfernen</button>}</div></div></article>):<div className="ffm-studio-mod-empty"><div><CheckCheck size={32}/></div><h3>Alles erledigt.</h3></div>}
      </CityPanel></div>
     </>}
 
