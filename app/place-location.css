@@ -1,0 +1,106 @@
+/* FFM Aktuell: genuine venue location instead of a blank media column.
+   The OSM iframe is a real interactive map with an anchored marker. */
+.v3-site .place-dialog{
+ display:grid;
+ grid-template-columns:minmax(0,45%) minmax(0,55%);
+ width:min(920px,calc(100vw - 32px));
+ max-height:min(88dvh,760px);
+ min-height:450px;
+ overflow:hidden;
+ background:#fbfaf7;
+}
+.v3-site .place-dialog>.dialog-body{
+ grid-column:1;grid-row:1;
+ overflow-y:auto;
+ padding:49px 31px 34px;
+ min-width:0;
+ max-height:min(88dvh,760px);
+}
+.v3-site .place-dialog>.ffm-place-location{
+ grid-column:2;grid-row:1;
+ min-width:0;min-height:450px;
+}
+.v3-site .place-dialog .dialog-close{
+ z-index:8;top:13px;right:13px;width:37px;height:37px;
+}
+.v3-site .dialog-body>p:empty{display:none}
+.v3-site .dialog-body h2{overflow-wrap:anywhere;font-size:clamp(34px,3vw,47px)}
+.ffm-place-location{
+ position:relative;
+ height:100%;
+ isolation:isolate;
+ background:#e5ece6;
+ overflow:hidden;
+ display:flex;
+ flex-direction:column;
+}
+.ffm-place-location-map{
+ display:block;
+ width:100%;height:100%;
+ border:0;
+ flex:1 1 auto;
+ background:#e5ece6;
+}
+.ffm-place-location-fallback{
+ flex:1;min-height:220px;
+ display:flex;align-items:center;justify-content:center;
+ flex-direction:column;gap:12px;text-align:center;
+ padding:25px;color:#587b63;
+ background:linear-gradient(135deg,#dfe9df,#f4f4ed);
+}
+.ffm-place-location-fallback strong{font-size:15px}
+.ffm-place-location-fallback p{max-width:240px;font-size:12px;color:#6c8371;margin:0}
+.ffm-place-location-footer{
+ display:flex;justify-content:space-between;align-items:center;gap:10px;
+ padding:12px 17px;background:#f8faf6;
+ border-top:1px solid #dde5dc;
+ min-height:55px;
+}
+.ffm-place-location-label{
+ display:flex;align-items:center;gap:7px;
+ font-size:12px;color:#45644f;font-weight:750;
+}
+.ffm-place-location-footer>a{
+ display:inline-flex;gap:7px;align-items:center;
+ color:#fff!important;background:#254f38;border-radius:7px;
+ font-size:11px;font-weight:800;padding:10px 12px;
+ white-space:nowrap;text-decoration:none;
+}
+.ffm-place-location-footer>a:hover{background:#387050}
+.ffm-place-location-credit{
+ display:block;background:#e8eee8;
+ padding:5px 16px;font-size:9px;color:#647f6c;
+ white-space:nowrap;
+}
+@media(max-width:800px){
+ .v3-site .place-dialog{
+  display:flex;flex-direction:column;
+  width:min(550px,calc(100vw - 22px));
+  min-height:0;
+  max-height:92dvh;
+  border-radius:18px;
+ }
+ .v3-site .place-dialog>.ffm-place-location{
+  order:-1;flex:0 0 235px;
+  min-height:0;height:235px;
+  grid-column:auto;grid-row:auto;
+ }
+ .v3-site .place-dialog>.dialog-body{
+  flex:1 1 auto;grid-column:auto;grid-row:auto;
+  min-height:0;max-height:none;
+  overflow-y:auto;padding:23px 21px 27px;
+ }
+ .v3-site .place-dialog .dialog-close{
+  top:11px;right:11px;
+ }
+ .ffm-place-location-footer{padding:7px 12px;min-height:42px}
+ .ffm-place-location-footer>a{padding:7px 10px}
+ .ffm-place-location-credit{font-size:8px;padding:3px 12px}
+}
+@media(max-width:420px){
+ .v3-site .place-dialog>.ffm-place-location{flex-basis:195px;height:195px}
+ .v3-site .place-dialog>.dialog-body{padding:20px 18px 24px}
+ .ffm-place-location-footer{gap:5px}
+ .ffm-place-location-label{font-size:10px}
+ .ffm-place-location-footer>a{font-size:10px}
+}
