@@ -6,6 +6,7 @@ import './atlas-readable.css';
 import './vorschau.css';
 import './place-location.css';
 import './place-actions.css';
+import './saved-places.css';
 import './quick-home.css';
 import './find-fast.css';
 import './stadtstudio.css';
