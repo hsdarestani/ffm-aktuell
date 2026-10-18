@@ -9,7 +9,7 @@ test('interactive camera and layers are implemented',()=>{assert.match(map,/flyT
 test('pins are rendered in the geographical projection, never moved by DOM transformations',()=>{
  assert.match(map,/POI_SOURCE='ffm-curated-geo'/);
  assert.match(map,/type:'geojson'/);
- assert.match(map,/circle-pitch-alignment':'map'/);
+ assert.match(map,/circle-pitch-alignment':'viewport'/);assert.match(map,/readableMapCandidates/);
  assert.match(map,/queryRenderedFeatures\(e\.point/);
  assert.match(map,/\.setData\(geoFeatures\(filtered\)\)/);
  assert.doesNotMatch(map,/new maplibre\.Marker/);

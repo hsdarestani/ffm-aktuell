@@ -21,6 +21,8 @@ type Props={
 type Area={id:string,de:string,en:string,center:[number,number],zoom:number,bearing:number};
 const CENTER:[number,number]=[8.6773,50.1106];
 const INTRO_CENTER:[number,number]=[8.6666,50.1074];
+const CITY_PITCH=44; // 3D stays the default, streets remain legible at this angle
+const NEAR_PITCH=49;
 const POI_SOURCE='ffm-curated-geo';
 const DISTRICTS:Area[]=[
  {id:'city',de:'Frankfurt',en:'Frankfurt',center:CENTER,zoom:14.55,bearing:-23},
@@ -109,7 +111,7 @@ function setColorScheme(map:LibreMap,mode:AtlasMode){
    ['interpolate',['linear'],['coalesce',['get','render_height'],['get','height'],12],
     0,dusk?'#d8cbbd':'#d9e0d7',35,dusk?'#b8aba2':'#b9cbc2',
     110,dusk?'#908d8b':'#97aaa5',250,dusk?'#636c70':'#687e7c']);
-  map.setPaintProperty('ffm-architecture','fill-extrusion-opacity',dusk?0.96:0.93);
+  map.setPaintProperty('ffm-architecture','fill-extrusion-opacity',dusk?0.91:0.90);
  }
  // Soft directional lighting reveals tower mass and silhouettes without textures.
  try{
@@ -128,7 +130,7 @@ function add3DBuildings(map:LibreMap){
   id:'ffm-architecture',type:'fill-extrusion',source:'ffm-openmaptiles','source-layer':'building',minzoom:12.2,
   paint:{
    'fill-extrusion-color':'#c6beb5',
-   'fill-extrusion-height':['interpolate',['linear'],['zoom'],12.2,0,14.2,['coalesce',['get','render_height'],['get','height'],12]],
+   'fill-extrusion-height':['interpolate',['linear'],['zoom'],12.2,0,14.4,['coalesce',['get','render_height'],['get','height'],12]],
    'fill-extrusion-base':['interpolate',['linear'],['zoom'],13.5,0,15.1,['coalesce',['get','render_min_height'],['get','min_height'],0]],
    'fill-extrusion-opacity':0.96,'fill-extrusion-vertical-gradient':true
   }
@@ -146,13 +148,13 @@ function addGeoPins(map:LibreMap){
  // All rings are MapLibre GPU layers with a single GeoJSON coordinate source:
  // stable with pitch, bearing, zoom, container resize and mobile touch rotation.
  map.addLayer({id:'ffm-poi-halo',type:'circle',source:POI_SOURCE,
-  paint:{'circle-radius':['interpolate',['linear'],['zoom'],12,12,17,23],
+  paint:{'circle-radius':['interpolate',['linear'],['zoom'],12,10,17,17],
    'circle-color':'#72575d','circle-opacity':0.13,
-   'circle-blur':0.35,'circle-pitch-alignment':'map'}});
+   'circle-blur':0.25,'circle-pitch-alignment':'viewport'}});
  map.addLayer({id:'ffm-poi-dot',type:'circle',source:POI_SOURCE,
   paint:{'circle-radius':['interpolate',['linear'],['zoom'],12,6,17,10],
    'circle-color':'#805965','circle-stroke-color':'#fff8ee',
-   'circle-stroke-width':3,'circle-pitch-alignment':'map'}});
+   'circle-stroke-width':2.4,'circle-pitch-alignment':'viewport'}});
  map.addLayer({id:'ffm-poi-labels',type:'symbol',source:POI_SOURCE,minzoom:16.3,
   layout:{'text-field':['get','name'],'text-size':12,'text-anchor':'top','text-offset':[0,1.25],
    'text-allow-overlap':false,'text-optional':true},
@@ -164,32 +166,70 @@ function addGeoPins(map:LibreMap){
   paint:{'text-color':'#26362f','text-halo-color':'#f9f6f0','text-halo-width':2}});
 }
 const OSM_SOURCE='ffm-osm-raw-pois';
+/** One easy-to-read point per screen region. The original OSM candidates
+ * remain in memory for details; this only reduces map marker density.
+ * Work in pixels, not lat/lng grid, because the map starts pitched in 3D. */
+export function readableMapCandidates(places:AtlasPlace[],map:Pick<LibreMap,'project'|'getContainer'|'getZoom'>,selected:string|null){
+ const w=map.getContainer().clientWidth||390,h=map.getContainer().clientHeight||700;
+ const narrow=w<=640;
+ const spacing=narrow?118:132;
+ const max=narrow?9:15;
+ const reservedTop=narrow?133:135,reservedBottom=narrow?90:75;
+ const used=new Set<string>(),shown:AtlasPlace[]=[];
+ const candidates=places.filter(validCoords);
+ const indexed=candidates.map(p=>({p,pt:map.project([p.longitude as number,p.latitude as number])}));
+ // Prefer a stable ordering that doesn't jump when records are returned in
+ // a different order. A selected place is always drawn while on screen.
+ indexed.sort((a,b)=>{
+  if(a.p.id===selected)return -1;
+  if(b.p.id===selected)return 1;
+  return a.p.id.localeCompare(b.p.id);
+ });
+ for(const {p,pt} of indexed){
+  if(pt.x<18||pt.x>w-18||pt.y<reservedTop||pt.y>h-reservedBottom)continue;
+  const cell=Math.floor(pt.x/spacing)+':'+Math.floor((pt.y-reservedTop)/spacing);
+  if(used.has(cell))continue;
+  used.add(cell);shown.push(p);
+  if(shown.length>=max)break;
+ }
+ return shown;
+}
+function categoryLetter(category:string){
+ if(category==='Cafés')return 'C';
+ if(category==='Restaurants'||category==='Imbiss')return 'E';
+ if(category==='Bars'||category==='Clubs'||category==='Shisha Bars')return 'B';
+ if(category==='Apotheken'||category==='Apotheken Notdienst')return 'A';
+ if(category==='Museen')return 'M';
+ return '•';
+}
+function categoryColor(category:string){
+ if(category==='Apotheken'||category==='Apotheken Notdienst')return '#387e73';
+ if(category==='Bars'||category==='Clubs'||category==='Shisha Bars')return '#685b82';
+ if(category==='Restaurants'||category==='Imbiss')return '#946e53';
+ if(category==='Museen')return '#57778e';
+ return '#336c51';
+}
 function geoCandidateFeatures(places:AtlasPlace[]){
  return {type:'FeatureCollection' as const,features:places.filter(validCoords).map(p=>({
   type:'Feature' as const,properties:{id:p.id,name:p.name,category:p.category,
-   address:p.address||'',verified:'false'},
+   address:p.address||'',verified:'false',short:categoryLetter(p.category),tone:categoryColor(p.category)},
   geometry:{type:'Point' as const,coordinates:[p.longitude as number,p.latitude as number]}
  }))};
 }
 function addCandidatePins(map:LibreMap){
  if(map.getSource(OSM_SOURCE))return;
- map.addSource(OSM_SOURCE,{type:'geojson',data:geoCandidateFeatures([]),
-  cluster:true,clusterMaxZoom:16,clusterRadius:47});
- map.addLayer({id:'ffm-osm-clusters',type:'circle',source:OSM_SOURCE,
-  filter:['has','point_count'],paint:{
-   'circle-color':'#345448','circle-opacity':0.86,
-   'circle-radius':['step',['get','point_count'],17,30,24,120,31],
-   'circle-stroke-color':'#fff7e9','circle-stroke-width':2}});
- map.addLayer({id:'ffm-osm-cluster-count',type:'symbol',source:OSM_SOURCE,
-  filter:['has','point_count'],layout:{'text-field':['get','point_count_abbreviated'],
-   'text-size':12,'text-allow-overlap':true},
-  paint:{'text-color':'#fff9f1'}});
+ // Explicit, sparse venue markers: never dozens of numbered cluster bubbles.
+ map.addSource(OSM_SOURCE,{type:'geojson',data:geoCandidateFeatures([])});
  map.addLayer({id:'ffm-osm-points',type:'circle',source:OSM_SOURCE,
-  filter:['!', ['has','point_count']],
-  paint:{'circle-radius':['interpolate',['linear'],['zoom'],12,3.5,17,7],
-   'circle-color':['case',['==',['get','category'],'Apotheken'],'#257a73','#8b6a57'],
-   'circle-opacity':0.95,'circle-stroke-color':'#fff7e9','circle-stroke-width':1.5,
-   'circle-pitch-alignment':'map'}});
+  paint:{'circle-radius':['interpolate',['linear'],['zoom'],12,10,17,13],
+   'circle-color':['get','tone'],'circle-opacity':0.96,
+   'circle-stroke-color':'#fffdf6','circle-stroke-width':2.7,
+   'circle-pitch-alignment':'viewport'}});
+ map.addLayer({id:'ffm-osm-letters',type:'symbol',source:OSM_SOURCE,
+  layout:{'text-field':['get','short'],'text-size':12,'text-font':['Noto Sans Regular'],
+   'text-allow-overlap':true,'text-ignore-placement':true,
+   'text-pitch-alignment':'viewport','text-rotation-alignment':'viewport'},
+  paint:{'text-color':'#fff','text-halo-color':'#17382d','text-halo-width':0.3}});
 }
 function updateSelectedPin(map:LibreMap,selected:string|null){
  if(!map.getLayer('ffm-poi-dot'))return;
@@ -207,6 +247,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
  const latestPlaces=useRef(places),activeSelect=useRef<(p:AtlasPlace)=>void>(()=>{});
  latestPlaces.current=places;
  const [rawCandidates,setRawCandidates]=useState<AtlasPlace[]>([]),[lod2Triangles,setLod2Triangles]=useState(0);
+ 
  const [luftbild,setLuftbild]=useState(false),[luftbildFehler,setLuftbildFehler]=useState(false);
  const [area,setArea]=useState('city'),[cat,setCat]=useState('Alle'),[mode,setMode]=useState<AtlasMode>('golden'),[is3D,set3D]=useState(true),[ready,setReady]=useState(false),[fallback,setFallback]=useState(false),[error,setError]=useState(false),[selected,setSelected]=useState<string|null>(null),[showDistricts,setShowDistricts]=useState(false);
  const state=useRef({mode:'golden' as AtlasMode,is3D:true});
@@ -215,7 +256,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
  const filtered=useMemo(()=>places.filter(p=>validCoords(p)&&isSelectedCategory(p,cat)),[places,cat]);
  const moveTo=useCallback((place:AtlasPlace)=>{
   setSelected(place.id);
-  if(validCoords(place)){mapRef.current?.flyTo({center:[place.longitude as number,place.latitude as number],zoom:Math.max(mapRef.current.getZoom(),16.1),pitch:state.current.is3D?56:0,bearing:state.current.is3D?-22:0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:1350,offset:[0,variant==='hero'?-48:-66]});}
+  if(validCoords(place)){mapRef.current?.flyTo({center:[place.longitude as number,place.latitude as number],zoom:Math.max(mapRef.current.getZoom(),16.1),pitch:state.current.is3D?NEAR_PITCH:0,bearing:state.current.is3D?-13:0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:1350,offset:[0,variant==='hero'?-48:-66]});}
  },[variant]);
  activeSelect.current=moveTo;
  const chooseCategory=useCallback((next:string)=>{
@@ -233,7 +274,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    const camera=mapRef.current.cameraForBounds([sw,ne],{padding:{top:150,bottom:190,left:54,right:54},maxZoom:15.6});
    if(camera?.center&&camera.zoom!=null)mapRef.current.flyTo({
     center:camera.center,zoom:camera.zoom,bearing:state.current.is3D?-22:0,
-    pitch:state.current.is3D?53:0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:1180
+    pitch:state.current.is3D?CITY_PITCH:0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:1180
    });
   }
  },[]);
@@ -241,7 +282,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   setArea(id);setShowDistricts(false);setSelected(null);
   const d=DISTRICTS.find(x=>x.id===id)||DISTRICTS[0];
   const prefersLess=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  mapRef.current?.flyTo({center:d.center,zoom:d.zoom,bearing:state.current.is3D?d.bearing:0,pitch:state.current.is3D?56:0,duration:prefersLess?0:1700,essential:true});
+  mapRef.current?.flyTo({center:d.center,zoom:d.zoom,bearing:state.current.is3D?d.bearing:0,pitch:state.current.is3D?CITY_PITCH:0,duration:prefersLess?0:1700,essential:true});
  },[]);
  const zoom=useCallback((delta:number)=>mapRef.current?.zoomTo(Math.max(10.5,Math.min(19,mapRef.current.getZoom()+delta)),{duration:350}),[]);
  useEffect(()=>{
@@ -254,7 +295,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    let supported=false;try{supported=Boolean(canvas.getContext('webgl2')||canvas.getContext('webgl'));}catch{}
    if(!supported){setError(true);return;}
    const map=new maplibre.Map({
-    container:mapDiv.current,style:VECTOR_STYLE,center:INTRO_CENTER,zoom:14.1,pitch:49,bearing:-21,
+    container:mapDiv.current,style:VECTOR_STYLE,center:INTRO_CENTER,zoom:14.1,pitch:CITY_PITCH,bearing:-14,
     maxZoom:19,minZoom:10.8,maxPitch:75,attributionControl:false,
     canvasContextAttributes:{antialias:true},fadeDuration:250
    });
@@ -268,10 +309,10 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
      // The first camera shot plays only once actual street and building tiles
      // have painted. No blank canvas or flying into unloaded skyscrapers.
      requestAnimationFrame(()=>{if(!cancelled)map.flyTo({
-      center:CENTER,zoom:14.95,pitch:58,bearing:-24,
+      center:CENTER,zoom:14.75,pitch:CITY_PITCH,bearing:-14,
       duration:2250,curve:1.3,essential:true
      });});
-    }else map.jumpTo({center:CENTER,zoom:14.95,pitch:state.current.is3D?58:0,bearing:-24});
+    }else map.jumpTo({center:CENTER,zoom:14.75,pitch:state.current.is3D?CITY_PITCH:0,bearing:-14});
    };
    const switchLoD2=()=>{if(map.getLayer('ffm-real-lod2'))map.setLayoutProperty('ffm-real-lod2','visibility',state.current.is3D&&map.getZoom()<16.15?'visible':'none')};
    map.on('zoomend',switchLoD2);
@@ -288,16 +329,8 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    };
    map.on('style.load',onStyle);
       map.on('click',e=>{
-    if(map.getLayer('ffm-osm-clusters')){
-     const cluster=map.queryRenderedFeatures(e.point,{layers:['ffm-osm-clusters']})[0];
-     if(cluster){const id=Number(cluster.properties?.cluster_id);const g=cluster.geometry;
-      if(g.type==='Point'&&Number.isFinite(id)){(map.getSource(OSM_SOURCE) as import('maplibre-gl').GeoJSONSource)
-        .getClusterExpansionZoom(id).then(zoom=>map.easeTo({center:g.coordinates as [number,number],zoom:Math.min(zoom,19),duration:650})).catch(()=>{});}
-      return;
-     }
-    }
     if(map.getLayer('ffm-osm-points')){
-      const point=map.queryRenderedFeatures(e.point,{layers:['ffm-osm-points']})[0];
+      const point=map.queryRenderedFeatures(e.point,{layers:['ffm-osm-points','ffm-osm-letters']})[0];
       if(point){const id=String(point.properties?.id||'');const p=latestCandidates.current.find(v=>v.id===id);
        if(p){setSelected(p.id);map.flyTo({center:[p.longitude as number,p.latitude as number],zoom:Math.max(15.8,map.getZoom()),duration:800})}return;}
     }
@@ -310,7 +343,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    });
    map.on('mousemove',e=>{
     if(map.getLayer('ffm-poi-dot'))map.getCanvas().style.cursor=
-     (map.queryRenderedFeatures(e.point,{layers:['ffm-poi-dot']}).length||(map.getLayer('ffm-osm-points')&&map.queryRenderedFeatures(e.point,{layers:['ffm-osm-points','ffm-osm-clusters']}).length))?'pointer':'';
+     (map.queryRenderedFeatures(e.point,{layers:['ffm-poi-dot']}).length||(map.getLayer('ffm-osm-points')&&map.queryRenderedFeatures(e.point,{layers:['ffm-osm-points','ffm-osm-letters']}).length))?'pointer':'';
    });
    // E2E-only inspection, never activated on ordinary visitor pages.
    if(new URLSearchParams(window.location.search).has('atlasQA')){
@@ -334,7 +367,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   const map=mapRef.current;if(!ready||!map)return;
   state.current={mode,is3D};
   if(!fallback)setColorScheme(map,mode);
-  map.easeTo({pitch:is3D?56:0,bearing:is3D?(DISTRICTS.find(x=>x.id===area)?.bearing??-23):0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:850});
+  map.easeTo({pitch:is3D?CITY_PITCH:0,bearing:is3D?(DISTRICTS.find(x=>x.id===area)?.bearing??-23):0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:850});
   if(!fallback&&map.getLayer('ffm-architecture'))map.setLayoutProperty('ffm-architecture','visibility',is3D&&!luftbild?'visible':'none');
   if(map.getLayer('ffm-luftbild'))map.setLayoutProperty('ffm-luftbild','visibility',luftbild?'visible':'none');
   if(map.getLayer('ffm-real-lod2'))map.setLayoutProperty('ffm-real-lod2','visibility',is3D&&!luftbild&&map.getZoom()<16.15?'visible':'none');
@@ -357,13 +390,19 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
       const items=(data.items||[]).map((x:AtlasPlace)=>({...x,description_de:
        'Eintrag aus OpenStreetMap. Öffnungszeiten und Betriebsstatus nicht aktuell bestätigt.'}));
       latestCandidates.current=items;setRawCandidates(items);
-      (map.getSource(OSM_SOURCE) as GeoJSONSource).setData(geoCandidateFeatures(items));
+      const visible=readableMapCandidates(items,map,selected);
+      (map.getSource(OSM_SOURCE) as GeoJSONSource).setData(geoCandidateFeatures(visible));
     }).catch(()=>{});
   };
-  const moved=()=>{if(timer!==undefined)window.clearTimeout(timer);timer=window.setTimeout(load,280)};
+  const moved=()=>{
+   const items=readableMapCandidates(latestCandidates.current,map,selected);
+   (map.getSource(OSM_SOURCE) as GeoJSONSource).setData(geoCandidateFeatures(items));
+   if(timer!==undefined)window.clearTimeout(timer);
+   timer=window.setTimeout(load,280);
+  };
   map.on('moveend',moved);load();
   return()=>{cancelled=true;if(timer!==undefined)window.clearTimeout(timer);active?.abort();map.off('moveend',moved)};
- },[ready,fallback,cat]);
+ },[ready,fallback,cat,selected]);
  useEffect(()=>{
   const map=mapRef.current;
   if(!ready||!map||!map.getSource(POI_SOURCE))return;
@@ -373,12 +412,11 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   const map=mapRef.current;
   if(ready&&map&&!fallback)updateSelectedPin(map,selected);
  },[ready,selected,fallback]);
- const counts=filtered.length;
  return <section className={'atlas-root atlas-'+variant+' atlas-tone-'+mode} aria-label={t.map}>
   <div className="atlas-map-host" ref={mapDiv} aria-label={t.map} role="application"/>
   <div className="atlas-veil" aria-hidden="true"/>
   <div className="atlas-topbar">
-   <div className="atlas-brand"><span className="atlas-brand-id">ffm<span>.</span></span><div><small>FRANKFURT AM MAIN</small><strong>{lang==='de'?'Deine Stadt. Neu entdeckt.':'Rediscover your city.'}</strong></div></div>
+   <div className="atlas-brand"><span className="atlas-brand-id">ffm<span>.</span></span><div><small>FRANKFURT AM MAIN</small><strong>{lang==='de'?'3D Stadtkarte':'3D city map'}</strong></div></div>
    <div className="atlas-tools">
     <button type="button" className="atlas-dim-button" aria-pressed={is3D} onClick={()=>{if(luftbild){setLuftbild(false);set3D(true)}else set3D(x=>!x)}} title={t.view}>{is3D?'3D':'2D'}</button>
     <details className="atlas-map-more-views"><summary>Ansicht <Plus size={14}/></summary><div>
@@ -387,11 +425,11 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     </div></details>
    </div>
   </div>
-  <div className="atlas-micro"><span className="atlas-red-dot"/> FRANKFURT AM MAIN <span className="atlas-micro-separator"/> 50°06&apos; N · 08°41&apos; E</div>
+ 
   <div className="atlas-category-tabs" role="group" aria-label={t.places}>
-   {CATS.filter(item=>['Alle','Cafés','Restaurants','Bars','Freizeit','Apotheken'].includes(item.id)).map(item=><button type="button" key={item.id} className={cat===item.id?'selected':''} onClick={()=>chooseCategory(item.id)} aria-pressed={cat===item.id}>{item.label}</button>)}
-   <details className="atlas-map-more-cats"><summary>{!['Alle','Cafés','Restaurants','Bars','Freizeit','Apotheken'].includes(cat)?CATS.find(v=>v.id===cat)?.label||'Weitere':'Weitere'} <Plus size={14}/></summary>
-     <div className="atlas-map-more-cats-list">{CATS.filter(item=>!['Alle','Cafés','Restaurants','Bars','Freizeit','Apotheken'].includes(item.id)).map(item=><button type="button" key={item.id} className={cat===item.id?'selected':''} onClick={()=>chooseCategory(item.id)} aria-pressed={cat===item.id}>{item.label}</button>)}</div>
+   {CATS.filter(item=>['Alle','Cafés','Restaurants','Bars'].includes(item.id)).map(item=><button type="button" key={item.id} className={cat===item.id?'selected':''} onClick={()=>chooseCategory(item.id)} aria-pressed={cat===item.id}>{item.label}</button>)}
+   <details className="atlas-map-more-cats"><summary>{!['Alle','Cafés','Restaurants','Bars'].includes(cat)?CATS.find(v=>v.id===cat)?.label||'Mehr':'Mehr'} <Plus size={14}/></summary>
+     <div className="atlas-map-more-cats-list">{CATS.filter(item=>!['Alle','Cafés','Restaurants','Bars'].includes(item.id)).map(item=><button type="button" key={item.id} className={cat===item.id?'selected':''} onClick={()=>chooseCategory(item.id)} aria-pressed={cat===item.id}>{item.label}</button>)}</div>
    </details>
   </div>
   <div className="atlas-map-utilities">
@@ -399,14 +437,20 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    <button aria-label={t.zoomOut} title={t.zoomOut} onClick={()=>zoom(-1)}><Minus size={20}/></button>
    <button aria-label={t.reset} title={t.reset} onClick={()=>goDistrict('city')}><LocateFixed size={20}/></button>
   </div>
-  <div className="atlas-bottom">
+  <div className={'atlas-bottom'+(selectedPlace?' atlas-bottom-selected':'')}>
    {selectedPlace?<div className="atlas-selection" role="region" aria-label={selectedPlace.name}>
      <button type="button" onClick={()=>setSelected(null)} className="atlas-selection-close" aria-label="Schließen"><X size={17}/></button>
-     <div className="atlas-selection-text"><span>{selectedPlace.district||'Frankfurt'} · {selectedPlace.category}</span><strong>{selectedPlace.name}</strong><small>{selectedIsOSM?'Noch nicht geprüfter OSM-Eintrag · kein bestätigter Öffnungsstatus':(lang==='de'?selectedPlace.description_de||selectedPlace.address:selectedPlace.description_en||selectedPlace.address)}</small></div>
-     <button type="button" onClick={()=>{if(selectedIsOSM){const p=selectedPlace.id.split('/');window.open('https://www.openstreetmap.org/'+p[0]+'/'+p[1],'_blank','noopener,noreferrer')}else onSelect?.(selectedPlace.id)}} className="atlas-selection-cta">{selectedIsOSM?'OSM-Quelle ansehen':t.select}<span className="atlas-selection-circle"><Plus size={18}/></span></button>
+     <div className="atlas-selection-text">
+      <span>{selectedPlace.category} · {selectedIsOSM?'Ungeprüft':selectedPlace.district||'Frankfurt'}</span>
+      <strong>{selectedPlace.name}</strong>
+     </div>
+     <button type="button" onClick={()=>{
+      if(selectedIsOSM){const p=selectedPlace.id.split('/');if(['node','way','relation'].includes(p[0])&&/^\d+$/.test(p[1]||''))window.open('https://www.openstreetmap.org/'+p[0]+'/'+p[1],'_blank','noopener,noreferrer')}
+      else onSelect?.(selectedPlace.id);
+     }} className="atlas-selection-cta">{selectedIsOSM?'OSM ansehen':t.select}<Plus size={16}/></button>
     </div>:<div className="atlas-explore-card">
-     <div className="atlas-bottom-copy"><span>{lang==='de'?'DEIN NÄCHSTER STADT-MOMENT':'YOUR NEXT CITY MOMENT'}</span><strong>{DISTRICTS.find(d=>d.id===area)?.[lang]||'Frankfurt'}</strong><small>{ready?`${counts} ${lang==='de'?'Orte entdecken':'places to explore'}`:t.loading}</small></div>
-     <button type="button" onClick={()=>setShowDistricts(x=>!x)} className="atlas-district-toggle" aria-expanded={showDistricts}><Layers3 size={18}/><span>{t.choose}</span><span className="atlas-mini-plus"><Plus size={15}/></span></button>
+     <div className="atlas-bottom-copy"><strong>{DISTRICTS.find(d=>d.id===area)?.[lang]||'Frankfurt'}</strong></div>
+     <button type="button" onClick={()=>setShowDistricts(x=>!x)} className="atlas-district-toggle" aria-label="Stadtteil wählen" aria-expanded={showDistricts}><Layers3 size={17}/><span>Viertel</span><Plus size={15}/></button>
     </div>}
    {showDistricts&&<div className="atlas-district-picker" role="group" aria-label={t.district}>
     {DISTRICTS.map(d=><button type="button" key={d.id} onClick={()=>goDistrict(d.id)} className={area===d.id?'active':''}><span>{lang==='de'?d.de:d.en}</span>{area===d.id?<Check size={16}/>:<span className="atlas-district-dot"/>}</button>)}
