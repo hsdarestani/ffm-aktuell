@@ -63,3 +63,12 @@
 @media(prefers-reduced-motion:reduce){
  .atlas-root.atlas-full .atlas-selection,.atlas-root.atlas-full .atlas-explore-card{transition:none}
 }
+
+/* Clear, compact place details. MapLibre native attribution remains active. */
+.atlas-root.atlas-full .atlas-selection-text>small{font-size:10px;line-height:1.15;color:#748477;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.atlas-root.atlas-full .atlas-selection{max-height:144px}
+@media(max-width:800px){
+ .atlas-root.atlas-full .atlas-selection{max-height:132px}
+ .atlas-root.atlas-full .atlas-credits{font-size:8px;max-width:53%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .atlas-root.atlas-full .maplibregl-ctrl-attrib{font-size:8px;max-width:44vw}
+}
