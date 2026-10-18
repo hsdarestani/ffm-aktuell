@@ -156,6 +156,21 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   }
   if(method==='GET'&&path==='events'){const r=await query("SELECT * FROM events WHERE status='published' AND starts_at>=now()-interval '1 day' ORDER BY starts_at LIMIT 40");return ok({items:r.rows});}
   if(method==='GET'&&path==='news'){const r=await query("SELECT * FROM news WHERE status='published' ORDER BY published_at DESC LIMIT 40");return ok({items:r.rows});}
+  if(method==='GET'&&path==='reviews'){
+    const venueId=trim(qs.get('place_id'));
+    if(!validLocationId(venueId))return bad('Invalid place ID');
+    const isCandidate=osmId.test(venueId);
+    const exists=await query(isCandidate
+      ?"SELECT osm_id FROM discovery_candidates WHERE osm_id=$1 AND reviewed_status='unverified'"
+      :"SELECT id FROM places WHERE id=$1 AND status='published' AND activity_status!='permanently_closed'",[venueId]);
+    if(!exists.rowCount)return bad('Place not found',404);
+    const col=isCandidate?'osm_id':'place_id';
+    const [summary,items]=await Promise.all([
+      query("SELECT count(*)::int AS count,round(avg(rating)::numeric,1)::float AS average FROM venue_reviews WHERE "+col+"=$1 AND status='published'",[venueId]),
+      query("SELECT r.id,r.rating,r.body,r.created_at,LEFT(u.display_name,1) AS display_name FROM venue_reviews r JOIN users u ON u.id=r.user_id WHERE r."+col+"=$1 AND r.status='published' ORDER BY r.created_at DESC LIMIT 30",[venueId])
+    ]);
+    return ok({summary:summary.rows[0],items:items.rows});
+  }
   if(method==='GET'&&path==='posts'){const r=await query("SELECT p.id,p.body,p.media_url,p.created_at,u.display_name,COALESCE(pl.name,dc.name) AS place_name FROM posts p JOIN users u ON u.id=p.user_id LEFT JOIN places pl ON pl.id=p.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=p.candidate_osm_id WHERE p.status='published' ORDER BY p.created_at DESC LIMIT 40");return ok({items:r.rows});}
   if(method==='GET'&&path==='deals'){const r=await query("SELECT d.id,d.title,d.details,d.valid_until,b.name AS business_name,p.name AS place_name FROM deals d JOIN businesses b ON b.id=d.business_id LEFT JOIN places p ON p.id=d.place_id WHERE d.status='published' AND (d.valid_until IS NULL OR d.valid_until>now()) ORDER BY d.created_at DESC LIMIT 40");return ok({items:r.rows});}
   if(method==='GET'&&path==='location'){
@@ -214,6 +229,32 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       [u.id,isOsm?null:b.place_id,isOsm?b.place_id:null,b.reason,b.message]);
     await audit(u,'report:submitted','place_report',r.rows[0].id);
     return ok({id:r.rows[0].id,status:r.rows[0].status},201);
+  }
+  if(method==='POST'&&path==='reviews'){
+    rate(req,'venue-review');const u=need(user);
+    const b=parse(z.object({place_id:z.string().max(90).refine(validLocationId),rating:z.number().int().min(1).max(5),body:z.string().trim().min(20).max(1000)}),await payload(req));
+    const isCandidate=osmId.test(b.place_id);
+    const exists=await query(isCandidate
+      ?"SELECT osm_id FROM discovery_candidates WHERE osm_id=$1 AND reviewed_status='unverified'"
+      :"SELECT id FROM places WHERE id=$1 AND status='published' AND activity_status!='permanently_closed'",[b.place_id]);
+    if(!exists.rowCount)return bad('Place not found',404);
+    const r=await query(isCandidate
+      ? "INSERT INTO venue_reviews(user_id,osm_id,rating,body) VALUES($1,$2,$3,$4) ON CONFLICT (user_id,osm_id) WHERE osm_id IS NOT NULL DO UPDATE SET rating=EXCLUDED.rating,body=EXCLUDED.body,status='pending',updated_at=now(),reviewed_by=NULL,reviewed_at=NULL RETURNING id,status"
+      : "INSERT INTO venue_reviews(user_id,place_id,rating,body) VALUES($1,$2,$3,$4) ON CONFLICT (user_id,place_id) WHERE place_id IS NOT NULL DO UPDATE SET rating=EXCLUDED.rating,body=EXCLUDED.body,status='pending',updated_at=now(),reviewed_by=NULL,reviewed_at=NULL RETURNING id,status",
+      [u.id,b.place_id,b.rating,b.body]);
+    await audit(u,'review:submitted','venue_review',r.rows[0].id);
+    return ok({id:r.rows[0].id,status:'pending'},201);
+  }
+  if(method==='POST'&&path==='review-reports'){
+    rate(req,'review-abuse');const u=need(user);
+    const b=parse(z.object({review_id:id,reason:z.enum(['spam','abuse','privacy','incorrect','other']),message:optionalText(500)}),await payload(req));
+    const found=await query("SELECT id FROM venue_reviews WHERE id=$1 AND status='published' AND user_id!=$2",[b.review_id,u.id]);
+    if(!found.rowCount)return bad('Review unavailable',404);
+    const r=await query("INSERT INTO venue_review_reports(review_id,reporter_id,reason,message) VALUES($1,$2,$3,$4) ON CONFLICT(review_id,reporter_id) DO NOTHING RETURNING id",
+      [b.review_id,u.id,b.reason,b.message]);
+    if(!r.rowCount)return bad('Already reported',409);
+    await audit(u,'review:reported','venue_review',b.review_id);
+    return ok({id:r.rows[0].id,status:'pending'},201);
   }
   if(method==='POST'&&path==='posts'){
     rate(req,'post');const u=need(user);
@@ -321,14 +362,40 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     }catch(e){await tx.query('ROLLBACK');throw e}finally{tx.release()}
   }
   if(method==='GET'&&path==='admin/queue'){
-    admin(user);const [b,c,p,d,posts,reports]=await Promise.all([
+    admin(user);const [b,c,p,d,posts,reports,reviews,reviewReports]=await Promise.all([
       query("SELECT id,name,status,created_at FROM businesses WHERE status='pending' ORDER BY created_at"),
       query("SELECT c.id,c.status,c.note,b.name AS business_name,p.name AS place_name FROM claims c JOIN businesses b ON b.id=c.business_id JOIN places p ON p.id=c.place_id WHERE c.status='pending'"),
       query("SELECT id,name,category FROM places WHERE status='pending'"),
       query("SELECT id,title FROM deals WHERE status='pending'"),
       query("SELECT id,body FROM posts WHERE status='pending'"),
-      query("SELECT r.id,r.reason,r.message AS note,COALESCE(p.name,dc.name) AS place_name FROM place_reports r LEFT JOIN places p ON p.id=r.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=r.osm_id WHERE r.status='pending' ORDER BY r.created_at LIMIT 60")
-    ]);return ok({businesses:b.rows,claims:c.rows,places:p.rows,deals:d.rows,posts:posts.rows,reports:reports.rows});
+      query("SELECT r.id,r.reason,r.message AS note,COALESCE(p.name,dc.name) AS place_name FROM place_reports r LEFT JOIN places p ON p.id=r.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=r.osm_id WHERE r.status='pending' ORDER BY r.created_at LIMIT 60"),
+      query("SELECT r.id,r.rating,r.body,COALESCE(p.name,dc.name) AS place_name FROM venue_reviews r LEFT JOIN places p ON p.id=r.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=r.osm_id WHERE r.status='pending' ORDER BY r.created_at LIMIT 80"),
+      query("SELECT rr.id,rr.review_id,rr.reason,rr.message AS note,vr.body,COALESCE(p.name,dc.name) AS place_name FROM venue_review_reports rr JOIN venue_reviews vr ON vr.id=rr.review_id LEFT JOIN places p ON p.id=vr.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=vr.osm_id WHERE rr.status='pending' ORDER BY rr.created_at LIMIT 60")
+    ]);return ok({businesses:b.rows,claims:c.rows,places:p.rows,deals:d.rows,posts:posts.rows,reports:reports.rows,reviews:reviews.rows,reviewReports:reviewReports.rows});
+  }
+  if(method==='POST'&&path==='admin/moderate-review'){
+    const u=admin(user);const b=parse(z.object({id,approve:z.boolean()}),await payload(req));
+    const target=b.approve?'published':'rejected';
+    const result=await query("UPDATE venue_reviews SET status=$2,reviewed_by=$3,reviewed_at=now() WHERE id=$1 AND status='pending' RETURNING id",[b.id,target,u.id]);
+    if(!result.rowCount)return bad('Pending review not found',404);
+    await audit(u,'review:'+target,'venue_review',b.id);
+    return ok({success:true});
+  }
+  if(method==='POST'&&path==='admin/moderate-review-report'){
+    const u=admin(user);const b=parse(z.object({id,reviewed:z.boolean()}),await payload(req));
+    const result=await query("UPDATE venue_review_reports SET status=$2,reviewed_by=$3,reviewed_at=now() WHERE id=$1 AND status='pending' RETURNING id,review_id",
+      [b.id,b.reviewed?'reviewed':'rejected',u.id]);
+    if(!result.rowCount)return bad('Pending review report not found',404);
+    // Review and report flags remain separate; a moderator must decide removal.
+    await audit(u,b.reviewed?'review-report:reviewed':'review-report:rejected','venue_review_report',b.id);
+    return ok({success:true});
+  }
+  if(method==='POST'&&path==='admin/remove-review'){
+    const u=admin(user);const b=parse(z.object({id,reason:z.string().trim().min(10).max(300)}),await payload(req));
+    const r=await query("UPDATE venue_reviews SET status='rejected',reviewed_by=$2,reviewed_at=now() WHERE id=$1 AND status='published' RETURNING id",[b.id,u.id]);
+    if(!r.rowCount)return bad('Published review not found',404);
+    await audit(u,'review:removed:'+b.reason.slice(0,70),'venue_review',b.id);
+    return ok({success:true});
   }
   if(method==='POST'&&path==='admin/review-report'){
     const u=admin(user);const b=parse(z.object({id,reviewed:z.boolean()}),await payload(req));

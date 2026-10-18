@@ -7,6 +7,7 @@ import AtlasHome from '@/components/AtlasHome';
 import AdminStudio from '@/components/AdminStudio';
 import PlaceLocationMap from '@/components/PlaceLocationMap';
 import PlaceActions from '@/components/PlaceActions';
+import VenueReviews from '@/components/VenueReviews';
 import {validLocationId} from '@/lib/location-actions';
 import {KATEGORIEN,passendeRubrik,frischBestaetigt,statusLabel} from '@/lib/ortskategorien';
 import {VORSCHAU_HINWEIS,ortsbild,vorschauOrte,vorschauVeranstaltungen,vorschauBeitraege,vorschauPosts,vorschauAngebote,vorschauGruppen} from '@/lib/vorschau';
@@ -237,7 +238,7 @@ export default function Home(){
  onSave={()=>favorite(selected.id)} onLogin={()=>setAuth(true)} onNotice={flash}
  onReport={(reason,message)=>submit('place-reports',{place_id:selected.id,reason,message},'Danke! Die Redaktion prüft deine Meldung.')}
  onPost={body=>submit('posts',{body,place_id:selected.id},'Dein Tipp wartet auf Freigabe.')}
-/>{selected.candidate&&<p className="v5-candidate-alert">Betrieb und Öffnungszeiten nicht geprüft. Bitte beim Anbieter nachsehen.</p>}{selected.verification_source&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.verification_source}>Quelle der Betriebsprüfung</a>}{selected.source_url&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.source_url}>{t.source}<span className="ui-dot" aria-hidden="true"/></a>}<p className="fineprint">{t.notice}</p></div><PlaceLocationMap key={selected.id} name={selected.name} address={selected.address} latitude={selected.latitude} longitude={selected.longitude}/></div></div>}
+/><VenueReviews key={selected.id} placeId={selected.id} demo={Boolean(selected.demo)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>{selected.candidate&&<p className="v5-candidate-alert">Betrieb und Öffnungszeiten nicht geprüft. Bitte beim Anbieter nachsehen.</p>}{selected.verification_source&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.verification_source}>Quelle der Betriebsprüfung</a>}{selected.source_url&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.source_url}>{t.source}<span className="ui-dot" aria-hidden="true"/></a>}<p className="fineprint">{t.notice}</p></div><PlaceLocationMap key={selected.id} name={selected.name} address={selected.address} latitude={selected.latitude} longitude={selected.longitude}/></div></div>}
   {auth&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setAuth(false)}}><div className="auth-dialog" role="dialog" aria-modal="true"><button className="dialog-close" onClick={()=>setAuth(false)}><X/></button><span className="auth-mark">F✳</span><small>DEIN ZUGANG ZU FFM AKTUELL</small><h2>{register?t.register:t.welcome}</h2><form onSubmit={onAuth}>{register&&formField(t.name,'display_name',true)}{formField(t.email,'email',true,'email')}{formField(t.password,'password',true,'password')}<button className="primary-btn">{register?t.register:t.login}<span className="ui-dot" aria-hidden="true"/></button></form><button className="switch-auth" onClick={()=>setRegister(!register)}>{register?t.login:t.register}<span className="ui-dot" aria-hidden="true"/></button></div></div>}
  </div>;
 }

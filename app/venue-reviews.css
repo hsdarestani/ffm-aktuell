@@ -1,0 +1,33 @@
+/* Moderated location reviews: minimal secondary area below the actions. */
+.ffm-venue-reviews{margin:20px 0 16px;padding-top:16px;border-top:1px solid #e1e8e1}
+.ffm-venue-reviews-heading{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.ffm-venue-reviews-heading h3{margin:0 0 4px;font:400 25px 'Instrument Serif',Georgia,serif;color:#294536}
+.ffm-venue-reviews-heading small{font-size:10px;color:#708372;line-height:1.3}
+.ffm-review-summary{display:flex;gap:5px;align-items:center;color:#98724e;white-space:nowrap}
+.ffm-review-summary strong{font-weight:800;font-size:17px}
+.ffm-review-summary span{font-size:10px;color:#718673}
+.ffm-reviews-empty,.ffm-reviews-error{padding:10px 0;color:#758578;font-size:12px}
+.ffm-review-list{display:grid;gap:9px;max-height:280px;overflow:auto;padding:10px 0}
+.ffm-review-record{padding:12px;background:#f6f8f3;border:1px solid #ebefe8;border-radius:10px;display:grid;gap:7px}
+.ffm-review-meta{display:flex;justify-content:space-between;gap:5px;align-items:center}
+.ffm-review-meta>span{color:#ae8547;font-size:14px;letter-spacing:1px;white-space:nowrap}
+.ffm-review-meta>small{color:#7d8a7c;font-size:10px}
+.ffm-review-record p{margin:0;color:#3b5140;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.ffm-review-record button{display:inline-flex;align-items:center;gap:4px;justify-self:start;background:transparent;border:0;padding:2px;color:#819284;font-size:10px}
+.ffm-review-record button:disabled{opacity:.5}
+.ffm-review-write{margin-top:12px;border-top:1px solid #e5ece5;padding-top:9px}
+.ffm-review-write>summary{display:flex;justify-content:space-between;align-items:center;list-style:none;cursor:pointer;padding:8px 2px;color:#385d43;font-size:12px;font-weight:750}
+.ffm-review-write>summary::-webkit-details-marker{display:none}
+.ffm-review-write[open]>summary svg{transform:rotate(180deg)}
+.ffm-review-write>form{display:grid;gap:12px;padding:12px 0}
+.ffm-review-write fieldset{padding:0;margin:0;border:0}
+.ffm-review-write legend,.ffm-review-write label{font-size:11px;color:#416349;font-weight:750}
+.ffm-review-stars{display:flex;gap:7px;margin-top:8px}
+.ffm-review-stars button{display:grid;place-items:center;min-width:38px;min-height:40px;color:#b48746;background:#f5f2e9;border:1px solid #e7dfce;border-radius:9px}
+.ffm-review-stars button[aria-pressed=true]{background:#e9e1ce}
+.ffm-review-write label{display:grid;gap:7px}
+.ffm-review-write textarea{width:100%;padding:12px;border:1px solid #cbd9cb;border-radius:9px;background:white;color:#273d2c;resize:vertical;font:400 12px/1.5 'DM Sans',sans-serif}
+.ffm-review-write form p{font-size:10px;line-height:1.45;color:#79887a;margin:0}
+.ffm-review-submit{background:#244b35;border:0;border-radius:9px;color:#fff;padding:12px;font-weight:800;font-size:12px}
+.ffm-review-submit:disabled{opacity:.6}
+@media(max-width:800px){.ffm-venue-reviews{margin-top:17px}.ffm-venue-reviews-heading h3{font-size:24px}}

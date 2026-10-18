@@ -12,6 +12,15 @@ This is an implementation ledger, **not** a claim of complete product delivery. 
 - MapLibre selection → in-app details for OSM and published venues
 - QA before production release: logged-in/logged-out actions, 390px viewport, CTA open/close, share-link import, save/remove, reporter/admin review, XSS URL validation
 
+## Phase 2a: Authenticated, moderated ratings (this PR)
+- 1–5 stars and 20–1000 character opinions per real venue, one review per user per location
+- Separate OSM and published venue references, no reviews for fake demo locations
+- Independent admin approval is required before a user rating enters public average or review list
+- Abuse reports are private and deduplicated; human moderation and explicit review removal only
+- User display initials, not full names; no unverified visitor badge
+- **Still open:** end-to-end browser interaction and moderate/reject tests on STRATO after deploy
+- No arbitrary image URLs or public upload until storage, content scanning, rights/takedown process and retention are approved
+
 ## Phase 2: User community, ratings, real media
 - Moderated photos/video upload with object storage and ownership / license checks, copyright consent, takedown workflow
 - Star reviews, brief tips, public replies, reporting, filtering, abuse control; verified visit proof rules require explicit approval
