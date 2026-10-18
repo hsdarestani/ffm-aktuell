@@ -303,13 +303,23 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     }catch(e){await tx.query('ROLLBACK');throw e}finally{tx.release()}
   }
   if(method==='GET'&&path==='admin/queue'){
-    admin(user);const [b,c,p,d,posts]=await Promise.all([
+    admin(user);const [b,c,p,d,posts,reports]=await Promise.all([
       query("SELECT id,name,status,created_at FROM businesses WHERE status='pending' ORDER BY created_at"),
       query("SELECT c.id,c.status,c.note,b.name AS business_name,p.name AS place_name FROM claims c JOIN businesses b ON b.id=c.business_id JOIN places p ON p.id=c.place_id WHERE c.status='pending'"),
       query("SELECT id,name,category FROM places WHERE status='pending'"),
       query("SELECT id,title FROM deals WHERE status='pending'"),
-      query("SELECT id,body FROM posts WHERE status='pending'")
-    ]);return ok({businesses:b.rows,claims:c.rows,places:p.rows,deals:d.rows,posts:posts.rows});
+      query("SELECT id,body FROM posts WHERE status='pending'"),
+      query("SELECT r.id,r.reason,r.message AS note,COALESCE(p.name,dc.name) AS place_name FROM place_reports r LEFT JOIN places p ON p.id=r.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=r.osm_id WHERE r.status='pending' ORDER BY r.created_at LIMIT 60")
+    ]);return ok({businesses:b.rows,claims:c.rows,places:p.rows,deals:d.rows,posts:posts.rows,reports:reports.rows});
+  }
+  if(method==='POST'&&path==='admin/review-report'){
+    const u=admin(user);const b=parse(z.object({id,reviewed:z.boolean()}),await payload(req));
+    const r=await query("UPDATE place_reports SET status=$2,reviewed_at=now(),reviewed_by=$3 WHERE id=$1 AND status='pending' RETURNING id,osm_id,place_id",[b.id,b.reviewed?'reviewed':'rejected',u.id]);
+    if(!r.rowCount)return bad('Report not found',404);
+    // This records review only; independent verification is required for a
+    // status change or candidate hide, preventing false closure assertions.
+    await audit(u,b.reviewed?'report:reviewed':'report:rejected','place_report',b.id);
+    return ok({success:true});
   }
   if(method==='POST'&&path==='admin/review'){
     const u=admin(user);const b=parse(z.object({type:z.enum(['business','claim','place','deal','post']),id:id,approve:z.boolean()}),await payload(req));
