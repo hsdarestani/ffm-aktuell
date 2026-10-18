@@ -85,7 +85,14 @@ export default function Home(){
  const sichtbareAngebote=useMemo(()=>[...deals,...vorschauAngebote],[deals]);
  const filtered=useMemo(()=>sichtbareOrte.filter(p=>passendeRubrik(p,category)&&(!nurGepruefte||frischBestaetigt(p))&&(!district||p.district===district)&&[p.name,p.category,p.district,p.description_de,p.description_en].join(' ').toLocaleLowerCase().includes(query.toLocaleLowerCase())),[sichtbareOrte,category,district,query,nurGepruefte]);
  const navigate=(p:Page)=>{setPage(p);setMenu(false);window.scrollTo({top:0,behavior:'smooth'})};
- const selectPlace=useCallback((id:string)=>{setSelected([...sichtbareOrte,...candidates].find(p=>p.id===id)||null)},[sichtbareOrte,candidates]);
+ const selectPlace=useCallback((id:string)=>{
+  const cached=[...sichtbareOrte,...candidates].find(p=>p.id===id);
+  if(cached){setSelected(cached);return;}
+  if(!validLocationId(id))return;
+  void api('location?id='+encodeURIComponent(id))
+   .then(data=>{if(data.place)setSelected(data.place as Place)})
+   .catch(()=>flash('Ort konnte nicht geöffnet werden.'));
+ },[sichtbareOrte,candidates]);
  const submit=async(path:string,data:unknown,success:string)=>{try{await api(path,data);flash(success);setRefresh(x=>x+1);return true}catch(e){flash((e as Error).message||'Die Anfrage ist fehlgeschlagen.');return false}};
  const favorite=async(id:string)=>{if(!validLocationId(id)){flash('Dieser Musterort kann nicht gespeichert werden.');return}if(!user){setAuth(true);return}try{const active=!favorites.includes(id);await api('favorites',{place_id:id,active});setFavorites(a=>active?[...a,id]:a.filter(x=>x!==id));flash(active?'Ort gemerkt.':'Aus Merkliste entfernt.')}catch(e){flash((e as Error).message||'Die Merkliste konnte nicht geändert werden.')}};
  const handle=(e:FormEvent<HTMLFormElement>,path:string,transform?:(x:Record<string,FormDataEntryValue>)=>unknown)=>{e.preventDefault();const form=e.currentTarget;const data=Object.fromEntries(new FormData(form));submit(path,transform?transform(data):data,t.pending).then(success=>{if(success)form.reset()})};
