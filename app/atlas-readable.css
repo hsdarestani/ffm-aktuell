@@ -72,3 +72,24 @@
  .atlas-root.atlas-full .atlas-credits{font-size:8px;max-width:53%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
  .atlas-root.atlas-full .maplibregl-ctrl-attrib{font-size:8px;max-width:44vw}
 }
+
+/* Nothing selected: show only a small district control, not a large empty
+   Frankfurt card that consumes the useful lower portion of the 3D map. */
+.atlas-root.atlas-full .atlas-bottom:not(.atlas-bottom-selected){
+ width:auto;max-width:min(300px,calc(100% - 30px));
+}
+.atlas-root.atlas-full .atlas-bottom:not(.atlas-bottom-selected) .atlas-explore-card{
+ min-height:0;padding:0;border:0;border-radius:22px;background:transparent;
+ box-shadow:none;backdrop-filter:none;display:block;
+}
+.atlas-root.atlas-full .atlas-bottom:not(.atlas-bottom-selected) .atlas-bottom-copy{display:none}
+.atlas-root.atlas-full .atlas-bottom:not(.atlas-bottom-selected) .atlas-district-toggle{
+ min-height:43px;padding:8px 13px;border-radius:25px;
+ background:#faf9f3f2;box-shadow:0 6px 20px #203b2b23;
+ border:1px solid #dae4db;
+}
+@media(max-width:800px){
+ .atlas-root.atlas-full .atlas-bottom:not(.atlas-bottom-selected){
+  left:11px;bottom:28px;width:auto;max-width:calc(100% - 22px)
+ }
+}
