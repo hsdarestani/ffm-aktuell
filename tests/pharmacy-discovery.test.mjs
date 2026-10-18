@@ -23,7 +23,7 @@ test('original raw candidates are searchable, never promoted to verified places'
 });
 test('large map data remains georeferenced while visible markers are sparse on mobile',()=>{
  assert.match(map,/ffm-osm-points/);
- assert.match(map,/ffm-osm-letters/);
+ assert.match(map,/ffm-marker-/);
  assert.match(map,/readableMapCandidates/);
  assert.match(map,/map\.project/);
  assert.match(map,/geoCandidateFeatures/);
