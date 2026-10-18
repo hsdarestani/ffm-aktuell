@@ -13,15 +13,15 @@ test('new Stadtstudio is the only main-page admin and has a separate protected r
  assert.match(dedicated,/d\.user\?\.role==='admin'/);
  assert.match(layout,/stadtstudio\.css/);
 });
-test('Frankfurt-specific language and scene are not generic template content',()=>{
- for(const feature of ['Skyline','Stadtpult','Orte prüfen','Freigaben','Veröffentlichen',
- 'Die Stadt.','Dein Blick.','Beleg statt Behauptung','Dreimal sicher','Quellenlage prüfen']){
+test('Frankfurt-specific admin now starts with three direct tasks, not a marketing hero',()=>{
+ for(const feature of ['Was steht','Orte prüfen','Freigaben','Neu erstellen','Nächste Orte','Prüfung starten']){
   assert.ok(admin.includes(feature),feature+' not found');
  }
- assert.match(css,/ffm-studio-skyline/);
- assert.match(css,/ffm-studio-hero-scene/);
- assert.match(css,/ffmStudioPulse/);
+ assert.match(admin,/ffm-simple-actions/);
+ assert.doesNotMatch(admin,/<section className="ffm-studio-hero">/);
  assert.match(css,/prefers-reduced-motion/);
+ assert.match(read('app/stadtstudio-simple.css'),/ffm-simple-action/);
+ assert.match(layout,/stadtstudio-simple\.css/);
 });
 test('mobile workspace uses independent tabs and dismissible place detail sheet',()=>{
  assert.match(css,/max-width:850px/);
@@ -44,4 +44,25 @@ test('existing privileged API paths and stringent independent verification remai
  assert.match(admin,/no-store/);
  assert.match(admin,/kein Live Öffnungsstatus/i);
  assert.match(admin,/safeLink/);
+});
+
+test('all candidate decisions remain evidence-based and optional details are disclosed',()=>{
+ assert.match(admin,/detailDecision&&<form/);
+ assert.match(admin,/name="confirms_existence" required/);
+ assert.match(admin,/name="confirms_address" required/);
+ assert.match(admin,/name="confirms_operation" required/);
+ assert.match(admin,/verification_source/);
+ assert.match(admin,/name="verification_note"/);
+ assert.match(admin,/ffm-simple-more-fields/);
+ assert.match(admin,/ffm-simple-danger/);
+ assert.match(admin,/handleDecision\('needs_review'\)/);
+ assert.match(admin,/handleDecision\('hide'\)/);
+});
+test('publishing stays a three choice, short basic form with optional advanced fields',()=>{
+ for(const name of ['mode:\x27place\x27,title:\x27Ort\x27','mode:\x27news\x27,title:\x27Beitrag\x27','mode:\x27event\x27,title:\x27Event\x27']){
+   assert.ok(admin.includes(name),'Missing publishing type: '+name);
+ }
+ assert.match(admin,/Weitere Angaben/);
+ assert.match(admin,/Beschreibung & Link/);
+ assert.match(admin,/Direkt öffentlich/);
 });
