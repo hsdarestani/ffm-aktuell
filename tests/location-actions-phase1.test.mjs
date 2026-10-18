@@ -15,7 +15,8 @@ test('main place detail offers Route, Merken, Teilen, website and real-number Ca
  assert.match(ui,/navigator\.share/);
  assert.match(ui,/navigator\.clipboard\.writeText/);
  assert.match(helpers,/https:\/\/www\.google\.com\/maps\/dir\/\?api=1&destination=/);
- assert.match(helpers,/^\s*if\(!\/\^\\+\?\[0-9\]/m);
+ assert.match(helpers,/function safePhoneHref/);
+ assert.match(helpers,/tel:/);
  assert.match(helpers,/encodeURIComponent\(query\)/);
  assert.match(helpers,/https:','http:/);
  assert.doesNotMatch(ui,/Jetzt geöffnet|openNow|5 Sterne/);
