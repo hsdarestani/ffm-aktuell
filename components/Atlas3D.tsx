@@ -19,13 +19,13 @@ type Props={
  onSelect?:(id:string)=>void;
 };
 type Area={id:string,de:string,en:string,center:[number,number],zoom:number,bearing:number};
-const CENTER:[number,number]=[8.6773,50.1106];
+const CENTER:[number,number]=[8.6813,50.1114];
 const INTRO_CENTER:[number,number]=[8.6666,50.1074];
-const CITY_PITCH=44; // 3D stays the default, streets remain legible at this angle
-const NEAR_PITCH=49;
+const CITY_PITCH=37; // 3D remains default; street network and rivers stay legible
+const NEAR_PITCH=41;
 const POI_SOURCE='ffm-curated-geo';
 const DISTRICTS:Area[]=[
- {id:'city',de:'Frankfurt',en:'Frankfurt',center:CENTER,zoom:14.55,bearing:-23},
+ {id:'city',de:'Frankfurt',en:'Frankfurt',center:CENTER,zoom:14.35,bearing:-14},
  {id:'altstadt',de:'Altstadt',en:'Old Town',center:[8.6832,50.1101],zoom:16.25,bearing:-28},
  {id:'sachsenhausen',de:'Sachsenhausen',en:'Sachsenhausen',center:[8.6859,50.1014],zoom:15.8,bearing:24},
  {id:'westend',de:'Westend',en:'Westend',center:[8.6620,50.1182],zoom:15.7,bearing:-13},
@@ -194,42 +194,71 @@ export function readableMapCandidates(places:AtlasPlace[],map:Pick<LibreMap,'pro
  }
  return shown;
 }
-function categoryLetter(category:string){
- if(category==='Cafés')return 'C';
- if(category==='Restaurants'||category==='Imbiss')return 'E';
- if(category==='Bars'||category==='Clubs'||category==='Shisha Bars')return 'B';
- if(category==='Apotheken'||category==='Apotheken Notdienst')return 'A';
- if(category==='Museen')return 'M';
- return '•';
+type MarkerIcon='coffee'|'food'|'bar'|'pharmacy'|'museum'|'pin';
+function markerIcon(category:string):MarkerIcon{
+ if(category==='Cafés'||category==='Brunch')return 'coffee';
+ if(category==='Restaurants'||category==='Imbiss')return 'food';
+ if(category==='Bars'||category==='Clubs'||category==='Shisha Bars')return 'bar';
+ if(category==='Apotheken'||category==='Apotheken Notdienst')return 'pharmacy';
+ if(category==='Museen')return 'museum';
+ return 'pin';
 }
-function categoryColor(category:string){
- if(category==='Apotheken'||category==='Apotheken Notdienst')return '#387e73';
- if(category==='Bars'||category==='Clubs'||category==='Shisha Bars')return '#685b82';
- if(category==='Restaurants'||category==='Imbiss')return '#946e53';
- if(category==='Museen')return '#57778e';
- return '#336c51';
+/** Tiny vector drawings rendered to WebGL sprites. No misleading stock photography,
+ * no glyph font/network dependency, and no cryptic C/E/M marker letters. */
+function createMapIcon(icon:MarkerIcon):ImageData{
+ const canvas=document.createElement('canvas');canvas.width=72;canvas.height=72;
+ const ctx=canvas.getContext('2d');
+ if(!ctx)throw new Error('Marker canvas unavailable');
+ const palette:Record<MarkerIcon,string>={
+  coffee:'#8d644c',food:'#356e56',bar:'#685a80',pharmacy:'#35796e',museum:'#557789',pin:'#3b7055'
+ };
+ ctx.beginPath();ctx.arc(36,36,29,0,Math.PI*2);ctx.fillStyle=palette[icon];ctx.fill();
+ ctx.strokeStyle='#fffef8';ctx.lineWidth=4;ctx.lineCap='round';ctx.lineJoin='round';
+ const line=(...coords:number[])=>{ctx.beginPath();ctx.moveTo(coords[0],coords[1]);for(let i=2;i<coords.length;i+=2)ctx.lineTo(coords[i],coords[i+1]);ctx.stroke()};
+ switch(icon){
+  case 'coffee':
+   ctx.strokeRect(23,28,20,19);
+   ctx.beginPath();ctx.arc(45,34,7,-Math.PI/2,Math.PI/2);ctx.stroke();
+   line(21,51,48,51);break;
+  case 'food':
+   line(27,23,27,49);line(21,23,21,37,33,37,33,23);
+   line(45,23,45,49);
+   ctx.beginPath();ctx.arc(45,28,6,Math.PI,0);ctx.stroke();break;
+  case 'bar':
+   line(23,25,49,25,36,40,36,51);line(28,51,44,51);break;
+  case 'pharmacy':
+   ctx.fillStyle='#fffef8';ctx.fillRect(31,22,10,28);ctx.fillRect(22,31,28,10);break;
+  case 'museum':
+   line(21,29,36,21,51,29);line(23,32,49,32);
+   for(const x of [27,36,45])line(x,35,x,47);
+   line(21,50,51,50);break;
+  default:
+   ctx.beginPath();ctx.arc(36,34,9,Math.PI,3*Math.PI);ctx.stroke();
+   line(27,34,36,51,45,34);break;
+ }
+ return ctx.getImageData(0,0,72,72);
+}
+function addMarkerSprites(map:LibreMap){
+ for(const icon of ['coffee','food','bar','pharmacy','museum','pin'] as const){
+  const id='ffm-marker-'+icon;
+  if(!map.hasImage(id))map.addImage(id,createMapIcon(icon),{pixelRatio:2});
+ }
 }
 function geoCandidateFeatures(places:AtlasPlace[]){
  return {type:'FeatureCollection' as const,features:places.filter(validCoords).map(p=>({
   type:'Feature' as const,properties:{id:p.id,name:p.name,category:p.category,
-   address:p.address||'',verified:'false',short:categoryLetter(p.category),tone:categoryColor(p.category)},
+   address:p.address||'',verified:'false',icon:'ffm-marker-'+markerIcon(p.category)},
   geometry:{type:'Point' as const,coordinates:[p.longitude as number,p.latitude as number]}
  }))};
 }
 function addCandidatePins(map:LibreMap){
  if(map.getSource(OSM_SOURCE))return;
- // Explicit, sparse venue markers: never dozens of numbered cluster bubbles.
+ addMarkerSprites(map);
  map.addSource(OSM_SOURCE,{type:'geojson',data:geoCandidateFeatures([])});
- map.addLayer({id:'ffm-osm-points',type:'circle',source:OSM_SOURCE,
-  paint:{'circle-radius':['interpolate',['linear'],['zoom'],12,10,17,13],
-   'circle-color':['get','tone'],'circle-opacity':0.96,
-   'circle-stroke-color':'#fffdf6','circle-stroke-width':2.7,
-   'circle-pitch-alignment':'viewport'}});
- map.addLayer({id:'ffm-osm-letters',type:'symbol',source:OSM_SOURCE,
-  layout:{'text-field':['get','short'],'text-size':12,'text-font':['Noto Sans Regular'],
-   'text-allow-overlap':true,'text-ignore-placement':true,
-   'text-pitch-alignment':'viewport','text-rotation-alignment':'viewport'},
-  paint:{'text-color':'#fff','text-halo-color':'#17382d','text-halo-width':0.3}});
+ map.addLayer({id:'ffm-osm-points',type:'symbol',source:OSM_SOURCE,
+  layout:{'icon-image':['get','icon'],'icon-size':['interpolate',['linear'],['zoom'],12,.8,17,1.08],
+   'icon-allow-overlap':true,'icon-ignore-placement':true,
+   'icon-pitch-alignment':'viewport','icon-rotation-alignment':'viewport'}});
 }
 function updateSelectedPin(map:LibreMap,selected:string|null){
  if(!map.getLayer('ffm-poi-dot'))return;
@@ -256,7 +285,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
  const filtered=useMemo(()=>places.filter(p=>validCoords(p)&&isSelectedCategory(p,cat)),[places,cat]);
  const moveTo=useCallback((place:AtlasPlace)=>{
   setSelected(place.id);
-  if(validCoords(place)){mapRef.current?.flyTo({center:[place.longitude as number,place.latitude as number],zoom:Math.max(mapRef.current.getZoom(),16.1),pitch:state.current.is3D?NEAR_PITCH:0,bearing:state.current.is3D?-13:0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:1350,offset:[0,variant==='hero'?-48:-66]});}
+  if(validCoords(place)){mapRef.current?.flyTo({center:[place.longitude as number,place.latitude as number],zoom:Math.max(mapRef.current.getZoom(),15.25),pitch:state.current.is3D?NEAR_PITCH:0,bearing:state.current.is3D?-13:0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:1350,offset:[0,variant==='hero'?-48:-66]});}
  },[variant]);
  activeSelect.current=moveTo;
  const chooseCategory=useCallback((next:string)=>{
@@ -309,10 +338,10 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
      // The first camera shot plays only once actual street and building tiles
      // have painted. No blank canvas or flying into unloaded skyscrapers.
      requestAnimationFrame(()=>{if(!cancelled)map.flyTo({
-      center:CENTER,zoom:14.75,pitch:CITY_PITCH,bearing:-14,
+      center:CENTER,zoom:14.35,pitch:CITY_PITCH,bearing:-14,
       duration:2250,curve:1.3,essential:true
      });});
-    }else map.jumpTo({center:CENTER,zoom:14.75,pitch:state.current.is3D?CITY_PITCH:0,bearing:-14});
+    }else map.jumpTo({center:CENTER,zoom:14.35,pitch:state.current.is3D?CITY_PITCH:0,bearing:-14});
    };
    const switchLoD2=()=>{if(map.getLayer('ffm-real-lod2'))map.setLayoutProperty('ffm-real-lod2','visibility',state.current.is3D&&map.getZoom()<16.15?'visible':'none')};
    map.on('zoomend',switchLoD2);
@@ -330,9 +359,9 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    map.on('style.load',onStyle);
       map.on('click',e=>{
     if(map.getLayer('ffm-osm-points')){
-      const point=map.queryRenderedFeatures(e.point,{layers:['ffm-osm-points','ffm-osm-letters']})[0];
+      const point=map.queryRenderedFeatures(e.point,{layers:['ffm-osm-points']})[0];
       if(point){const id=String(point.properties?.id||'');const p=latestCandidates.current.find(v=>v.id===id);
-       if(p){setSelected(p.id);map.flyTo({center:[p.longitude as number,p.latitude as number],zoom:Math.max(15.8,map.getZoom()),duration:800})}return;}
+       if(p){setSelected(p.id);map.flyTo({center:[p.longitude as number,p.latitude as number],zoom:Math.max(15.3,map.getZoom()),pitch:state.current.is3D?NEAR_PITCH:0,duration:650})}return;}
     }
     if(!map.getLayer('ffm-poi-dot'))return;
     const feature=map.queryRenderedFeatures(e.point,{layers:['ffm-poi-dot']})[0];
@@ -343,7 +372,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    });
    map.on('mousemove',e=>{
     if(map.getLayer('ffm-poi-dot'))map.getCanvas().style.cursor=
-     (map.queryRenderedFeatures(e.point,{layers:['ffm-poi-dot']}).length||(map.getLayer('ffm-osm-points')&&map.queryRenderedFeatures(e.point,{layers:['ffm-osm-points','ffm-osm-letters']}).length))?'pointer':'';
+     (map.queryRenderedFeatures(e.point,{layers:['ffm-poi-dot']}).length||(map.getLayer('ffm-osm-points')&&map.queryRenderedFeatures(e.point,{layers:['ffm-osm-points']}).length))?'pointer':'';
    });
    // E2E-only inspection, never activated on ordinary visitor pages.
    if(new URLSearchParams(window.location.search).has('atlasQA')){
@@ -443,6 +472,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
      <div className="atlas-selection-text">
       <span>{selectedPlace.category} · {selectedIsOSM?'Ungeprüft':selectedPlace.district||'Frankfurt'}</span>
       <strong>{selectedPlace.name}</strong>
+      {selectedPlace.address&&<small title={selectedPlace.address}>{selectedPlace.address}</small>}
      </div>
      <button type="button" onClick={()=>{
       if(selectedIsOSM){const p=selectedPlace.id.split('/');if(['node','way','relation'].includes(p[0])&&/^\d+$/.test(p[1]||''))window.open('https://www.openstreetmap.org/'+p[0]+'/'+p[1],'_blank','noopener,noreferrer')}
