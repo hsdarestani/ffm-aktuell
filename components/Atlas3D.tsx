@@ -247,7 +247,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
  const latestPlaces=useRef(places),activeSelect=useRef<(p:AtlasPlace)=>void>(()=>{});
  latestPlaces.current=places;
  const [rawCandidates,setRawCandidates]=useState<AtlasPlace[]>([]),[lod2Triangles,setLod2Triangles]=useState(0);
- const [visiblePins,setVisiblePins]=useState(0);
+ 
  const [luftbild,setLuftbild]=useState(false),[luftbildFehler,setLuftbildFehler]=useState(false);
  const [area,setArea]=useState('city'),[cat,setCat]=useState('Alle'),[mode,setMode]=useState<AtlasMode>('golden'),[is3D,set3D]=useState(true),[ready,setReady]=useState(false),[fallback,setFallback]=useState(false),[error,setError]=useState(false),[selected,setSelected]=useState<string|null>(null),[showDistricts,setShowDistricts]=useState(false);
  const state=useRef({mode:'golden' as AtlasMode,is3D:true});
@@ -391,13 +391,11 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
        'Eintrag aus OpenStreetMap. Öffnungszeiten und Betriebsstatus nicht aktuell bestätigt.'}));
       latestCandidates.current=items;setRawCandidates(items);
       const visible=readableMapCandidates(items,map,selected);
-      setVisiblePins(visible.length);
       (map.getSource(OSM_SOURCE) as GeoJSONSource).setData(geoCandidateFeatures(visible));
     }).catch(()=>{});
   };
   const moved=()=>{
    const items=readableMapCandidates(latestCandidates.current,map,selected);
-   setVisiblePins(items.length);
    (map.getSource(OSM_SOURCE) as GeoJSONSource).setData(geoCandidateFeatures(items));
    if(timer!==undefined)window.clearTimeout(timer);
    timer=window.setTimeout(load,280);
@@ -414,7 +412,6 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   const map=mapRef.current;
   if(ready&&map&&!fallback)updateSelectedPin(map,selected);
  },[ready,selected,fallback]);
- const counts=filtered.length;
  return <section className={'atlas-root atlas-'+variant+' atlas-tone-'+mode} aria-label={t.map}>
   <div className="atlas-map-host" ref={mapDiv} aria-label={t.map} role="application"/>
   <div className="atlas-veil" aria-hidden="true"/>
@@ -430,9 +427,9 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   </div>
  
   <div className="atlas-category-tabs" role="group" aria-label={t.places}>
-   {CATS.filter(item=>['Alle','Cafés','Restaurants','Bars','Freizeit','Apotheken'].includes(item.id)).map(item=><button type="button" key={item.id} className={cat===item.id?'selected':''} onClick={()=>chooseCategory(item.id)} aria-pressed={cat===item.id}>{item.label}</button>)}
-   <details className="atlas-map-more-cats"><summary>{!['Alle','Cafés','Restaurants','Bars','Freizeit','Apotheken'].includes(cat)?CATS.find(v=>v.id===cat)?.label||'Weitere':'Weitere'} <Plus size={14}/></summary>
-     <div className="atlas-map-more-cats-list">{CATS.filter(item=>!['Alle','Cafés','Restaurants','Bars','Freizeit','Apotheken'].includes(item.id)).map(item=><button type="button" key={item.id} className={cat===item.id?'selected':''} onClick={()=>chooseCategory(item.id)} aria-pressed={cat===item.id}>{item.label}</button>)}</div>
+   {CATS.filter(item=>['Alle','Cafés','Restaurants','Bars'].includes(item.id)).map(item=><button type="button" key={item.id} className={cat===item.id?'selected':''} onClick={()=>chooseCategory(item.id)} aria-pressed={cat===item.id}>{item.label}</button>)}
+   <details className="atlas-map-more-cats"><summary>{!['Alle','Cafés','Restaurants','Bars'].includes(cat)?CATS.find(v=>v.id===cat)?.label||'Mehr':'Mehr'} <Plus size={14}/></summary>
+     <div className="atlas-map-more-cats-list">{CATS.filter(item=>!['Alle','Cafés','Restaurants','Bars'].includes(item.id)).map(item=><button type="button" key={item.id} className={cat===item.id?'selected':''} onClick={()=>chooseCategory(item.id)} aria-pressed={cat===item.id}>{item.label}</button>)}</div>
    </details>
   </div>
   <div className="atlas-map-utilities">
