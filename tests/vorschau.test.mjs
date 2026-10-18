@@ -31,7 +31,8 @@ test('visible navigational and editorial content does not use unwanted English w
 });
 test('photo cards include meaningful alt labels and demo UI never writes placeholder favorites',()=>{
  assert.match(page,/alt="Stimmungsbild zur Stadtempfehlung"/);
- assert.match(page,/id\.startsWith\('muster-'\)/);
+ assert.match(page,/validLocationId\(id\)/);
+ assert.match(read('components/PlaceActions.tsx'),/venue\.demo/);
  assert.match(v,/Stimmungsbild/);
  assert.match(css,/prefers-reduced-motion/);
 });
