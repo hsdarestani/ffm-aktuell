@@ -23,6 +23,11 @@ const CENTER:[number,number]=[8.6813,50.1114];
 const INTRO_CENTER:[number,number]=[8.6666,50.1074];
 const CITY_PITCH=37; // 3D remains default; street network and rivers stay legible
 const NEAR_PITCH=41;
+// At wider zoom levels the projected buildings shrink to a flat looking map.
+// Bound the 3D camera to where height and streets remain perceptible; users can
+// still select 2D explicitly for a whole-region overview.
+const MIN_3D_ZOOM=13.15;
+const MIN_2D_ZOOM=10.8;
 const POI_SOURCE='ffm-curated-geo';
 const DISTRICTS:Area[]=[
  {id:'city',de:'Frankfurt',en:'Frankfurt',center:CENTER,zoom:14.35,bearing:-14},
@@ -130,7 +135,7 @@ function add3DBuildings(map:LibreMap){
   id:'ffm-architecture',type:'fill-extrusion',source:'ffm-openmaptiles','source-layer':'building',minzoom:12.2,
   paint:{
    'fill-extrusion-color':'#c6beb5',
-   'fill-extrusion-height':['interpolate',['linear'],['zoom'],12.2,0,14.4,['coalesce',['get','render_height'],['get','height'],12]],
+   'fill-extrusion-height':['interpolate',['linear'],['zoom'],12.2,['*',0.45,['coalesce',['get','render_height'],['get','height'],12]],14.4,['coalesce',['get','render_height'],['get','height'],12]],
    'fill-extrusion-base':['interpolate',['linear'],['zoom'],13.5,0,15.1,['coalesce',['get','render_min_height'],['get','min_height'],0]],
    'fill-extrusion-opacity':0.96,'fill-extrusion-vertical-gradient':true
   }
@@ -274,12 +279,14 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
  const mapDiv=useRef<HTMLDivElement>(null),mapRef=useRef<LibreMap|null>(null);
  const latestCandidates=useRef<AtlasPlace[]>([]);
  const latestPlaces=useRef(places),activeSelect=useRef<(p:AtlasPlace)=>void>(()=>{});
+ const selectionRef=useRef<string|null>(null);
  latestPlaces.current=places;
  const [rawCandidates,setRawCandidates]=useState<AtlasPlace[]>([]),[lod2Triangles,setLod2Triangles]=useState(0);
  
  const [luftbild,setLuftbild]=useState(false),[luftbildFehler,setLuftbildFehler]=useState(false);
  const [area,setArea]=useState('city'),[cat,setCat]=useState('Alle'),[mode,setMode]=useState<AtlasMode>('golden'),[is3D,set3D]=useState(true),[ready,setReady]=useState(false),[fallback,setFallback]=useState(false),[error,setError]=useState(false),[selected,setSelected]=useState<string|null>(null),[showDistricts,setShowDistricts]=useState(false);
  const state=useRef({mode:'golden' as AtlasMode,is3D:true});
+ selectionRef.current=selected;
  const selectedPlace=[...places,...rawCandidates].find(p=>p.id===selected);
  const selectedIsOSM=Boolean(selectedPlace&&/^(node|way|relation)\//.test(selectedPlace.id));
  const filtered=useMemo(()=>places.filter(p=>validCoords(p)&&isSelectedCategory(p,cat)),[places,cat]);
@@ -313,7 +320,11 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   const prefersLess=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   mapRef.current?.flyTo({center:d.center,zoom:d.zoom,bearing:state.current.is3D?d.bearing:0,pitch:state.current.is3D?CITY_PITCH:0,duration:prefersLess?0:1700,essential:true});
  },[]);
- const zoom=useCallback((delta:number)=>mapRef.current?.zoomTo(Math.max(10.5,Math.min(19,mapRef.current.getZoom()+delta)),{duration:350}),[]);
+ const zoom=useCallback((delta:number)=>{
+  const map=mapRef.current;if(!map)return;
+  const min=state.current.is3D?MIN_3D_ZOOM:MIN_2D_ZOOM;
+  map.zoomTo(Math.max(min,Math.min(19,map.getZoom()+delta)),{duration:350});
+ },[]);
  useEffect(()=>{
   if(!mapDiv.current)return;
   let cancelled=false,hasStyle=false,triedRaster=false,revealed=false;
@@ -325,7 +336,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    if(!supported){setError(true);return;}
    const map=new maplibre.Map({
     container:mapDiv.current,style:VECTOR_STYLE,center:INTRO_CENTER,zoom:14.1,pitch:CITY_PITCH,bearing:-14,
-    maxZoom:19,minZoom:10.8,maxPitch:75,attributionControl:false,
+    maxZoom:19,minZoom:MIN_3D_ZOOM,maxPitch:75,attributionControl:false,
     canvasContextAttributes:{antialias:true},fadeDuration:250
    });
    mapRef.current=map;
@@ -395,6 +406,9 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
  useEffect(()=>{
   const map=mapRef.current;if(!ready||!map)return;
   state.current={mode,is3D};
+  // MapLibre setMinZoom applies to pinch, wheel and zoom controls alike.
+  // Do not leave 3D selected while allowing a virtually flat far-out view.
+  map.setMinZoom(is3D&&!luftbild?MIN_3D_ZOOM:MIN_2D_ZOOM);
   if(!fallback)setColorScheme(map,mode);
   map.easeTo({pitch:is3D?CITY_PITCH:0,bearing:is3D?(DISTRICTS.find(x=>x.id===area)?.bearing??-23):0,duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:850});
   if(!fallback&&map.getLayer('ffm-architecture'))map.setLayoutProperty('ffm-architecture','visibility',is3D&&!luftbild?'visible':'none');
@@ -402,6 +416,25 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   if(map.getLayer('ffm-real-lod2'))map.setLayoutProperty('ffm-real-lod2','visibility',is3D&&!luftbild&&map.getZoom()<16.15?'visible':'none');
   if(map.getLayer('ffm-citywide-lod2'))map.setLayoutProperty('ffm-citywide-lod2','visibility',is3D&&!luftbild?'visible':'none');
  },[mode,is3D,area,ready,fallback,luftbild]);
+ useEffect(()=>{
+  const map=mapRef.current;
+  if(!ready||!map)return;
+  const reconcileSelection=()=>{
+   const id=selectionRef.current;if(!id)return;
+   const place=[...latestPlaces.current,...latestCandidates.current].find(p=>p.id===id);
+   if(!place||!validCoords(place)){setSelected(null);return;}
+   const pt=map.project([place.longitude as number,place.latitude as number]);
+   const box=map.getContainer();
+   const {clientWidth:w,clientHeight:h}=box;
+   const outside=!Number.isFinite(pt.x)||!Number.isFinite(pt.y)
+     ||pt.x<12||pt.x>w-12||pt.y<113||pt.y>h-132;
+   // At city-scale, an old place card becomes misleading even if its
+   // coordinate is still somewhere on the screen.
+   if(map.getZoom()<14.05||outside)setSelected(null);
+  };
+  map.on('moveend',reconcileSelection);
+  return()=>map.off('moveend',reconcileSelection);
+ },[ready]);
  useEffect(()=>{
   const map=mapRef.current;
   if(!ready||fallback||!map||!map.getSource(OSM_SOURCE))return;
