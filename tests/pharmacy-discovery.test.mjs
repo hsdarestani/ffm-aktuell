@@ -21,13 +21,14 @@ test('original raw candidates are searchable, never promoted to verified places'
  assert.match(page,/Weitere Orte anzeigen/);
  assert.match(page,/!nurGepruefte/);
 });
-test('large map sets are clustered and anchored to source coordinates',()=>{
- assert.match(map,/cluster:true/);
- assert.match(map,/clusterMaxZoom:16/);
- assert.match(map,/ffm-osm-clusters/);
+test('large map data remains georeferenced while visible markers are sparse on mobile',()=>{
  assert.match(map,/ffm-osm-points/);
- assert.match(map,/getClusterExpansionZoom/);
+ assert.match(map,/ffm-osm-letters/);
+ assert.match(map,/readableMapCandidates/);
+ assert.match(map,/map\.project/);
  assert.match(map,/geoCandidateFeatures/);
+ assert.match(map,/const max=narrow\?9:15/);
+ assert.doesNotMatch(map,/cluster:true|point_count_abbreviated/);
 });
 test('safe importer uses only original archived candidates plus pharmacy source',()=>{
  const txt=read('scripts/prepare-osm-import.mjs');
