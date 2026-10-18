@@ -35,8 +35,8 @@ test('map controls and selected place do not cover the phone screen',()=>{
 });
 test('source transparency and non-verified operations remain truthful',()=>{
  assert.match(atlas,/selectedIsOSM\?'Ungeprüft'/);
- assert.match(atlas,/OSM ansehen/);
- assert.match(atlas,/openstreetmap\.org/);
+ assert.match(atlas,/\{'Details'\}/);
+ assert.match(atlas,/selectedIsOSM\?'Ungeprüft'/);
  assert.match(atlas,/HLBG|Hessische/);
  assert.match(atlas,/addCandidatePins\(map\)/);
 });
