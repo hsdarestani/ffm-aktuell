@@ -59,6 +59,60 @@ try{
  const audit=await pool.query("SELECT count(*)::int AS events FROM audit_log WHERE action='admin:one-time-activation' AND target_id=(SELECT id::text FROM users WHERE email=$1)",[email]);
  if(!verified.rows[0]?.used||saved.rows[0]?.role!=='admin'||saved.rows[0]?.sessions!==1||audit.rows[0]?.events!==1)
   throw Error('Atomic database state does not match successful activation');
+ // Real API smoke test for user bookmarks, review approvals, abuse reporting
+ // and removal. All data lives in the disposable localhost CI database.
+ const testOsm='node/'+String(BigInt('2'+randomBytes(5).toString('hex').replace(/[a-f]/g,'1').replace(/0/g,'2'))).slice(0,13);
+ await pool.query("INSERT INTO discovery_candidates(osm_id,name,category,latitude,longitude,address,osm_url) VALUES($1,$2,$3,$4,$5,$6,$7)",
+  [testOsm,'CI Example Venue','Cafés',50.11,8.68,'CI Teststraße 1','https://www.openstreetmap.org/'+testOsm]);
+ const signup=async(label)=>{
+  const response=await fetch(site+'/api/auth/register',{method:'POST',
+   headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    email:'ci-reviews-'+label+'-'+randomBytes(6).toString('hex')+'@example.com',
+    display_name:'Testperson',password:'ci-review-'+randomBytes(15).toString('hex')
+   })});
+  if(response.status!==201)throw Error('Test user registration failed: '+response.status);
+  const value=response.headers.get('set-cookie')?.split(';')[0];
+  if(!value)throw Error('Test user session cookie missing');
+  return value;
+ };
+ const client=await signup('author');
+ const post=async(route,cookie,json)=>{
+  const response=await fetch(site+'/api/'+route,{method:'POST',
+    headers:{'Content-Type':'application/json',Cookie:cookie},
+    body:JSON.stringify(json)});
+  return {status:response.status,body:await response.json()};
+ };
+ const get=async(route,cookie)=>{
+  const response=await fetch(site+'/api/'+route,{headers:cookie?{Cookie:cookie}:undefined});
+  return {status:response.status,body:await response.json()};
+ };
+ const saved=await post('favorites',client,{place_id:testOsm,active:true});
+ if(saved.status!==200)throw Error('OSM save failed: '+JSON.stringify(saved));
+ const savedDetails=await get('favorites/details',client);
+ if(!savedDetails.body.items.some(v=>v.id===testOsm&&v.candidate===true))throw Error('OSM save missing from Meine Orte');
+ const rawRating=await post('reviews',client,{place_id:testOsm,rating:5,body:'A real test comment pending editorial approval.'});
+ if(rawRating.status!==201||rawRating.body.status!=='pending')throw Error('Review insert failed: '+JSON.stringify(rawRating));
+ const pre=await get('reviews?place_id='+encodeURIComponent(testOsm));
+ if(pre.body.summary?.count!==0||pre.body.items?.length!==0)throw Error('Pending review leaked publicly');
+ const queue=await get('admin/queue',cookie);
+ if(!queue.body.reviews?.some(v=>v.id===rawRating.body.id))throw Error('Review absent from admin queue');
+ const approve=await post('admin/moderate-review',cookie,{id:rawRating.body.id,approve:true});
+ if(approve.status!==200)throw Error('Admin review approval failed: '+JSON.stringify(approve));
+ const approved=await get('reviews?place_id='+encodeURIComponent(testOsm));
+ if(approved.body.summary?.count!==1||Number(approved.body.summary?.average)!==5
+ ||approved.body.items[0]?.id!==rawRating.body.id)throw Error('Approved review missing or wrong average');
+ const reader=await signup('reader');
+ const report=await post('review-reports',reader,{review_id:rawRating.body.id,reason:'other',message:'Please verify the review'});
+ if(report.status!==201)throw Error('Abuse report failed: '+JSON.stringify(report));
+ const duplicate=await post('review-reports',reader,{review_id:rawRating.body.id,reason:'other'});
+ if(duplicate.status!==409)throw Error('Duplicate review report was accepted');
+ const reports=await get('admin/queue',cookie);
+ if(!reports.body.reviewReports?.some(v=>v.review_id===rawRating.body.id))throw Error('Review report missing from admin queue');
+ const removal=await post('admin/remove-review',cookie,{id:rawRating.body.id,reason:'CI explicit removal test'});
+ if(removal.status!==200)throw Error('Explicit removal failed: '+JSON.stringify(removal));
+ const after=await get('reviews?place_id='+encodeURIComponent(testOsm));
+ if(after.body.summary?.count!==0)throw Error('Removed review is still publicly counted');
+ console.log('PASS: OSM bookmarks, hidden pending review, admin approval, public average, user report and explicit removal');
  console.log('PASS: admin created, audit logged, session working, invitation used exactly once');
 }finally{
  if(server){
