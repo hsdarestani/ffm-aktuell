@@ -2,6 +2,7 @@ import type {Metadata,Viewport} from 'next';
 import './globals.css';
 import './brand.css';
 import './atlas.css';
+import './atlas-readable.css';
 import './vorschau.css';
 import './quick-home.css';
 import './find-fast.css';
