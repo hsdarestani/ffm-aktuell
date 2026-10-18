@@ -3,6 +3,7 @@ import {createHash,randomBytes} from 'node:crypto';
 import {z} from 'zod';
 import {pool,query} from '@/lib/db';
 import {beginSession,endSession,hashPassword,verifyPassword,sessionUser,trustedOrigin,User} from '@/lib/auth';
+import {validLocationId,osmId} from '@/lib/location-actions';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 type Ctx={params:Promise<{path?:string[]}>};
@@ -157,12 +158,53 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   if(method==='GET'&&path==='news'){const r=await query("SELECT * FROM news WHERE status='published' ORDER BY published_at DESC LIMIT 40");return ok({items:r.rows});}
   if(method==='GET'&&path==='posts'){const r=await query("SELECT p.id,p.body,p.media_url,p.created_at,u.display_name,pl.name AS place_name FROM posts p JOIN users u ON u.id=p.user_id LEFT JOIN places pl ON pl.id=p.place_id WHERE p.status='published' ORDER BY p.created_at DESC LIMIT 40");return ok({items:r.rows});}
   if(method==='GET'&&path==='deals'){const r=await query("SELECT d.id,d.title,d.details,d.valid_until,b.name AS business_name,p.name AS place_name FROM deals d JOIN businesses b ON b.id=d.business_id LEFT JOIN places p ON p.id=d.place_id WHERE d.status='published' AND (d.valid_until IS NULL OR d.valid_until>now()) ORDER BY d.created_at DESC LIMIT 40");return ok({items:r.rows});}
-  if(method==='GET'&&path==='favorites'){const u=need(user);const r=await query('SELECT place_id FROM favorites WHERE user_id=$1',[u.id]);return ok({items:r.rows.map(x=>x.place_id)});}
+  if(method==='GET'&&path==='location'){
+    const place_id=trim(qs.get('id'));
+    if(!validLocationId(place_id))return bad('Invalid place ID',400);
+    if(osmId.test(place_id)){
+      const r=await query("SELECT osm_id AS id,osm_id,name,category,latitude,longitude,address,website,phone,opening_hours AS opening_hours_text,osm_url AS source_url,activity_status,'unverified' AS verification_status,false AS demo,true AS candidate FROM discovery_candidates WHERE osm_id=$1 AND reviewed_status='unverified'",[place_id]);
+      if(!r.rowCount)return bad('Place not found',404);
+      return ok({place:r.rows[0]});
+    }
+    const r=await query("SELECT id,name,category,district,description_de,description_en,address,latitude,longitude,website,image_url,source_url,verification_status,activity_status,verified_at,verification_source,editorial_rank,opening_hours_text FROM places WHERE id=$1 AND status='published' AND activity_status!='permanently_closed'",[place_id]);
+    if(!r.rowCount)return bad('Place not found',404);
+    return ok({place:r.rows[0]});
+  }
+  if(method==='GET'&&path==='favorites'){
+    const u=need(user);
+    const [published,candidates]=await Promise.all([
+      query('SELECT place_id AS id FROM favorites WHERE user_id=$1',[u.id]),
+      query('SELECT osm_id AS id FROM candidate_favorites WHERE user_id=$1',[u.id])
+    ]);
+    return ok({items:[...published.rows,...candidates.rows].map(x=>x.id)});
+  }
   if(method==='POST'&&path==='favorites'){
-    const u=need(user);const b=parse(z.object({place_id:id,active:z.boolean()}),await payload(req));
-    if(b.active)await query("INSERT INTO favorites(user_id,place_id) SELECT $1,id FROM places WHERE id=$2 AND status='published' ON CONFLICT DO NOTHING",[u.id,b.place_id]);
-    else await query('DELETE FROM favorites WHERE user_id=$1 AND place_id=$2',[u.id,b.place_id]);
+    const u=need(user);
+    const b=parse(z.object({place_id:z.string().max(90).refine(validLocationId),active:z.boolean()}),await payload(req));
+    if(osmId.test(b.place_id)){
+      if(b.active){
+        const r=await query("INSERT INTO candidate_favorites(user_id,osm_id) SELECT $1,osm_id FROM discovery_candidates WHERE osm_id=$2 AND reviewed_status='unverified' ON CONFLICT DO NOTHING RETURNING osm_id",[u.id,b.place_id]);
+        if(!r.rowCount){const exists=await query('SELECT osm_id FROM candidate_favorites WHERE user_id=$1 AND osm_id=$2',[u.id,b.place_id]);if(!exists.rowCount)return bad('Place not found',404);}
+      } else await query('DELETE FROM candidate_favorites WHERE user_id=$1 AND osm_id=$2',[u.id,b.place_id]);
+    }else{
+      if(b.active){
+        const r=await query("INSERT INTO favorites(user_id,place_id) SELECT $1,id FROM places WHERE id=$2 AND status='published' ON CONFLICT DO NOTHING RETURNING place_id",[u.id,b.place_id]);
+        if(!r.rowCount){const exists=await query('SELECT place_id FROM favorites WHERE user_id=$1 AND place_id=$2',[u.id,b.place_id]);if(!exists.rowCount)return bad('Place not found',404);}
+      } else await query('DELETE FROM favorites WHERE user_id=$1 AND place_id=$2',[u.id,b.place_id]);
+    }
     return ok({success:true});
+  }
+  if(method==='POST'&&path==='place-reports'){
+    rate(req,'place-report');const u=need(user);
+    const b=parse(z.object({place_id:z.string().max(90).refine(validLocationId),
+      reason:z.enum(['closed','address','details','other']),message:z.string().trim().min(12).max(750)}),await payload(req));
+    const isOsm=osmId.test(b.place_id);
+    const exists=await query(isOsm?"SELECT osm_id FROM discovery_candidates WHERE osm_id=$1 AND reviewed_status!='hidden'":"SELECT id FROM places WHERE id=$1 AND status='published'",[b.place_id]);
+    if(!exists.rowCount)return bad('Place not found',404);
+    const r=await query("INSERT INTO place_reports(user_id,place_id,osm_id,reason,message) VALUES($1,$2,$3,$4,$5) RETURNING id,status",
+      [u.id,isOsm?null:b.place_id,isOsm?b.place_id:null,b.reason,b.message]);
+    await audit(u,'report:submitted','place_report',r.rows[0].id);
+    return ok({id:r.rows[0].id,status:r.rows[0].status},201);
   }
   if(method==='POST'&&path==='posts'){
     rate(req,'post');const u=need(user);const b=parse(z.object({body:text(1000),place_id:id.nullish(),media_url:z.string().max(1000).optional()}),await payload(req));
