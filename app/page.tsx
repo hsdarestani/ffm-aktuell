@@ -6,6 +6,8 @@ import type {MapPlace} from '@/components/CityMap';
 import AtlasHome from '@/components/AtlasHome';
 import AdminStudio from '@/components/AdminStudio';
 import PlaceLocationMap from '@/components/PlaceLocationMap';
+import PlaceActions from '@/components/PlaceActions';
+import {validLocationId} from '@/lib/location-actions';
 import {KATEGORIEN,passendeRubrik,frischBestaetigt,statusLabel} from '@/lib/ortskategorien';
 import {VORSCHAU_HINWEIS,ortsbild,vorschauOrte,vorschauVeranstaltungen,vorschauBeitraege,vorschauPosts,vorschauAngebote,vorschauGruppen} from '@/lib/vorschau';
 const Atlas3D=dynamic(()=>import('@/components/Atlas3D'),{ssr:false});
@@ -40,6 +42,21 @@ export default function Home(){
  },[refresh]);
  useEffect(()=>{void load()},[load]);
  useEffect(()=>{document.documentElement.lang=lang},[lang]);
+ // Deep links resolve directly to the actual place record, even when that
+ // raw OSM candidate isn't in the first search page. Never invent demo venues.
+ useEffect(()=>{
+  const placeId=new URLSearchParams(window.location.search).get('ort')||'';
+  if(!validLocationId(placeId))return;
+  let live=true;
+  void fetch('/api/location?id='+encodeURIComponent(placeId),{cache:'no-store'})
+   .then(async r=>{if(!r.ok)throw Error('not found');return r.json()})
+   .then(data=>{if(live&&data.place)setSelected(data.place as Place)})
+   .catch(()=>{if(live)flash('Der geteilte Ort ist derzeit nicht verfügbar.')});
+  return()=>{live=false};
+ // Landing deep link should only resolve on initial load.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[]);
+ 
  useEffect(()=>{if(page!=='discover')return;let disposed=false;const controller=new AbortController();setCandidateLoading(true);setCandidates([]);setCandidateTotal(0);const timer=window.setTimeout(()=>{
   const q=new URLSearchParams({limit:'18',offset:'0'});
   if(category!=='Alle')q.set('category',category==='Apotheken Notdienst'?'Apotheken':category);
@@ -70,7 +87,7 @@ export default function Home(){
  const navigate=(p:Page)=>{setPage(p);setMenu(false);window.scrollTo({top:0,behavior:'smooth'})};
  const selectPlace=useCallback((id:string)=>{setSelected([...sichtbareOrte,...candidates].find(p=>p.id===id)||null)},[sichtbareOrte,candidates]);
  const submit=async(path:string,data:unknown,success:string)=>{try{await api(path,data);flash(success);setRefresh(x=>x+1);return true}catch(e){flash((e as Error).message||'Die Anfrage ist fehlgeschlagen.');return false}};
- const favorite=async(id:string)=>{if(id.startsWith('muster-')||id.startsWith('node/')||id.startsWith('way/')||id.startsWith('relation/')){flash('Ungeprüfte Einträge können noch nicht gespeichert werden.');return}if(!user){setAuth(true);return}try{let active=!favorites.includes(id);await api('favorites',{place_id:id,active});setFavorites(a=>active?[...a,id]:a.filter(x=>x!==id))}catch(e){flash((e as Error).message||'Die Merkliste konnte nicht geändert werden.')}};
+ const favorite=async(id:string)=>{if(!validLocationId(id)){flash('Dieser Musterort kann nicht gespeichert werden.');return}if(!user){setAuth(true);return}try{const active=!favorites.includes(id);await api('favorites',{place_id:id,active});setFavorites(a=>active?[...a,id]:a.filter(x=>x!==id));flash(active?'Ort gemerkt.':'Aus Merkliste entfernt.')}catch(e){flash((e as Error).message||'Die Merkliste konnte nicht geändert werden.')}};
  const handle=(e:FormEvent<HTMLFormElement>,path:string,transform?:(x:Record<string,FormDataEntryValue>)=>unknown)=>{e.preventDefault();const form=e.currentTarget;const data=Object.fromEntries(new FormData(form));submit(path,transform?transform(data):data,t.pending).then(success=>{if(success)form.reset()})};
  const onAuth=async(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.currentTarget));const ok=await submit(register?'auth/register':'auth/login',data,t.welcome);if(ok){setAuth(false);setRegister(false)}};
  const nav:[Page,any,string][]=[['home',Compass,t.home],['discover',Search,t.discover],['map',MapIcon,t.map]];
@@ -185,7 +202,11 @@ export default function Home(){
   {page==='admin'&&(user?.role==='admin'?<AdminStudio onChanged={()=>setRefresh(n=>n+1)}/>:<main className="inner-page"><div className="empty"><LockKeyhole/><p>Zugriff nur für die Redaktion. Bitte melde dich als Administrator an.</p></div></main>)}
   <footer className="footer"><div className="footer-top"><div><strong>ffm<b>aktuell</b><em>.</em></strong><p>FRANKFURT VON INNEN. DEINE STADT, DEIN BLICK.</p></div><div><button onClick={()=>navigate('discover')}>{t.discover}</button><button onClick={()=>navigate('events')}>{t.events}</button><button onClick={()=>navigate('business')}>{t.business}</button></div></div><div className="footer-bottom"><span>© 2026 FFM Aktuell</span><span>Frankfurt am Main</span></div></footer>
   <nav className="mobile-bottom">{nav.map(([p,Icon,title])=><button className={page===p?'active':''} key={p} onClick={()=>navigate(p)}><Icon size={21}/><span>{title}</span></button>)}</nav>
-  {selected&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}><div className="place-dialog" role="dialog" aria-modal="true" aria-label="Ortsdetails"><div className="ffm-place-dialog-header"><span>Ortsdetails</span><button type="button" className="dialog-close" aria-label="Details schließen" onClick={()=>setSelected(null)}><X size={20}/></button></div><div className="dialog-body">{selected.demo&&<span className="v3-demo-label">Musterort – noch keine redaktionelle Freigabe</span>}<small>{catBezeichnungen[selected.category]||selected.category} / {selected.district}</small><p className="v4-place-check">{selected.candidate?'OSM · Ungeprüft':statusLabel(selected)}{selected.verified_at&&frischBestaetigt(selected)?' · Zuletzt geprüft: '+date(selected.verified_at,lang):''}</p><h2>{selected.name}</h2><p>{!selected.candidate&&(lang==='de'?selected.description_de||selected.description_en:selected.description_en||selected.description_de)}</p><p className="address"><MapPin size={16}/>{selected.address}</p><div className="dialog-actions">{!selected.candidate&&<button className="primary-btn small" onClick={()=>favorite(selected.id)}><Heart size={16}/>{favorites.includes(selected.id)?t.saved:t.save}</button>}{selected.website&&<a href={selected.website} target="_blank" rel="noopener noreferrer" className="secondary-btn">{t.website}<span className="ui-dot" aria-hidden="true"/></a>}</div>{selected.candidate&&<p className="v5-candidate-alert">Betrieb und Öffnungszeiten nicht geprüft. Bitte beim Anbieter nachsehen.</p>}{selected.verification_source&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.verification_source}>Quelle der Betriebsprüfung</a>}{selected.source_url&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.source_url}>{t.source}<span className="ui-dot" aria-hidden="true"/></a>}<p className="fineprint">{t.notice}</p></div><PlaceLocationMap key={selected.id} name={selected.name} address={selected.address} latitude={selected.latitude} longitude={selected.longitude}/></div></div>}
+  {selected&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}><div className="place-dialog" role="dialog" aria-modal="true" aria-label="Ortsdetails"><div className="ffm-place-dialog-header"><span>Ortsdetails</span><button type="button" className="dialog-close" aria-label="Details schließen" onClick={()=>setSelected(null)}><X size={20}/></button></div><div className="dialog-body">{selected.demo&&<span className="v3-demo-label">Musterort – noch keine redaktionelle Freigabe</span>}<small>{catBezeichnungen[selected.category]||selected.category} / {selected.district}</small><p className="v4-place-check">{selected.candidate?'OSM · Ungeprüft':statusLabel(selected)}{selected.verified_at&&frischBestaetigt(selected)?' · Zuletzt geprüft: '+date(selected.verified_at,lang):''}</p><h2>{selected.name}</h2><p>{!selected.candidate&&(lang==='de'?selected.description_de||selected.description_en:selected.description_en||selected.description_de)}</p><p className="address"><MapPin size={16}/>{selected.address}</p><PlaceActions key={selected.id} venue={selected} saved={favorites.includes(selected.id)} loggedIn={Boolean(user)}
+ onSave={()=>favorite(selected.id)} onLogin={()=>setAuth(true)} onNotice={flash}
+ onReport={(reason,message)=>submit('place-reports',{place_id:selected.id,reason,message},'Danke! Die Redaktion prüft deine Meldung.')}
+ onPost={body=>submit('posts',{body,place_id:selected.id},'Dein Tipp wartet auf Freigabe.')}
+/>{selected.candidate&&<p className="v5-candidate-alert">Betrieb und Öffnungszeiten nicht geprüft. Bitte beim Anbieter nachsehen.</p>}{selected.verification_source&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.verification_source}>Quelle der Betriebsprüfung</a>}{selected.source_url&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.source_url}>{t.source}<span className="ui-dot" aria-hidden="true"/></a>}<p className="fineprint">{t.notice}</p></div><PlaceLocationMap key={selected.id} name={selected.name} address={selected.address} latitude={selected.latitude} longitude={selected.longitude}/></div></div>}
   {auth&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setAuth(false)}}><div className="auth-dialog" role="dialog" aria-modal="true"><button className="dialog-close" onClick={()=>setAuth(false)}><X/></button><span className="auth-mark">F✳</span><small>DEIN ZUGANG ZU FFM AKTUELL</small><h2>{register?t.register:t.welcome}</h2><form onSubmit={onAuth}>{register&&formField(t.name,'display_name',true)}{formField(t.email,'email',true,'email')}{formField(t.password,'password',true,'password')}<button className="primary-btn">{register?t.register:t.login}<span className="ui-dot" aria-hidden="true"/></button></form><button className="switch-auth" onClick={()=>setRegister(!register)}>{register?t.login:t.register}<span className="ui-dot" aria-hidden="true"/></button></div></div>}
  </div>;
 }
