@@ -153,6 +153,41 @@ CREATE TABLE IF NOT EXISTS place_reports (
 );
 CREATE INDEX IF NOT EXISTS place_reports_queue_idx ON place_reports(status,created_at);
 CREATE INDEX IF NOT EXISTS place_reports_user_idx ON place_reports(user_id,created_at);
+-- Reviews belong to a verified/published catalogue record or a raw OSM
+-- candidate. Publishing a user's opinion is NEVER verification of operation.
+CREATE TABLE IF NOT EXISTS venue_reviews (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ place_id uuid REFERENCES places(id) ON DELETE CASCADE,
+ osm_id text REFERENCES discovery_candidates(osm_id) ON DELETE CASCADE,
+ rating smallint NOT NULL CHECK (rating BETWEEN 1 AND 5),
+ body text NOT NULL CHECK (char_length(body) BETWEEN 20 AND 1000),
+ status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','published','rejected')),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ updated_at timestamptz NOT NULL DEFAULT now(),
+ reviewed_by uuid REFERENCES users(id) ON DELETE SET NULL,
+ reviewed_at timestamptz,
+ CHECK ((place_id IS NOT NULL)::int + (osm_id IS NOT NULL)::int = 1)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS venue_reviews_user_place_unique ON venue_reviews(user_id,place_id) WHERE place_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS venue_reviews_user_osm_unique ON venue_reviews(user_id,osm_id) WHERE osm_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS venue_reviews_published_place ON venue_reviews(place_id,created_at DESC) WHERE status='published';
+CREATE INDEX IF NOT EXISTS venue_reviews_published_osm ON venue_reviews(osm_id,created_at DESC) WHERE status='published';
+CREATE INDEX IF NOT EXISTS venue_reviews_moderation ON venue_reviews(status,created_at);
+-- Abuse reports enter a human queue and cannot automatically unpublish content.
+CREATE TABLE IF NOT EXISTS venue_review_reports (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ review_id uuid NOT NULL REFERENCES venue_reviews(id) ON DELETE CASCADE,
+ reporter_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ reason text NOT NULL CHECK(reason IN ('spam','abuse','privacy','incorrect','other')),
+ message text NOT NULL DEFAULT '' CHECK(char_length(message)<=500),
+ status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','reviewed','rejected')),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ reviewed_at timestamptz,
+ reviewed_by uuid REFERENCES users(id) ON DELETE SET NULL,
+ UNIQUE(review_id,reporter_id)
+);
+CREATE INDEX IF NOT EXISTS venue_review_reports_pending ON venue_review_reports(status,created_at);
 CREATE TABLE IF NOT EXISTS audit_log (
  id bigserial PRIMARY KEY, actor_id uuid REFERENCES users(id) ON DELETE SET NULL,
  action text NOT NULL, target_type text NOT NULL, target_id text NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
