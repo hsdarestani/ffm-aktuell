@@ -156,7 +156,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   }
   if(method==='GET'&&path==='events'){const r=await query("SELECT * FROM events WHERE status='published' AND starts_at>=now()-interval '1 day' ORDER BY starts_at LIMIT 40");return ok({items:r.rows});}
   if(method==='GET'&&path==='news'){const r=await query("SELECT * FROM news WHERE status='published' ORDER BY published_at DESC LIMIT 40");return ok({items:r.rows});}
-  if(method==='GET'&&path==='posts'){const r=await query("SELECT p.id,p.body,p.media_url,p.created_at,u.display_name,pl.name AS place_name FROM posts p JOIN users u ON u.id=p.user_id LEFT JOIN places pl ON pl.id=p.place_id WHERE p.status='published' ORDER BY p.created_at DESC LIMIT 40");return ok({items:r.rows});}
+  if(method==='GET'&&path==='posts'){const r=await query("SELECT p.id,p.body,p.media_url,p.created_at,u.display_name,COALESCE(pl.name,dc.name) AS place_name FROM posts p JOIN users u ON u.id=p.user_id LEFT JOIN places pl ON pl.id=p.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=p.candidate_osm_id WHERE p.status='published' ORDER BY p.created_at DESC LIMIT 40");return ok({items:r.rows});}
   if(method==='GET'&&path==='deals'){const r=await query("SELECT d.id,d.title,d.details,d.valid_until,b.name AS business_name,p.name AS place_name FROM deals d JOIN businesses b ON b.id=d.business_id LEFT JOIN places p ON p.id=d.place_id WHERE d.status='published' AND (d.valid_until IS NULL OR d.valid_until>now()) ORDER BY d.created_at DESC LIMIT 40");return ok({items:r.rows});}
   if(method==='GET'&&path==='location'){
     const place_id=trim(qs.get('id'));
@@ -207,9 +207,18 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     return ok({id:r.rows[0].id,status:r.rows[0].status},201);
   }
   if(method==='POST'&&path==='posts'){
-    rate(req,'post');const u=need(user);const b=parse(z.object({body:text(1000),place_id:id.nullish(),media_url:z.string().max(1000).optional()}),await payload(req));
+    rate(req,'post');const u=need(user);
+    const b=parse(z.object({body:text(1000),place_id:z.string().refine(validLocationId).nullish(),media_url:z.string().max(1000).optional()}),await payload(req));
     const media=allowedUrl(b.media_url);if(b.media_url&&!media)return bad('Invalid media link');
-    const r=await query("INSERT INTO posts(user_id,place_id,body,media_url) VALUES($1,$2,$3,$4) RETURNING id",[u.id,b.place_id||null,b.body,media]);
+    let placeId:string|null=null,candidateId:string|null=null;
+    if(b.place_id){
+      const candidate=osmId.test(b.place_id);
+      const r=await query(candidate?"SELECT osm_id FROM discovery_candidates WHERE osm_id=$1 AND reviewed_status='unverified'":"SELECT id FROM places WHERE id=$1 AND status='published'",[b.place_id]);
+      if(!r.rowCount)return bad('Place not found',404);
+      if(candidate)candidateId=b.place_id;else placeId=b.place_id;
+    }
+    const r=await query("INSERT INTO posts(user_id,place_id,candidate_osm_id,body,media_url) VALUES($1,$2,$3,$4,$5) RETURNING id",
+      [u.id,placeId,candidateId,b.body,media]);
     return ok({id:r.rows[0].id,status:'pending'},201);
   }
   if(method==='GET'&&path==='businesses'){const u=need(user);const r=await query('SELECT * FROM businesses WHERE owner_id=$1 ORDER BY created_at DESC',[u.id]);return ok({items:r.rows});}
