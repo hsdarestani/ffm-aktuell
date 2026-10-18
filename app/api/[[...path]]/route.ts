@@ -170,6 +170,15 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     if(!r.rowCount)return bad('Place not found',404);
     return ok({place:r.rows[0]});
   }
+  if(method==='GET'&&path==='favorites/details'){
+    const u=need(user);
+    const [listed,candidates]=await Promise.all([
+      query("SELECT p.id,p.name,p.category,p.district,p.address,p.latitude,p.longitude,p.website,p.description_de,p.description_en,p.source_url,p.image_url,p.verification_status,p.activity_status,p.verified_at,p.verification_source,p.opening_hours_text,f.created_at AS saved_at,false AS candidate FROM favorites f JOIN places p ON p.id=f.place_id WHERE f.user_id=$1 AND p.status='published' AND p.activity_status!='permanently_closed' ORDER BY f.created_at DESC LIMIT 120",[u.id]),
+      query("SELECT dc.osm_id AS id,dc.osm_id,dc.name,dc.category,dc.address,dc.latitude,dc.longitude,dc.website,dc.phone,dc.osm_url AS source_url,dc.activity_status,'unverified' AS verification_status,dc.opening_hours AS opening_hours_text,cf.created_at AS saved_at,true AS candidate FROM candidate_favorites cf JOIN discovery_candidates dc ON dc.osm_id=cf.osm_id WHERE cf.user_id=$1 AND dc.reviewed_status='unverified' ORDER BY cf.created_at DESC LIMIT 120",[u.id])
+    ]);
+    const items=[...listed.rows,...candidates.rows].sort((a,b)=>new Date(b.saved_at).getTime()-new Date(a.saved_at).getTime()).slice(0,120);
+    return ok({items});
+  }
   if(method==='GET'&&path==='favorites'){
     const u=need(user);
     const [published,candidates]=await Promise.all([
