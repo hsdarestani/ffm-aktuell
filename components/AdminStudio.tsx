@@ -364,21 +364,26 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
       <form key={publishMode+'-'+newPlaceId} className="ffm-studio-form" onSubmit={publish}>
        {publishMode==='place'?<>
         <Field label="Name des Orts"><input name="name" required maxLength={150} placeholder="Zum Beispiel: Stadtteilcafé ..."/></Field>
-        <div className="ffm-studio-form-pair"><Field label="Kategorie"><select name="category">{KATEGORIEN.filter(c=>c.id!=='Alle').map(c=><option key={c.id} value={c.id}>{c.label}</option>)}</select></Field><Field label="Stadtteil"><input name="district" maxLength={100} placeholder="z. B. Bornheim"/></Field></div>
+        <Field label="Kategorie"><select name="category">{KATEGORIEN.filter(c=>c.id!=='Alle').map(c=><option key={c.id} value={c.id}>{c.label}</option>)}</select></Field>
         <Field label="Adresse"><input name="address" maxLength={200} placeholder="Straße und Hausnummer"/></Field>
+        <details className="ffm-simple-more-fields"><summary><Plus size={17}/> Weitere Angaben</summary><div className="ffm-simple-more-content">
+        <Field label="Stadtteil"><input name="district" maxLength={100} placeholder="z. B. Bornheim"/></Field>
         <Field label="Kurzbeschreibung"><textarea name="description_de" rows={3} maxLength={2000} placeholder="Was macht diesen Ort besonders?"/></Field>
         <div className="ffm-studio-form-pair"><Field label="Breitengrad"><input type="number" step="any" name="latitude" placeholder="50.1109"/></Field><Field label="Längengrad"><input type="number" step="any" name="longitude" placeholder="8.6821"/></Field></div>
         <div className="ffm-studio-form-pair"><Field label="Offizielle Internetseite"><input type="url" name="website" placeholder="https://..."/></Field><Field label="Quellenlink"><input type="url" name="source_url" placeholder="https://..."/></Field></div>
+        </div></details>
        </>:publishMode==='news'?<>
         <Field label="Titel"><input name="title" required maxLength={150} placeholder="Was ist passiert?"/></Field>
         <Field label="Dein Stadtbeitrag"><textarea name="body_de" rows={7} maxLength={10000} placeholder="Erzähle deine Geschichte aus Frankfurt ..."/></Field>
-        <Field label="Quelle"><input type="url" name="source_url" placeholder="https://..."/></Field>
+        <details className="ffm-simple-more-fields"><summary><Plus size={17}/> Quellenlink ergänzen</summary><div className="ffm-simple-more-content"><Field label="Quelle"><input type="url" name="source_url" placeholder="https://..."/></Field></div></details>
        </>:<>
         <Field label="Titel der Veranstaltung"><input name="title" required maxLength={150} placeholder="Name der Veranstaltung"/></Field>
         <Field label="Veranstaltungsort"><input name="venue" required maxLength={150} placeholder="Wo findet es statt?"/></Field>
         <Field label="Datum und Uhrzeit"><input name="starts_at" type="datetime-local" required/></Field>
+        <details className="ffm-simple-more-fields"><summary><Plus size={17}/> Beschreibung & Link</summary><div className="ffm-simple-more-content">
         <Field label="Beschreibung"><textarea name="description_de" rows={4} maxLength={3000} placeholder="Für wen ist dieses Event und was erwartet die Gäste?"/></Field>
         <Field label="Ticket oder Infoseite"><input type="url" name="ticket_url" placeholder="https://..."/></Field>
+        </div></details>
        </>}
        <div className="ffm-studio-publish-confirm"><ShieldCheck size={18}/><span>Direkt öffentlich. Angaben vorher prüfen.</span></div>
        <button className="ffm-studio-primary" disabled={busy}>{busy?'Wird veröffentlicht …':'Jetzt veröffentlichen'} <ArrowRight size={18}/></button>
