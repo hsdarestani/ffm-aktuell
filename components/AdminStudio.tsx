@@ -219,7 +219,7 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
     <div className="ffm-studio-checks"><label><input type="checkbox" name="confirms_existence" required/> Existenz geprüft</label><label><input type="checkbox" name="confirms_address" required/> Standort geprüft</label><label><input type="checkbox" name="confirms_status" required/> Betriebsstatus geprüft</label></div>
     <details className="ffm-simple-more-fields"><summary><Plus size={17}/> Weitere Angaben</summary><div className="ffm-studio-form-pair"><Field label="Redaktionelle Priorität"><input type="number" name="editorial_rank" min={0} max={100} defaultValue={0}/></Field><Field label="Bestätigte Öffnungszeiten"><input name="opening_hours_text" placeholder="Optional"/></Field></div></details>
     <button className="ffm-studio-primary" disabled={busy}><FileCheck2 size={18}/> Prüfung speichern <ArrowRight size={18}/></button>
-   </form>
+   </form>}
   </div>
  ):selected?(
   <div key={selected.osm_id} className="ffm-studio-detail">
