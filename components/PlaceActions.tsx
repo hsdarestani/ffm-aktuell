@@ -1,7 +1,7 @@
 'use client';
 
 import {useState,type FormEvent} from 'react';
-import {Navigation,Bookmark,BookmarkCheck,Share2,Phone,Globe,Flag,SquarePen,ExternalLink,ChevronDown,CheckCircle2} from 'lucide-react';
+import {Navigation,Bookmark,BookmarkCheck,Share2,Phone,Globe,Flag,SquarePen,ExternalLink,ChevronDown} from 'lucide-react';
 import {directionsUrl,locationShareUrl,safePhoneHref} from '@/lib/location-actions';
 
 type Venue={
@@ -46,20 +46,22 @@ export default function PlaceActions({venue,saved,loggedIn,onSave,onLogin,onRepo
  };
  const submitReport=async(e:FormEvent<HTMLFormElement>)=>{
   e.preventDefault();if(busy)return;
+  const form=e.currentTarget;
   if(!loggedIn){onLogin();return;}
-  const data=new FormData(e.currentTarget);
+  const data=new FormData(form);
   setBusy(true);
   try{if(await onReport(String(data.get('reason')||''),String(data.get('message')||''))){
-   setReportOpen(false);e.currentTarget.reset();
+   setReportOpen(false);form.reset();
   }}finally{setBusy(false)}
  };
  const submitPost=async(e:FormEvent<HTMLFormElement>)=>{
   e.preventDefault();if(busy)return;
+  const form=e.currentTarget;
   if(!loggedIn){onLogin();return;}
-  const body=String(new FormData(e.currentTarget).get('body')||'').trim();
+  const body=String(new FormData(form).get('body')||'').trim();
   if(body.length<3){onNotice('Bitte beschreibe deinen Tipp etwas genauer.');return;}
   setBusy(true);
-  try{if(await onPost(body)){setPostOpen(false);e.currentTarget.reset();}}
+  try{if(await onPost(body)){setPostOpen(false);form.reset();}}
   finally{setBusy(false)}
  };
  const save=()=>{if(venue.demo){onNotice('Musterorte können nicht gespeichert werden.');return;}if(!loggedIn){onLogin();return;}void onSave();};
