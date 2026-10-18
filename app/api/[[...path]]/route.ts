@@ -370,7 +370,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       query("SELECT id,body FROM posts WHERE status='pending'"),
       query("SELECT r.id,r.reason,r.message AS note,COALESCE(p.name,dc.name) AS place_name FROM place_reports r LEFT JOIN places p ON p.id=r.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=r.osm_id WHERE r.status='pending' ORDER BY r.created_at LIMIT 60"),
       query("SELECT r.id,r.rating,r.body,COALESCE(p.name,dc.name) AS place_name FROM venue_reviews r LEFT JOIN places p ON p.id=r.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=r.osm_id WHERE r.status='pending' ORDER BY r.created_at LIMIT 80"),
-      query("SELECT rr.id,rr.reason,rr.message AS note,vr.body,COALESCE(p.name,dc.name) AS place_name FROM venue_review_reports rr JOIN venue_reviews vr ON vr.id=rr.review_id LEFT JOIN places p ON p.id=vr.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=vr.osm_id WHERE rr.status='pending' ORDER BY rr.created_at LIMIT 60")
+      query("SELECT rr.id,rr.review_id,rr.reason,rr.message AS note,vr.body,COALESCE(p.name,dc.name) AS place_name FROM venue_review_reports rr JOIN venue_reviews vr ON vr.id=rr.review_id LEFT JOIN places p ON p.id=vr.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=vr.osm_id WHERE rr.status='pending' ORDER BY rr.created_at LIMIT 60")
     ]);return ok({businesses:b.rows,claims:c.rows,places:p.rows,deals:d.rows,posts:posts.rows,reports:reports.rows,reviews:reviews.rows,reviewReports:reviewReports.rows});
   }
   if(method==='POST'&&path==='admin/moderate-review'){
