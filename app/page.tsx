@@ -17,7 +17,7 @@ type Event={id:string,title:string,venue:string,starts_at:string,description_de:
 type News={id:string,title:string,body_de:string,body_en:string,source_url:string|null,published_at:string,image_url?:string,demo?:true};
 type Post={id:string,body:string,created_at:string,display_name:string,place_name:string|null,image_url?:string,demo?:true};
 type Deal={id:string,title:string,details:string,business_name:string,image_url?:string,demo?:true};
-type Page='home'|'discover'|'map'|'events'|'community'|'business'|'admin';
+type Page='home'|'discover'|'map'|'saved'|'events'|'community'|'business'|'admin';
 const categories=KATEGORIEN.map(x=>x.id);
 const kategorienAnzeigen=Object.fromEntries(KATEGORIEN.map(x=>[x.id,x.label])) as Record<string,string>;
 const words={
@@ -30,7 +30,7 @@ const date=(s:string,l:string)=>new Date(s).toLocaleDateString(l==='de'?'de-DE':
 export default function Home(){
  const lang:'de'='de';const t=words.de;
  const [page,setPage]=useState<Page>('home'),[places,setPlaces]=useState<Place[]>([]),[events,setEvents]=useState<Event[]>([]),[news,setNews]=useState<News[]>([]),[posts,setPosts]=useState<Post[]>([]),[deals,setDeals]=useState<Deal[]>([]);
- const [user,setUser]=useState<User|null>(null),[favorites,setFavorites]=useState<string[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
+ const [user,setUser]=useState<User|null>(null),[favorites,setFavorites]=useState<string[]>([]),[savedPlaces,setSavedPlaces]=useState<Place[]>([]),[savedLoading,setSavedLoading]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [query,setQuery]=useState(''),[category,setCategory]=useState('Alle'),[district,setDistrict]=useState(''),[selected,setSelected]=useState<Place|null>(null),[nurGepruefte,setNurGepruefte]=useState(false);
  const [auth,setAuth]=useState(false),[register,setRegister]=useState(false),[menu,setMenu]=useState(false),[toast,setToast]=useState(''),[refresh,setRefresh]=useState(0);
  const [candidates,setCandidates]=useState<Place[]>([]),[candidateTotal,setCandidateTotal]=useState(0),[candidateLoading,setCandidateLoading]=useState(false);
@@ -78,6 +78,19 @@ export default function Home(){
 
  useEffect(()=>{if(page==='business'&&user){api('businesses').then(b=>{setBusiness(b.items[0]||null);if(b.items[0])api('business/overview').then(setBusinessDetail).catch(()=>{})}).catch(()=>{})}if(page==='admin'&&user?.role==='admin')api('admin/queue').then(setQueue).catch(()=>{})},[page,user,refresh]);
  useEffect(()=>{if(page==='community')void api('posts').then(d=>setPosts(d.items||[])).catch(()=>{});if(page==='events')void api('deals').then(d=>setDeals(d.items||[])).catch(()=>{})},[page,refresh]);
+
+ useEffect(()=>{
+  if(page!=='saved'||!user)return;
+  let active=true;setSavedLoading(true);
+  void api('favorites/details').then(data=>{
+   if(active)setSavedPlaces(data.items||[]);
+  }).catch(()=>{if(active){setSavedPlaces([]);flash('Deine Merkliste konnte nicht geladen werden.')}})
+   .finally(()=>{if(active)setSavedLoading(false)});
+  return()=>{active=false};
+ // favorites.length ensures fresh data after a save or unsave.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[page,user?.id,refresh,favorites.length]);
+
  const sichtbareOrte=useMemo(()=>[...places,...vorschauOrte.filter(v=>!places.some(p=>p.name===v.name))],[places]);
  const sichtbareVeranstaltungen=useMemo(()=>[...events,...vorschauVeranstaltungen],[events]);
  const sichtbareBeitraege=useMemo(()=>[...news,...vorschauBeitraege],[news]);
@@ -106,7 +119,7 @@ export default function Home(){
  const formField=(label:string,name:string,required=false,type='text')=><label className="form-label">{label}<input name={name} type={type} required={required}/></label>;
  const reviewSection=(type:string,items:any[])=><div className="review-section" key={type}><h3>{{businesses:'Unternehmen',claims:'Inhaberschaft',places:'Orte',deals:'Angebote',posts:'Beiträge'}[type]||'Einträge'} <span>{items.length}</span></h3>{items.map(a=><div className="review-row" key={a.id}><span>{a.name||a.title||a.body||a.business_name+' / '+a.place_name}</span><div><button title={t.approve} onClick={()=>submit('admin/review',{type:type==='businesses'?'business':type==='claims'?'claim':type==='places'?'place':type==='deals'?'deal':'post',id:a.id,approve:true},t.approve)}><Check size={18}/></button><button title={t.reject} onClick={()=>submit('admin/review',{type:type==='businesses'?'business':type==='claims'?'claim':type==='places'?'place':type==='deals'?'deal':'post',id:a.id,approve:false},t.reject)}><X size={18}/></button></div></div>)}{items.length===0&&<p className="subdued">—</p>}</div>;
  return <div className={'site v3-site'+(page==='admin'?' ffm-studio-active':'')}>
-  <header className="header"><div className="header-inner"><button className="logo" onClick={()=>navigate('home')} aria-label="FFM Aktuell Startseite"><span className="ml-brand-mark" aria-hidden="true"><svg viewBox="0 0 60 44" fill="none" role="presentation"><path d="M2 29C15 5 23 7 34 22C43 33 51 37 58 16" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round"/><circle cx="34" cy="22" r="2.7" fill="currentColor"/></svg></span><span className="ml-brand-word">ffm<b>aktuell</b><small>FRANKFURT VON INNEN</small></span></button><nav className="desktop-nav">{nav.map(([p,,txt])=><button key={p} className={page===p?'active':''} onClick={()=>navigate(p)}>{txt}</button>)}</nav><div className="header-end"><button className="business-nav" onClick={()=>navigate('business')}>{t.business}<span className="ui-dot" aria-hidden="true"/></button><button className="user-button" title={t.sign} onClick={()=>user?navigate(user.role==='admin'?'admin':'business'):setAuth(true)}><UserRound size={20}/></button><button className="menu-button" onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div></div>{menu&&<div className="mobile-menu"><button onClick={()=>navigate('business')}>{t.business}</button><button onClick={()=>user?navigate('business'):setAuth(true)}>{user?t.name:t.login}</button>{user?.role==='admin'&&<button onClick={()=>navigate('admin')}>Verwaltung</button>}</div>}</header>
+  <header className="header"><div className="header-inner"><button className="logo" onClick={()=>navigate('home')} aria-label="FFM Aktuell Startseite"><span className="ml-brand-mark" aria-hidden="true"><svg viewBox="0 0 60 44" fill="none" role="presentation"><path d="M2 29C15 5 23 7 34 22C43 33 51 37 58 16" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round"/><circle cx="34" cy="22" r="2.7" fill="currentColor"/></svg></span><span className="ml-brand-word">ffm<b>aktuell</b><small>FRANKFURT VON INNEN</small></span></button><nav className="desktop-nav">{nav.map(([p,,txt])=><button key={p} className={page===p?'active':''} onClick={()=>navigate(p)}>{txt}</button>)}</nav><div className="header-end"><button className="business-nav" onClick={()=>navigate('business')}>{t.business}<span className="ui-dot" aria-hidden="true"/></button><button className="user-button" title={user?'Meine Orte':t.sign} aria-label={user?'Meine Orte':t.sign} onClick={()=>user?navigate(user.role==='admin'?'admin':'saved'):setAuth(true)}><UserRound size={20}/></button><button className="menu-button" onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div></div>{menu&&<div className="mobile-menu"><button onClick={()=>navigate('business')}>{t.business}</button><button onClick={()=>user?navigate('saved'):setAuth(true)}>{user?'Meine Orte':t.login}</button>{user?.role==='admin'&&<button onClick={()=>navigate('admin')}>Verwaltung</button>}</div>}</header>
   {(page==='events'||page==='community')&&<div className="v3-preview-strip" role="status"><span className="v3-preview-spark"/><strong>VORSCHAU</strong><span>{VORSCHAU_HINWEIS}</span></div>}
    {toast&&<div className="toast" role="status"><Check size={16}/>{toast}<button onClick={()=>setToast('')}><X size={16}/></button></div>}
   {error&&<div className="error">{error}<button onClick={()=>setRefresh(x=>x+1)}>{lang==='de'?'Erneut laden':'Retry'}</button></div>}
@@ -180,6 +193,17 @@ export default function Home(){
   {filtered.some(p=>p.demo)&&!nurGepruefte&&<details className="ffm-find-preview"><summary>Musterorte anzeigen <Plus size={16}/></summary><p>Beispiele, keine bestätigten Empfehlungen.</p>{cards(filtered.filter(p=>p.demo))}</details>}
  </section>
  </main>}
+ {page==='saved'&&<main className="ffm-saved-page">
+  <div className="ffm-saved-heading"><span>DEIN FRANKFURT</span><h1>Meine Orte<span>.</span></h1><p>Deine gemerkten Plätze auf einen Blick.</p></div>
+  {!user?<div className="ffm-saved-empty"><p>Bitte melde dich an, um deine Orte zu sehen.</p><button onClick={()=>setAuth(true)}>Anmelden</button></div>:
+  savedLoading?<p role="status">Deine Orte werden geladen …</p>:
+  !savedPlaces.length?<div className="ffm-saved-empty"><Heart size={29}/><h2>Noch keine Orte gemerkt.</h2><p>Entdecke Frankfurt und tippe beim nächsten Lieblingsort auf Merken.</p><button onClick={()=>navigate('discover')}>Orte entdecken <ChevronRight size={18}/></button></div>:
+   <div className="ffm-saved-list" aria-label="Gespeicherte Orte">{savedPlaces.map(p=><article key={p.id} className="ffm-saved-item">
+    <div className="ffm-saved-pin"><MapPin size={21}/></div>
+    <button className="ffm-saved-name" onClick={()=>setSelected(p)}><strong>{p.name}</strong><small>{p.category} · {p.address||p.district||'Frankfurt'}</small><span>{p.candidate?'OSM · Ungeprüft':statusLabel(p)}</span></button>
+    <button className="ffm-saved-remove" title="Aus Merkliste entfernen" aria-label={p.name+' entfernen'} onClick={()=>void favorite(p.id)}><Heart size={20} fill="currentColor"/></button>
+   </article>)}</div>}
+  </main>}
  {page==='map'&&<main className="atlas-app-map"><Atlas3D places={places} lang={lang} variant="full" onSelect={selectPlace}/><div className="atlas-app-map-note">{t.notice} · © OpenStreetMap contributors, OpenMapTiles, OpenFreeMap</div></main>}
   {page==='events'&&<main className="inner-page v3-editorial-page">
  <div className="page-title v3-page-head"><small>03 / STADTJOURNAL</small><h1>Die Stadt lebt<em>.</em></h1><p>Ideen, Begegnungen und neue Perspektiven auf Frankfurt.</p></div>
