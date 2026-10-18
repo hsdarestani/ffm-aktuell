@@ -54,7 +54,8 @@ test('bad-location reports enter admin queue, but never directly hide a business
  assert.match(admin,/title:'Ortsmeldungen'/);
  assert.match(admin,/admin\/review-report/);
  assert.match(api,/report:reviewed/);
- assert.doesNotMatch(api.slice(api.indexOf("if(method==='POST'&&path==='admin/review-report'"),api.indexOf("if(method==='POST'&&path==='admin/review'"))||undefined),/UPDATE discovery_candidates SET|UPDATE places SET/);
+ const reviewSection=api.slice(api.indexOf("if(method==='POST'&&path==='admin/review-report'"),api.indexOf("if(method==='POST'&&path==='admin/review'"));
+ assert.doesNotMatch(reviewSection,/UPDATE discovery_candidates SET|UPDATE places SET/);
 });
 test('tips attached to imported OSM venues are moderated',()=>{
  assert.match(db,/ALTER TABLE posts ADD COLUMN IF NOT EXISTS candidate_osm_id/);
