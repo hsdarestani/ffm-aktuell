@@ -3,6 +3,7 @@
 .v3-site .place-dialog{
  display:grid;
  grid-template-columns:minmax(0,45%) minmax(0,55%);
+ grid-template-rows:48px minmax(0,1fr);
  width:min(920px,calc(100vw - 32px));
  max-height:min(88dvh,760px);
  min-height:450px;
@@ -10,18 +11,37 @@
  background:#fbfaf7;
 }
 .v3-site .place-dialog>.dialog-body{
- grid-column:1;grid-row:1;
+ grid-column:1;grid-row:2;
  overflow-y:auto;
  padding:49px 31px 34px;
  min-width:0;
  max-height:min(88dvh,760px);
 }
 .v3-site .place-dialog>.ffm-place-location{
- grid-column:2;grid-row:1;
- min-width:0;min-height:450px;
+ grid-column:2;grid-row:2;
+ min-width:0;min-height:380px;
 }
-.v3-site .place-dialog .dialog-close{
- z-index:8;top:13px;right:13px;width:37px;height:37px;
+.v3-site .place-dialog>.ffm-place-dialog-header{
+ grid-column:1/-1;grid-row:1;
+ min-width:0;min-height:48px;
+ display:flex;align-items:center;justify-content:space-between;
+ padding:5px 12px 5px 25px;background:#fbfaf7;
+ border-bottom:1px solid #e6eae2;
+ position:relative;z-index:10;
+}
+.v3-site .place-dialog>.ffm-place-dialog-header>span{
+ color:#687c6e;font-size:11px;font-weight:750;letter-spacing:.4px;
+}
+.v3-site .place-dialog>.ffm-place-dialog-header .dialog-close{
+ position:static;inset:auto;transform:none;flex:none;
+ z-index:1;width:37px;height:37px;
+ display:grid;place-items:center;
+ border-radius:50%;background:#edf1eb;color:#263f31;
+ border:1px solid #e0e7df;box-shadow:none;
+}
+.v3-site .place-dialog>.ffm-place-dialog-header .dialog-close:hover{background:#dfe9df}
+.v3-site .place-dialog>.ffm-place-dialog-header .dialog-close:focus-visible{
+ outline:3px solid #2e6849;outline-offset:2px;
 }
 .v3-site .dialog-body>p:empty{display:none}
 .v3-site .dialog-body h2{overflow-wrap:anywhere;font-size:clamp(34px,3vw,47px)}
@@ -80,6 +100,10 @@
   max-height:92dvh;
   border-radius:18px;
  }
+ .v3-site .place-dialog>.ffm-place-dialog-header{
+  order:-2;flex:0 0 46px;min-height:46px;
+  padding:5px 11px 5px 17px;
+ }
  .v3-site .place-dialog>.ffm-place-location{
   order:-1;flex:0 0 235px;
   min-height:0;height:235px;
@@ -89,9 +113,6 @@
   flex:1 1 auto;grid-column:auto;grid-row:auto;
   min-height:0;max-height:none;
   overflow-y:auto;padding:23px 21px 27px;
- }
- .v3-site .place-dialog .dialog-close{
-  top:11px;right:11px;
  }
  .ffm-place-location-footer{padding:7px 12px;min-height:42px}
  .ffm-place-location-footer>a{padding:7px 10px}
