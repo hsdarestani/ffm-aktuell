@@ -8,6 +8,7 @@ import AdminStudio from '@/components/AdminStudio';
 import PlaceLocationMap from '@/components/PlaceLocationMap';
 import PlaceActions from '@/components/PlaceActions';
 import VenueReviews from '@/components/VenueReviews';
+import PostEngagement from '@/components/PostEngagement';
 import {validLocationId} from '@/lib/location-actions';
 import {KATEGORIEN,passendeRubrik,frischBestaetigt,statusLabel} from '@/lib/ortskategorien';
 import {VORSCHAU_HINWEIS,ortsbild,vorschauOrte,vorschauVeranstaltungen,vorschauBeitraege,vorschauPosts,vorschauAngebote,vorschauGruppen} from '@/lib/vorschau';
@@ -16,7 +17,7 @@ type Place=MapPlace & {district:string,address:string,description_de:string,desc
 type User={id:string,email:string,display_name:string,role:string};
 type Event={id:string,title:string,venue:string,starts_at:string,description_de:string,description_en:string,ticket_url:string|null,image_url?:string,demo?:true};
 type News={id:string,title:string,body_de:string,body_en:string,source_url:string|null,published_at:string,image_url?:string,demo?:true};
-type Post={id:string,body:string,created_at:string,display_name:string,place_name:string|null,image_url?:string,demo?:true};
+type Post={id:string,body:string,created_at:string,display_name:string,place_name:string|null,image_url?:string,demo?:true,likes_count?:number,comments_count?:number,liked?:boolean};
 type Deal={id:string,title:string,details:string,business_name:string,image_url?:string,demo?:true};
 type Page='home'|'discover'|'map'|'saved'|'events'|'community'|'business'|'admin';
 const categories=KATEGORIEN.map(x=>x.id);
@@ -78,7 +79,7 @@ export default function Home(){
  };
 
  useEffect(()=>{if(page==='business'&&user){api('businesses').then(b=>{setBusiness(b.items[0]||null);if(b.items[0])api('business/overview').then(setBusinessDetail).catch(()=>{})}).catch(()=>{})}if(page==='admin'&&user?.role==='admin')api('admin/queue').then(setQueue).catch(()=>{})},[page,user,refresh]);
- useEffect(()=>{if(page==='community')void api('posts').then(d=>setPosts(d.items||[])).catch(()=>{});if(page==='events')void api('deals').then(d=>setDeals(d.items||[])).catch(()=>{})},[page,refresh]);
+ useEffect(()=>{if(page==='community')void api('posts').then(d=>setPosts(d.items||[])).catch(()=>{});if(page==='events')void api('deals').then(d=>setDeals(d.items||[])).catch(()=>{})},[page,refresh,user?.id]);
 
  useEffect(()=>{
   if(page!=='saved'||!user)return;
@@ -225,7 +226,9 @@ export default function Home(){
  <div className="page-title v3-page-head"><small>04 / MENSCHEN DER STADT</small><h1>Frankfurt verbindet<em>.</em></h1><p>Lieblingsorte, kleine Geschichten und ein Blick auf die Stadt durch andere Augen.</p></div>
  <section className="v4-groups-preview"><span className="v3-eyebrow">GEMEINSAM AKTIV</span><h2 className="v4-group-heading">Laufen. Spazieren. Lesen.</h2><p className="v4-group-sub">Entdecke, wie Frankfurter Gruppen künftig eigene Treffen präsentieren können. Die folgenden Profile sind Ideen für die Vorschau, keine bestätigten Anbieter.</p><div className="v4-group-grid">{vorschauGruppen.map(g=><article key={g.id} className="v4-group"><small>{g.typ} · MUSTERGRUPPE</small><h3>{g.name}</h3><p>{g.beschreibung}</p></article>)}</div></section><div className="v3-community-layout"><section className="v3-community-posts"><div className="v3-section-head"><div><span className="v3-eyebrow">STIMMEN AUS FRANKFURT</span><h2>Unsere Geschichten.</h2></div></div><div className="v3-post-grid">{sichtbarePosts.map(p=><article className="v3-post-card" key={p.id}>
   <div className="v3-post-image"><img src={ortsbild('',p.image_url)} alt="Stimmungsbild zum Beitrag" loading="lazy"/><span className="v3-image-note">Stimmungsbild</span></div>
-  <div className="v3-post-content"><div className="v3-post-person"><span className="v3-avatar">{p.display_name.charAt(0).toUpperCase()}</span><div><strong>{p.display_name}</strong><small>{p.place_name||'Frankfurt'} · {date(p.created_at,lang)}</small></div></div><p>{p.body}</p>{p.demo&&<span className="v3-demo-label">Musterbeitrag · erfundenes Profil</span>}</div>
+  <div className="v3-post-content"><div className="v3-post-person"><span className="v3-avatar">{p.display_name.charAt(0).toUpperCase()}</span><div><strong>{p.display_name}</strong><small>{p.place_name||'Frankfurt'} · {date(p.created_at,lang)}</small></div></div><p>{p.body}</p>
+   {p.demo?<span className="v3-demo-label">Musterbeitrag · erfundenes Profil</span>:
+    <PostEngagement postId={p.id} likes={p.likes_count||0} comments={p.comments_count||0} liked={Boolean(p.liked)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>} </div>
  </article>)}</div></section>
   <aside className="panel v3-community-compose"><span className="v3-eyebrow">MITMACHEN</span><h2>Und deine Geschichte?</h2><p>Zeig uns Frankfurt aus deiner Perspektive. Neue Beiträge werden vor der Veröffentlichung geprüft.</p>{user?<form onSubmit={e=>handle(e,'posts')}><textarea name="body" maxLength={1000} required placeholder={t.postPlaceholder}/><button className="primary-btn small">{t.post}<Plus size={16}/></button></form>:<button className="primary-btn small" onClick={()=>setAuth(true)}>{t.sign}<Plus size={16}/></button>}</aside>
  </div>
