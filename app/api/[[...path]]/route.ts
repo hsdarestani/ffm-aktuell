@@ -172,8 +172,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     return ok({summary:summary.rows[0],items:items.rows});
   }
   if(method==='GET'&&path==='posts'){
-    const reader=await sessionUser(req);
-    const r=await query("SELECT p.id,p.body,p.media_url,p.created_at,LEFT(u.display_name,1) AS display_name,COALESCE(pl.name,dc.name) AS place_name,(SELECT count(*)::int FROM post_likes l WHERE l.post_id=p.id) AS likes_count,(SELECT count(*)::int FROM post_comments c WHERE c.post_id=p.id AND c.status='published') AS comments_count,EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id=p.id AND l.user_id=$1) AS liked FROM posts p JOIN users u ON u.id=p.user_id LEFT JOIN places pl ON pl.id=p.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=p.candidate_osm_id WHERE p.status='published' ORDER BY p.created_at DESC LIMIT 40",[reader?.id||null]);
+    const r=await query("SELECT p.id,p.body,p.media_url,p.created_at,LEFT(u.display_name,1) AS display_name,COALESCE(pl.name,dc.name) AS place_name,(SELECT count(*)::int FROM post_likes l WHERE l.post_id=p.id) AS likes_count,(SELECT count(*)::int FROM post_comments c WHERE c.post_id=p.id AND c.status='published') AS comments_count,EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id=p.id AND l.user_id=$1) AS liked FROM posts p JOIN users u ON u.id=p.user_id LEFT JOIN places pl ON pl.id=p.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=p.candidate_osm_id WHERE p.status='published' ORDER BY p.created_at DESC LIMIT 40",[user?.id||null]);
     return ok({items:r.rows});
   }
   if(method==='GET'&&path==='comments'){
