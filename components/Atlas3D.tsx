@@ -433,7 +433,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    if(map.getZoom()<14.05||outside)setSelected(null);
   };
   map.on('moveend',reconcileSelection);
-  return()=>map.off('moveend',reconcileSelection);
+  return()=>{map.off('moveend',reconcileSelection);};
  },[ready]);
  useEffect(()=>{
   const map=mapRef.current;
