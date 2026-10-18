@@ -3,6 +3,7 @@ import {createHash,randomBytes} from 'node:crypto';
 import {z} from 'zod';
 import {pool,query} from '@/lib/db';
 import {beginSession,endSession,hashPassword,verifyPassword,sessionUser,trustedOrigin,User} from '@/lib/auth';
+import {validLocationId,osmId} from '@/lib/location-actions';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 type Ctx={params:Promise<{path?:string[]}>};
@@ -145,7 +146,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       return bad('Kartenausschnitt ungültig');
     const cat=trim(qs.get('category'));
     const validCategory=cat==='Apotheken Notdienst'?'Apotheken':cat;
-    const r=await query("SELECT osm_id AS id,osm_id,name,category,latitude,longitude,address,osm_url AS source_url,website,opening_hours AS opening_hours_text FROM discovery_candidates WHERE reviewed_status='unverified' AND longitude BETWEEN $1 AND $3 AND latitude BETWEEN $2 AND $4 AND ($5='' OR category=$5) ORDER BY osm_id LIMIT 1500",[raw[0],raw[1],raw[2],raw[3],validCategory==='Alle'?'':validCategory]);
+    const r=await query("SELECT osm_id AS id,osm_id,name,category,latitude,longitude,address,osm_url AS source_url,website,phone,opening_hours AS opening_hours_text FROM discovery_candidates WHERE reviewed_status='unverified' AND longitude BETWEEN $1 AND $3 AND latitude BETWEEN $2 AND $4 AND ($5='' OR category=$5) ORDER BY osm_id LIMIT 1500",[raw[0],raw[1],raw[2],raw[3],validCategory==='Alle'?'':validCategory]);
     return ok({items:r.rows,limited:r.rowCount===1500,verified:false,source:'© OpenStreetMap-Mitwirkende · ODbL'});
   }
   if(method==='GET'&&path==='pharmacy-notdienst'){
@@ -155,19 +156,69 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   }
   if(method==='GET'&&path==='events'){const r=await query("SELECT * FROM events WHERE status='published' AND starts_at>=now()-interval '1 day' ORDER BY starts_at LIMIT 40");return ok({items:r.rows});}
   if(method==='GET'&&path==='news'){const r=await query("SELECT * FROM news WHERE status='published' ORDER BY published_at DESC LIMIT 40");return ok({items:r.rows});}
-  if(method==='GET'&&path==='posts'){const r=await query("SELECT p.id,p.body,p.media_url,p.created_at,u.display_name,pl.name AS place_name FROM posts p JOIN users u ON u.id=p.user_id LEFT JOIN places pl ON pl.id=p.place_id WHERE p.status='published' ORDER BY p.created_at DESC LIMIT 40");return ok({items:r.rows});}
+  if(method==='GET'&&path==='posts'){const r=await query("SELECT p.id,p.body,p.media_url,p.created_at,u.display_name,COALESCE(pl.name,dc.name) AS place_name FROM posts p JOIN users u ON u.id=p.user_id LEFT JOIN places pl ON pl.id=p.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=p.candidate_osm_id WHERE p.status='published' ORDER BY p.created_at DESC LIMIT 40");return ok({items:r.rows});}
   if(method==='GET'&&path==='deals'){const r=await query("SELECT d.id,d.title,d.details,d.valid_until,b.name AS business_name,p.name AS place_name FROM deals d JOIN businesses b ON b.id=d.business_id LEFT JOIN places p ON p.id=d.place_id WHERE d.status='published' AND (d.valid_until IS NULL OR d.valid_until>now()) ORDER BY d.created_at DESC LIMIT 40");return ok({items:r.rows});}
-  if(method==='GET'&&path==='favorites'){const u=need(user);const r=await query('SELECT place_id FROM favorites WHERE user_id=$1',[u.id]);return ok({items:r.rows.map(x=>x.place_id)});}
+  if(method==='GET'&&path==='location'){
+    const place_id=trim(qs.get('id'));
+    if(!validLocationId(place_id))return bad('Invalid place ID',400);
+    if(osmId.test(place_id)){
+      const r=await query("SELECT osm_id AS id,osm_id,name,category,latitude,longitude,address,website,phone,opening_hours AS opening_hours_text,osm_url AS source_url,activity_status,'unverified' AS verification_status,false AS demo,true AS candidate FROM discovery_candidates WHERE osm_id=$1 AND reviewed_status='unverified'",[place_id]);
+      if(!r.rowCount)return bad('Place not found',404);
+      return ok({place:r.rows[0]});
+    }
+    const r=await query("SELECT id,name,category,district,description_de,description_en,address,latitude,longitude,website,image_url,source_url,verification_status,activity_status,verified_at,verification_source,editorial_rank,opening_hours_text FROM places WHERE id=$1 AND status='published' AND activity_status!='permanently_closed'",[place_id]);
+    if(!r.rowCount)return bad('Place not found',404);
+    return ok({place:r.rows[0]});
+  }
+  if(method==='GET'&&path==='favorites'){
+    const u=need(user);
+    const [published,candidates]=await Promise.all([
+      query('SELECT place_id AS id FROM favorites WHERE user_id=$1',[u.id]),
+      query('SELECT osm_id AS id FROM candidate_favorites WHERE user_id=$1',[u.id])
+    ]);
+    return ok({items:[...published.rows,...candidates.rows].map(x=>x.id)});
+  }
   if(method==='POST'&&path==='favorites'){
-    const u=need(user);const b=parse(z.object({place_id:id,active:z.boolean()}),await payload(req));
-    if(b.active)await query("INSERT INTO favorites(user_id,place_id) SELECT $1,id FROM places WHERE id=$2 AND status='published' ON CONFLICT DO NOTHING",[u.id,b.place_id]);
-    else await query('DELETE FROM favorites WHERE user_id=$1 AND place_id=$2',[u.id,b.place_id]);
+    const u=need(user);
+    const b=parse(z.object({place_id:z.string().max(90).refine(validLocationId),active:z.boolean()}),await payload(req));
+    if(osmId.test(b.place_id)){
+      if(b.active){
+        const r=await query("INSERT INTO candidate_favorites(user_id,osm_id) SELECT $1,osm_id FROM discovery_candidates WHERE osm_id=$2 AND reviewed_status='unverified' ON CONFLICT DO NOTHING RETURNING osm_id",[u.id,b.place_id]);
+        if(!r.rowCount){const exists=await query('SELECT osm_id FROM candidate_favorites WHERE user_id=$1 AND osm_id=$2',[u.id,b.place_id]);if(!exists.rowCount)return bad('Place not found',404);}
+      } else await query('DELETE FROM candidate_favorites WHERE user_id=$1 AND osm_id=$2',[u.id,b.place_id]);
+    }else{
+      if(b.active){
+        const r=await query("INSERT INTO favorites(user_id,place_id) SELECT $1,id FROM places WHERE id=$2 AND status='published' ON CONFLICT DO NOTHING RETURNING place_id",[u.id,b.place_id]);
+        if(!r.rowCount){const exists=await query('SELECT place_id FROM favorites WHERE user_id=$1 AND place_id=$2',[u.id,b.place_id]);if(!exists.rowCount)return bad('Place not found',404);}
+      } else await query('DELETE FROM favorites WHERE user_id=$1 AND place_id=$2',[u.id,b.place_id]);
+    }
     return ok({success:true});
   }
+  if(method==='POST'&&path==='place-reports'){
+    rate(req,'place-report');const u=need(user);
+    const b=parse(z.object({place_id:z.string().max(90).refine(validLocationId),
+      reason:z.enum(['closed','address','details','other']),message:z.string().trim().min(12).max(750)}),await payload(req));
+    const isOsm=osmId.test(b.place_id);
+    const exists=await query(isOsm?"SELECT osm_id FROM discovery_candidates WHERE osm_id=$1 AND reviewed_status!='hidden'":"SELECT id FROM places WHERE id=$1 AND status='published'",[b.place_id]);
+    if(!exists.rowCount)return bad('Place not found',404);
+    const r=await query("INSERT INTO place_reports(user_id,place_id,osm_id,reason,message) VALUES($1,$2,$3,$4,$5) RETURNING id,status",
+      [u.id,isOsm?null:b.place_id,isOsm?b.place_id:null,b.reason,b.message]);
+    await audit(u,'report:submitted','place_report',r.rows[0].id);
+    return ok({id:r.rows[0].id,status:r.rows[0].status},201);
+  }
   if(method==='POST'&&path==='posts'){
-    rate(req,'post');const u=need(user);const b=parse(z.object({body:text(1000),place_id:id.nullish(),media_url:z.string().max(1000).optional()}),await payload(req));
+    rate(req,'post');const u=need(user);
+    const b=parse(z.object({body:text(1000),place_id:z.string().refine(validLocationId).nullish(),media_url:z.string().max(1000).optional()}),await payload(req));
     const media=allowedUrl(b.media_url);if(b.media_url&&!media)return bad('Invalid media link');
-    const r=await query("INSERT INTO posts(user_id,place_id,body,media_url) VALUES($1,$2,$3,$4) RETURNING id",[u.id,b.place_id||null,b.body,media]);
+    let placeId:string|null=null,candidateId:string|null=null;
+    if(b.place_id){
+      const candidate=osmId.test(b.place_id);
+      const r=await query(candidate?"SELECT osm_id FROM discovery_candidates WHERE osm_id=$1 AND reviewed_status='unverified'":"SELECT id FROM places WHERE id=$1 AND status='published'",[b.place_id]);
+      if(!r.rowCount)return bad('Place not found',404);
+      if(candidate)candidateId=b.place_id;else placeId=b.place_id;
+    }
+    const r=await query("INSERT INTO posts(user_id,place_id,candidate_osm_id,body,media_url) VALUES($1,$2,$3,$4,$5) RETURNING id",
+      [u.id,placeId,candidateId,b.body,media]);
     return ok({id:r.rows[0].id,status:'pending'},201);
   }
   if(method==='GET'&&path==='businesses'){const u=need(user);const r=await query('SELECT * FROM businesses WHERE owner_id=$1 ORDER BY created_at DESC',[u.id]);return ok({items:r.rows});}
@@ -261,13 +312,23 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     }catch(e){await tx.query('ROLLBACK');throw e}finally{tx.release()}
   }
   if(method==='GET'&&path==='admin/queue'){
-    admin(user);const [b,c,p,d,posts]=await Promise.all([
+    admin(user);const [b,c,p,d,posts,reports]=await Promise.all([
       query("SELECT id,name,status,created_at FROM businesses WHERE status='pending' ORDER BY created_at"),
       query("SELECT c.id,c.status,c.note,b.name AS business_name,p.name AS place_name FROM claims c JOIN businesses b ON b.id=c.business_id JOIN places p ON p.id=c.place_id WHERE c.status='pending'"),
       query("SELECT id,name,category FROM places WHERE status='pending'"),
       query("SELECT id,title FROM deals WHERE status='pending'"),
-      query("SELECT id,body FROM posts WHERE status='pending'")
-    ]);return ok({businesses:b.rows,claims:c.rows,places:p.rows,deals:d.rows,posts:posts.rows});
+      query("SELECT id,body FROM posts WHERE status='pending'"),
+      query("SELECT r.id,r.reason,r.message AS note,COALESCE(p.name,dc.name) AS place_name FROM place_reports r LEFT JOIN places p ON p.id=r.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=r.osm_id WHERE r.status='pending' ORDER BY r.created_at LIMIT 60")
+    ]);return ok({businesses:b.rows,claims:c.rows,places:p.rows,deals:d.rows,posts:posts.rows,reports:reports.rows});
+  }
+  if(method==='POST'&&path==='admin/review-report'){
+    const u=admin(user);const b=parse(z.object({id,reviewed:z.boolean()}),await payload(req));
+    const r=await query("UPDATE place_reports SET status=$2,reviewed_at=now(),reviewed_by=$3 WHERE id=$1 AND status='pending' RETURNING id,osm_id,place_id",[b.id,b.reviewed?'reviewed':'rejected',u.id]);
+    if(!r.rowCount)return bad('Report not found',404);
+    // This records review only; independent verification is required for a
+    // status change or candidate hide, preventing false closure assertions.
+    await audit(u,b.reviewed?'report:reviewed':'report:rejected','place_report',b.id);
+    return ok({success:true});
   }
   if(method==='POST'&&path==='admin/review'){
     const u=admin(user);const b=parse(z.object({type:z.enum(['business','claim','place','deal','post']),id:id,approve:z.boolean()}),await payload(req));

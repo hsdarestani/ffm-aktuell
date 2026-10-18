@@ -104,6 +104,8 @@ CREATE TABLE IF NOT EXISTS posts (
  status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','published','rejected')),
  created_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS candidate_osm_id text REFERENCES discovery_candidates(osm_id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS posts_candidate_idx ON posts(candidate_osm_id) WHERE candidate_osm_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS posts_status_time_idx ON posts(status,created_at DESC);
 CREATE TABLE IF NOT EXISTS favorites (
  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -125,6 +127,32 @@ CREATE TABLE IF NOT EXISTS deals (
  created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS deals_status_idx ON deals(status);
+-- User bookmarks for raw OSM candidates are private and never verification.
+-- Separate table keeps the existing favorites foreign key and its legacy PK intact.
+CREATE TABLE IF NOT EXISTS candidate_favorites (
+ user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ osm_id text NOT NULL REFERENCES discovery_candidates(osm_id) ON DELETE CASCADE,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(user_id,osm_id)
+);
+CREATE INDEX IF NOT EXISTS candidate_favorites_osm_idx ON candidate_favorites(osm_id);
+-- Feedback appears in the existing editorial review queue; submitting a report
+-- must never automatically hide a venue or assert it is permanently closed.
+CREATE TABLE IF NOT EXISTS place_reports (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ place_id uuid REFERENCES places(id) ON DELETE CASCADE,
+ osm_id text REFERENCES discovery_candidates(osm_id) ON DELETE CASCADE,
+ reason text NOT NULL CHECK(reason IN ('closed','address','details','other')),
+ message text NOT NULL DEFAULT '',
+ status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','reviewed','rejected')),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ reviewed_at timestamptz,
+ reviewed_by uuid REFERENCES users(id) ON DELETE SET NULL,
+ CHECK ((place_id IS NOT NULL)::int + (osm_id IS NOT NULL)::int = 1)
+);
+CREATE INDEX IF NOT EXISTS place_reports_queue_idx ON place_reports(status,created_at);
+CREATE INDEX IF NOT EXISTS place_reports_user_idx ON place_reports(user_id,created_at);
 CREATE TABLE IF NOT EXISTS audit_log (
  id bigserial PRIMARY KEY, actor_id uuid REFERENCES users(id) ON DELETE SET NULL,
  action text NOT NULL, target_type text NOT NULL, target_id text NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
