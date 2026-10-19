@@ -18,6 +18,17 @@ CREATE TABLE IF NOT EXISTS user_preferences (
  notify_offers boolean NOT NULL DEFAULT false,
  updated_at timestamptz NOT NULL DEFAULT now()
 );
+-- Identity mappings use immutable provider subjects, never email-only linking.
+CREATE TABLE IF NOT EXISTS social_identities (
+ provider text NOT NULL CHECK(provider IN ('google','apple')),
+ provider_subject text NOT NULL,
+ user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ email_at_link text NOT NULL,
+ linked_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(provider,provider_subject),
+ UNIQUE(provider,user_id)
+);
+CREATE INDEX IF NOT EXISTS social_identities_user ON social_identities(user_id);
 CREATE TABLE IF NOT EXISTS sessions (
  token_hash text PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  expires_at timestamptz NOT NULL
