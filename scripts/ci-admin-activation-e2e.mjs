@@ -217,6 +217,50 @@ try{
  if(deleted.status!==200)throw Error('Tour deletion failed');
  const afterDelete=await get('tours/details?id='+newTour.body.id,reader);
  if(afterDelete.status!==404)throw Error('Deleted tour still accessible');
+ // Event bookmarks, user preferences and account data rights are exercised
+ // against the disposable CI database. Guest access must not leak state.
+ const future=new Date(Date.now()+24*3600*1000).toISOString();
+ const eventCreate=await post('admin/events',cookie,{title:'CI Frankfurt Event',description_de:'Ein echter CI Termin',venue:'CI Venue',starts_at:future});
+ if(eventCreate.status!==201)throw Error('CI event creation failed');
+ const eventId=eventCreate.body.id;
+ const guestEventBookmark=await get('event-favorites');
+ if(guestEventBookmark.status!==401)throw Error('Guest could read private event bookmarks');
+ const saveEvent=await post('event-favorites',reader,{event_id:eventId,active:true});
+ if(saveEvent.status!==200||!saveEvent.body.saved)throw Error('Event bookmark failed');
+ const savedEvents=await get('event-favorites',reader);
+ if(savedEvents.body.items.length!==1||savedEvents.body.items[0].id!==eventId)throw Error('Event bookmark not persisted');
+ const secondSave=await post('event-favorites',reader,{event_id:eventId,active:true});
+ if(secondSave.status!==200)throw Error('Event save not idempotent');
+ const prefs=await post('me/preferences',reader,{interests:['Kultur','Cafés','Kultur'],districts:['Nordend'],
+  share_activity:false,notify_events:true,notify_news:false,notify_offers:false});
+ if(prefs.status!==200||prefs.body.preferences.interests.length!==2)throw Error('Preferences not sanitized');
+ const prefsGuest=await get('me/preferences');
+ if(prefsGuest.status!==401)throw Error('Guest could read preferences');
+ const prefsSaved=await get('me/preferences',reader);
+ if(prefsSaved.body.preferences.notify_events!==true||prefsSaved.body.preferences.share_activity!==false)throw Error('Private preferences missing');
+ const exported=await get('me/export',reader);
+ if(exported.status!==200||exported.body.event_favorites.length!==1||exported.body.preferences?.districts?.[0]!=='Nordend'
+   ||exported.body.account.password_hash!==undefined)throw Error('Account export missing data or included credentials');
+ const exportedGuest=await get('me/export');
+ if(exportedGuest.status!==401)throw Error('Guest could export private account data');
+ const removeEvent=await post('event-favorites',reader,{event_id:eventId,active:false});
+ if(removeEvent.status!==200||removeEvent.body.saved!==false)throw Error('Could not remove event bookmark');
+ const noEvent=await get('event-favorites',reader);
+ if(noEvent.body.items.length!==0)throw Error('Event bookmark remove failed');
+
+ const deletionPassword='ci-test-secure-'+randomBytes(18).toString('hex');
+ const deleteSignup=await fetch(site+'/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({email:'ci-deletion-'+randomBytes(7).toString('hex')+'@example.com',display_name:'Delete CI',password:deletionPassword})});
+ if(deleteSignup.status!==201)throw Error('Disposable deletion account creation failed');
+ const delCookie=deleteSignup.headers.get('set-cookie')?.split(';')[0];
+ if(!delCookie)throw Error('Deletion test session missing');
+ const badDelete=await post('me/delete',delCookie,{password:'wrong',confirmation:'KONTO LÖSCHEN'});
+ if(badDelete.status!==403)throw Error('Account deletion accepted bad password');
+ const deletedAccount=await post('me/delete',delCookie,{password:deletionPassword,confirmation:'KONTO LÖSCHEN'});
+ if(deletedAccount.status!==200||!deletedAccount.body.success)throw Error('Confirmed account deletion failed');
+ const afterAccountDelete=await get('me',delCookie);
+ if(afterAccountDelete.body.user!==null)throw Error('Deleted account session remains valid');
+ console.log('PASS: event bookmarking, private preferences, secure data export and confirmed account deletion');
  console.log('PASS: private ordered tour planning, timetable, safe shared link, revocation and deletion');
  console.log('PASS: private people/business follows, permissions, idempotency, following feed and editorial gating');
  console.log('PASS: moderated community posts, likes/unlikes, pending comment isolation and editorial approval');
