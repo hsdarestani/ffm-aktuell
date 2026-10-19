@@ -260,6 +260,36 @@ try{
  if(deletedAccount.status!==200||!deletedAccount.body.success)throw Error('Confirmed account deletion failed');
  const afterAccountDelete=await get('me',delCookie);
  if(afterAccountDelete.body.user!==null)throw Error('Deleted account session remains valid');
+ // Business basic branch corrections require verified ownership and editor review.
+ const originalPublic=await get('location?id='+publicPlace.rows[0].id);
+ if(!originalPublic.body.place||originalPublic.body.place.phone)throw Error('CI branch baseline unexpected');
+ const deniedEdit=await post('business/places/change',reader,{place_id:publicPlace.rows[0].id,
+  name:'Not Mine',address:'Forbidden'});
+ if(deniedEdit.status!==403)throw Error('Unrelated person could edit a business venue');
+ const branchChange=await post('business/places/change',client,{place_id:publicPlace.rows[0].id,
+  name:'CI New Name',address:'CI New Address 12',phone:'+49 69 456789',
+  opening_hours_text:'Mo bis Fr 09:00 bis 17:00',website:'https://example.org'});
+ if(branchChange.status!==201||branchChange.body.status!=='pending')throw Error('Owner change request failed '+JSON.stringify(branchChange));
+ const notPublished=await get('location?id='+publicPlace.rows[0].id);
+ if(notPublished.body.place.name==='CI New Name')throw Error('Unmoderated branch edit became public');
+ const changeQueue=await get('admin/queue',cookie);
+ if(!changeQueue.body.branchChanges?.some(c=>c.id===branchChange.body.id))throw Error('Branch change not in editor queue');
+ const ownerOverview=await get('business/overview',client);
+ if(!ownerOverview.body.changes?.some(c=>c.id===branchChange.body.id&&c.status==='pending'))throw Error('Owner cannot see pending change');
+ const branchApproval=await post('admin/review-place-change',cookie,{id:branchChange.body.id,approve:true});
+ if(branchApproval.status!==200)throw Error('Branch approval failed '+JSON.stringify(branchApproval));
+ const approvedBranch=await get('location?id='+publicPlace.rows[0].id);
+ if(approvedBranch.body.place.name!=='CI New Name'||approvedBranch.body.place.phone!=='+49 69 456789'
+    ||approvedBranch.body.place.verification_status!=='unverified'||approvedBranch.body.place.activity_status!=='unknown')
+   throw Error('Branch change not applied safely or stale verified status remains');
+ const afterBranch=await post('business/places/change',client,{place_id:publicPlace.rows[0].id,
+  name:'CI Rejected Name',address:'CI New Address 12'});
+ if(afterBranch.status!==201)throw Error('Second branch request failed');
+ const rejectBranch=await post('admin/review-place-change',cookie,{id:afterBranch.body.id,approve:false,note:'Data not supported'});
+ if(rejectBranch.status!==200)throw Error('Branch reject failed');
+ const afterReject=await get('location?id='+publicPlace.rows[0].id);
+ if(afterReject.body.place.name!=='CI New Name')throw Error('Rejected change overwrote public details');
+ console.log('PASS: ownership gates, private pending branch corrections, editorial approval, reject and verification reset');
  console.log('PASS: event bookmarking, private preferences, secure data export and confirmed account deletion');
  console.log('PASS: private ordered tour planning, timetable, safe shared link, revocation and deletion');
  console.log('PASS: private people/business follows, permissions, idempotency, following feed and editorial gating');
