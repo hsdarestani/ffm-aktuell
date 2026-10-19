@@ -28,3 +28,10 @@ export function trustedOrigin(req:NextRequest){
  if(!origin)return req.headers.get('sec-fetch-site') !== 'cross-site';
  return origin===allowed || (process.env.NODE_ENV!=='production' && /^http:\/\/localhost:\d+$/.test(origin));
 }
+
+export async function isRecentlyAuthenticated(req:NextRequest,userId:string,minutes=5):Promise<boolean>{
+ const raw=req.cookies.get(cookieName)?.value;
+ if(!raw||!/^[a-f0-9]{64}$/.test(raw))return false;
+ const check=await query("SELECT 1 FROM sessions WHERE token_hash=$1 AND user_id=$2 AND authenticated_at>now()-($3::int * interval '1 minute') AND expires_at>now()",[tokenHash(raw),userId,minutes]);
+ return Boolean(check.rowCount);
+}
