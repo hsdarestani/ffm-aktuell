@@ -37,7 +37,7 @@ test('real search is first, preview cards are folded, advanced categories are no
  assert.doesNotMatch(page,/const nav:[^;]*\['community',Users,t.community\]/);
 });
 test('full category catalog, official pharmacy duty search and 3D map remain accessible',()=>{
- assert.match(page,/categories.filter\(cat=>/);
+ assert.match(page,/categoryIds.filter\(cat=>/);
  assert.match(page,/Apotheken Notdienst/);
  assert.match(page,/aponet.de\/notdienstsuche/);
  assert.match(page,/Atlas3D places=\{places\}/);
