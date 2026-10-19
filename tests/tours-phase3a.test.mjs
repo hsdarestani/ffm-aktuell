@@ -47,7 +47,8 @@ test('compact UI handles route, reorder, accessible controls and share link open
  assert.match(ui,/new URLSearchParams/);
  assert.match(ui,/www.google.com\/maps\/dir/);
  assert.match(ui,/Ungeprüft/);
- assert.match(page,/page==='tours'&&<>[\\s\\S]*?<TourPlanner/);
+ assert.match(page,/page==='tours'&&<>/);
+ assert.match(page,/<TourPlanner loggedIn=/);
  assert.match(page,/new URLSearchParams\(window.location.search\).has\('tour'\)/);
  assert.match(page,/Tour planen/);
  assert.match(css,/@media\(max-width:500px\)/);
