@@ -277,7 +277,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     const following=qs.get('scope')==='following';
     if(qs.has('scope')&&!['all','following'].includes(qs.get('scope')||''))return bad('Invalid feed scope');
     if(following&&!user)return bad('Login required',401);
-    const r=await query(`SELECT p.id,p.user_id AS author_id,p.body,p.media_url,p.created_at,
+    const r=await query(`SELECT p.id,p.user_id AS author_id,p.body,CASE WHEN um.status='approved' THEN '/api/media/'||um.id::text ELSE p.media_url END AS image_url,um.media_type,p.media_id,p.created_at,
       LEFT(u.display_name,1) AS display_name,COALESCE(pl.name,dc.name) AS place_name,
       (SELECT count(*)::int FROM post_likes l WHERE l.post_id=p.id) AS likes_count,
       (SELECT count(*)::int FROM post_comments c WHERE c.post_id=p.id AND c.status='published') AS comments_count,
@@ -285,10 +285,11 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       EXISTS(SELECT 1 FROM user_follows uf WHERE uf.follower_id=$1 AND uf.followed_id=p.user_id) AS following_author,
       (p.user_id=$1) AS own_post
       FROM posts p JOIN users u ON u.id=p.user_id
+      LEFT JOIN user_media um ON um.id=p.media_id
       LEFT JOIN places pl ON pl.id=p.place_id
       LEFT JOIN businesses bu ON bu.id=pl.business_id AND bu.status='approved'
       LEFT JOIN discovery_candidates dc ON dc.osm_id=p.candidate_osm_id
-      WHERE p.status='published' AND ($2::boolean IS FALSE OR
+      WHERE p.status='published' AND (p.media_id IS NULL OR um.status='approved') AND ($2::boolean IS FALSE OR
         EXISTS(SELECT 1 FROM user_follows uf WHERE uf.follower_id=$1 AND uf.followed_id=p.user_id)
         OR (bu.id IS NOT NULL AND EXISTS(SELECT 1 FROM business_follows bf WHERE bf.follower_id=$1 AND bf.business_id=bu.id)))
       ORDER BY p.created_at DESC LIMIT 40`,[user?.id||null,following]);
@@ -564,8 +565,9 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   }
   if(method==='POST'&&path==='posts'){
     rate(req,'post');const u=need(user);
-    const b=parse(z.object({body:text(1000),place_id:z.string().refine(validLocationId).nullish(),media_url:z.string().max(1000).optional()}),await payload(req));
-    const media=allowedUrl(b.media_url);if(b.media_url&&!media)return bad('Invalid media link');
+    const b=parse(z.object({body:text(1000),place_id:z.string().refine(validLocationId).nullish(),media_id:id.nullish(),media_url:z.string().max(1000).optional()}),await payload(req));
+    if(b.media_url)return bad('Externe Medienlinks sind nicht zulässig. Bitte eigene Datei hochladen.');
+    if(b.media_id){const media=await query("SELECT id FROM user_media WHERE id=$1 AND owner_id=$2 AND status IN ('pending','approved') AND license_confirmed=true",[b.media_id,u.id]);if(!media.rowCount)return bad('Medium nicht autorisiert',403);}
     let placeId:string|null=null,candidateId:string|null=null;
     if(b.place_id){
       const candidate=osmId.test(b.place_id);
@@ -573,8 +575,8 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       if(!r.rowCount)return bad('Place not found',404);
       if(candidate)candidateId=b.place_id;else placeId=b.place_id;
     }
-    const r=await query("INSERT INTO posts(user_id,place_id,candidate_osm_id,body,media_url) VALUES($1,$2,$3,$4,$5) RETURNING id",
-      [u.id,placeId,candidateId,b.body,media]);
+    const r=await query("INSERT INTO posts(user_id,place_id,candidate_osm_id,body,media_id) VALUES($1,$2,$3,$4,$5) RETURNING id",
+      [u.id,placeId,candidateId,b.body,b.media_id||null]);
     return ok({id:r.rows[0].id,status:'pending'},201);
   }
   if(method==='GET'&&path==='businesses'){const u=need(user);const r=await query('SELECT * FROM businesses WHERE owner_id=$1 ORDER BY created_at DESC',[u.id]);return ok({items:r.rows});}
