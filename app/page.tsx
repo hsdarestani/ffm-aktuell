@@ -15,13 +15,15 @@ import {KATEGORIEN,passendeRubrik,frischBestaetigt,statusLabel} from '@/lib/orts
 import {VORSCHAU_HINWEIS,ortsbild,vorschauOrte,vorschauVeranstaltungen,vorschauBeitraege,vorschauPosts,vorschauAngebote,vorschauGruppen} from '@/lib/vorschau';
 const Atlas3D=dynamic(()=>import('@/components/Atlas3D'),{ssr:false});
 const TourPlanner=dynamic(()=>import('@/components/TourPlanner'),{ssr:false});
+const ProfileSettings=dynamic(()=>import('@/components/ProfileSettings'),{ssr:false});
+const EventActions=dynamic(()=>import('@/components/EventActions'),{ssr:false});
 type Place=MapPlace & {district:string,address:string,description_de:string,description_en:string,website:string|null,source_url:string|null,image_url?:string|null,demo?:true,candidate?:boolean,osm_id?:string,phone?:string,verification_status?:'verified'|'unverified'|'disputed',activity_status?:'unknown'|'operating'|'temporarily_closed'|'permanently_closed',verified_at?:string|null,verification_source?:string|null,editorial_rank?:number|null,opening_hours_text?:string|null,business_id?:string|null,following_business?:boolean};
 type User={id:string,email:string,display_name:string,role:string};
 type Event={id:string,title:string,venue:string,starts_at:string,description_de:string,description_en:string,ticket_url:string|null,image_url?:string,demo?:true};
 type News={id:string,title:string,body_de:string,body_en:string,source_url:string|null,published_at:string,image_url?:string,demo?:true};
 type Post={id:string,body:string,created_at:string,display_name:string,place_name:string|null,image_url?:string,demo?:true,likes_count?:number,comments_count?:number,liked?:boolean,author_id?:string,following_author?:boolean,own_post?:boolean};
 type Deal={id:string,title:string,details:string,business_name:string,image_url?:string,demo?:true};
-type Page='home'|'discover'|'map'|'saved'|'tours'|'events'|'community'|'business'|'admin';
+type Page='home'|'discover'|'map'|'saved'|'tours'|'profile'|'events'|'community'|'business'|'admin';
 const categories=KATEGORIEN.map(x=>x.id);
 const kategorienAnzeigen=Object.fromEntries(KATEGORIEN.map(x=>[x.id,x.label])) as Record<string,string>;
 const words={
@@ -37,6 +39,7 @@ export default function Home(){
  const [user,setUser]=useState<User|null>(null),[favorites,setFavorites]=useState<string[]>([]),[savedPlaces,setSavedPlaces]=useState<Place[]>([]),[savedLoading,setSavedLoading]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [query,setQuery]=useState(''),[category,setCategory]=useState('Alle'),[district,setDistrict]=useState(''),[selected,setSelected]=useState<Place|null>(null),[nurGepruefte,setNurGepruefte]=useState(false);
  const [followingOnly,setFollowingOnly]=useState(false);
+ const [eventFavorites,setEventFavorites]=useState<string[]>([]);
  const [auth,setAuth]=useState(false),[register,setRegister]=useState(false),[menu,setMenu]=useState(false),[toast,setToast]=useState(''),[refresh,setRefresh]=useState(0);
  const [candidates,setCandidates]=useState<Place[]>([]),[candidateTotal,setCandidateTotal]=useState(0),[candidateLoading,setCandidateLoading]=useState(false);
  const [business,setBusiness]=useState<any>(null),[businessDetail,setBusinessDetail]=useState<any>(null),[queue,setQueue]=useState<Record<string,any[]>|null>(null);
@@ -84,6 +87,7 @@ export default function Home(){
 
  useEffect(()=>{if(page==='business'&&user){api('businesses').then(b=>{setBusiness(b.items[0]||null);if(b.items[0])api('business/overview').then(setBusinessDetail).catch(()=>{})}).catch(()=>{})}if(page==='admin'&&user?.role==='admin')api('admin/queue').then(setQueue).catch(()=>{})},[page,user,refresh]);
  useEffect(()=>{if(page==='community')void api('posts?scope='+(followingOnly?'following':'all')).then(d=>setPosts(d.items||[])).catch(()=>setPosts([]));if(page==='events')void api('deals').then(d=>setDeals(d.items||[])).catch(()=>{})},[page,refresh,user?.id,followingOnly]);
+ useEffect(()=>{if(page!=='events'||!user){setEventFavorites([]);return;}void api('event-favorites').then(d=>setEventFavorites((d.items||[]).map((e:Event)=>e.id))).catch(()=>setEventFavorites([]))},[page,user?.id,refresh]);
 
  useEffect(()=>{
   if(page!=='saved'||!user)return;
@@ -113,6 +117,7 @@ export default function Home(){
    .catch(()=>flash('Ort konnte nicht geöffnet werden.'));
  },[sichtbareOrte,candidates]);
  const submit=async(path:string,data:unknown,success:string)=>{try{await api(path,data);flash(success);setRefresh(x=>x+1);return true}catch(e){flash((e as Error).message||'Die Anfrage ist fehlgeschlagen.');return false}};
+ const favoriteEvent=async(id:string,active:boolean)=>{try{await api('event-favorites',{event_id:id,active});setEventFavorites(v=>active?[...new Set([...v,id])]:v.filter(x=>x!==id));flash(active?'Veranstaltung gemerkt.':'Veranstaltung entfernt.')}catch{flash('Veranstaltung konnte nicht gespeichert werden.')}};
  const favorite=async(id:string)=>{if(!validLocationId(id)){flash('Dieser Musterort kann nicht gespeichert werden.');return}if(!user){setAuth(true);return}try{const active=!favorites.includes(id);await api('favorites',{place_id:id,active});setFavorites(a=>active?[...a,id]:a.filter(x=>x!==id));flash(active?'Ort gemerkt.':'Aus Merkliste entfernt.')}catch(e){flash((e as Error).message||'Die Merkliste konnte nicht geändert werden.')}};
  const handle=(e:FormEvent<HTMLFormElement>,path:string,transform?:(x:Record<string,FormDataEntryValue>)=>unknown)=>{e.preventDefault();const form=e.currentTarget;const data=Object.fromEntries(new FormData(form));submit(path,transform?transform(data):data,t.pending).then(success=>{if(success)form.reset()})};
  const onAuth=async(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.currentTarget));const ok=await submit(register?'auth/register':'auth/login',data,t.welcome);if(ok){setAuth(false);setRegister(false)}};
@@ -125,7 +130,7 @@ export default function Home(){
  const formField=(label:string,name:string,required=false,type='text')=><label className="form-label">{label}<input name={name} type={type} required={required}/></label>;
  const reviewSection=(type:string,items:any[])=><div className="review-section" key={type}><h3>{{businesses:'Unternehmen',claims:'Inhaberschaft',places:'Orte',deals:'Angebote',posts:'Beiträge'}[type]||'Einträge'} <span>{items.length}</span></h3>{items.map(a=><div className="review-row" key={a.id}><span>{a.name||a.title||a.body||a.business_name+' / '+a.place_name}</span><div><button title={t.approve} onClick={()=>submit('admin/review',{type:type==='businesses'?'business':type==='claims'?'claim':type==='places'?'place':type==='deals'?'deal':'post',id:a.id,approve:true},t.approve)}><Check size={18}/></button><button title={t.reject} onClick={()=>submit('admin/review',{type:type==='businesses'?'business':type==='claims'?'claim':type==='places'?'place':type==='deals'?'deal':'post',id:a.id,approve:false},t.reject)}><X size={18}/></button></div></div>)}{items.length===0&&<p className="subdued">—</p>}</div>;
  return <div className={'site v3-site'+(page==='admin'?' ffm-studio-active':'')}>
-  <header className="header"><div className="header-inner"><button className="logo" onClick={()=>navigate('home')} aria-label="FFM Aktuell Startseite"><span className="ml-brand-mark" aria-hidden="true"><svg viewBox="0 0 60 44" fill="none" role="presentation"><path d="M2 29C15 5 23 7 34 22C43 33 51 37 58 16" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round"/><circle cx="34" cy="22" r="2.7" fill="currentColor"/></svg></span><span className="ml-brand-word">ffm<b>aktuell</b><small>FRANKFURT VON INNEN</small></span></button><nav className="desktop-nav">{nav.map(([p,,txt])=><button key={p} className={page===p?'active':''} onClick={()=>navigate(p)}>{txt}</button>)}</nav><div className="header-end"><button className="business-nav" onClick={()=>navigate('business')}>{t.business}<span className="ui-dot" aria-hidden="true"/></button><button className="user-button" title={user?'Meine Orte':t.sign} aria-label={user?'Meine Orte':t.sign} onClick={()=>user?navigate(user.role==='admin'?'admin':'saved'):setAuth(true)}><UserRound size={20}/></button><button className="menu-button" onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div></div>{menu&&<div className="mobile-menu"><button onClick={()=>navigate('business')}>{t.business}</button><button onClick={()=>user?navigate('saved'):setAuth(true)}>{user?'Meine Orte':t.login}</button>{user&&<button onClick={()=>navigate('tours')}>Meine Touren</button>}{user?.role==='admin'&&<button onClick={()=>navigate('admin')}>Verwaltung</button>}</div>}</header>
+  <header className="header"><div className="header-inner"><button className="logo" onClick={()=>navigate('home')} aria-label="FFM Aktuell Startseite"><span className="ml-brand-mark" aria-hidden="true"><svg viewBox="0 0 60 44" fill="none" role="presentation"><path d="M2 29C15 5 23 7 34 22C43 33 51 37 58 16" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round"/><circle cx="34" cy="22" r="2.7" fill="currentColor"/></svg></span><span className="ml-brand-word">ffm<b>aktuell</b><small>FRANKFURT VON INNEN</small></span></button><nav className="desktop-nav">{nav.map(([p,,txt])=><button key={p} className={page===p?'active':''} onClick={()=>navigate(p)}>{txt}</button>)}</nav><div className="header-end"><button className="business-nav" onClick={()=>navigate('business')}>{t.business}<span className="ui-dot" aria-hidden="true"/></button><button className="user-button" title={user?'Meine Orte':t.sign} aria-label={user?'Meine Orte':t.sign} onClick={()=>user?navigate(user.role==='admin'?'admin':'profile'):setAuth(true)}><UserRound size={20}/></button><button className="menu-button" onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div></div>{menu&&<div className="mobile-menu"><button onClick={()=>navigate('business')}>{t.business}</button><button onClick={()=>user?navigate('saved'):setAuth(true)}>{user?'Meine Orte':t.login}</button>{user&&<button onClick={()=>navigate('profile')}>Mein Profil</button>}{user&&<button onClick={()=>navigate('tours')}>Meine Touren</button>}{user?.role==='admin'&&<button onClick={()=>navigate('admin')}>Verwaltung</button>}</div>}</header>
   {(page==='events'||page==='community')&&<div className="v3-preview-strip" role="status"><span className="v3-preview-spark"/><strong>VORSCHAU</strong><span>{VORSCHAU_HINWEIS}</span></div>}
    {toast&&<div className="toast" role="status"><Check size={16}/>{toast}<button onClick={()=>setToast('')}><X size={16}/></button></div>}
   {error&&<div className="error">{error}<button onClick={()=>setRefresh(x=>x+1)}>{lang==='de'?'Erneut laden':'Retry'}</button></div>}
@@ -211,13 +216,16 @@ export default function Home(){
    </article>)}</div>}
   </main>}
  {page==='tours'&&<TourPlanner loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>}
+ {page==='profile'&&<ProfileSettings user={user} onLogin={()=>setAuth(true)} onNotice={flash}
+  onSavedPlaces={()=>navigate('saved')} onTours={()=>navigate('tours')}
+  onDeleted={()=>{setUser(null);setFavorites([]);setSelected(null);navigate('home');flash('Dein Konto wurde gelöscht.')}}/>}
  {page==='map'&&<main className="atlas-app-map"><Atlas3D places={places} lang={lang} variant="full" onSelect={selectPlace}/><div className="atlas-app-map-note">{t.notice} · © OpenStreetMap contributors, OpenMapTiles, OpenFreeMap</div></main>}
   {page==='events'&&<main className="inner-page v3-editorial-page">
  <div className="page-title v3-page-head"><small>03 / STADTJOURNAL</small><h1>Die Stadt lebt<em>.</em></h1><p>Ideen, Begegnungen und neue Perspektiven auf Frankfurt.</p></div>
  <section className="v3-section"><div className="v3-section-head"><div><span className="v3-eyebrow">FÜR DEINEN KALENDER</span><h2>Was steht an?</h2></div><span className="v3-section-trail">Veranstaltungen in Frankfurt</span></div>
    <div className="v3-events-grid">{sichtbareVeranstaltungen.map(e=><article className="v3-event-card" key={e.id}>
      <div className="v3-event-photo"><img src={ortsbild('',e.image_url)} alt="Stimmungsbild zur Veranstaltung" loading="lazy"/><span className="v3-event-date">{date(e.starts_at,lang)}</span><span className="v3-image-note">Stimmungsbild</span></div>
-     <div className="v3-event-info">{e.demo&&<span className="v3-demo-label">Musterveranstaltung · nicht buchbar</span>}<h3>{e.title}</h3><p>{e.description_de}</p><span className="v3-place-meta"><MapPin size={15}/>{e.venue}</span>{!e.demo&&e.ticket_url&&<a href={e.ticket_url} rel="noopener noreferrer" target="_blank">Informationen beim Veranstalter</a>}</div>
+     <div className="v3-event-info">{e.demo&&<span className="v3-demo-label">Musterveranstaltung · nicht buchbar</span>}<h3>{e.title}</h3><p>{e.description_de}</p><span className="v3-place-meta"><MapPin size={15}/>{e.venue}</span><EventActions key={e.id} event={e} saved={eventFavorites.includes(e.id)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onSaved={favoriteEvent} onNotice={flash}/></div>
    </article>)}</div>
  </section>
  <section className="v3-section v3-journal"><div className="v3-section-head"><div><span className="v3-eyebrow">WAS UNS BEWEGT</span><h2>Aus der Stadt.</h2></div><span className="v3-section-trail">Geschichten und Inspiration</span></div>
