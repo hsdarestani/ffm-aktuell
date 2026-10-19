@@ -1,0 +1,18 @@
+# Optional sidecar. Do not enable on a small shared VPS.
+# ClamAV needs 3-4 GiB RAM plus space for app + PostgreSQL.
+services:
+  clamav:
+    image: clamav/clamav:1.4
+    profiles: ["media"]
+    restart: unless-stopped
+    volumes:
+      - ffm_clamav_signatures:/var/lib/clamav
+    mem_limit: 4g
+    networks:
+      - default
+  web:
+    environment:
+      CLAMD_HOST: clamav
+      CLAMD_PORT: "3310"
+volumes:
+  ffm_clamav_signatures:
