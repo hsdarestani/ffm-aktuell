@@ -261,9 +261,16 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       :(lang==='de'?'Noch keine passenden unabhängig bestätigten Orte. Unter Entdecken findest du ungeprüfte OSM Einträge.':'No matching independently verified places yet. Unverified OSM listings are available under Explore.')});
   }
   if(method==='GET'&&path==='tours/curated'){
-    const r=await query("SELECT id,name,category,district,address,latitude,longitude FROM places WHERE status='published' AND verification_status='verified' AND activity_status='operating' AND verified_at BETWEEN now()-interval '30 days' AND now() AND latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY editorial_rank DESC,name LIMIT 80");
+    // Only published real coordinates are used. Unverified landmarks are
+    // conspicuously marked as a preview, never presented as currently open.
+    const r=await query("SELECT id,name,category,district,address,latitude,longitude,verification_status,activity_status,verified_at FROM places WHERE status='published' AND latitude IS NOT NULL AND longitude IS NOT NULL AND latitude BETWEEN 49.7 AND 50.4 AND longitude BETWEEN 8.2 AND 9.1 ORDER BY editorial_rank DESC,name LIMIT 80");
     const templates=[{id:'klassiker',title:'Frankfurts Klassiker',categories:['Sehenswürdigkeiten','Museen','Kultur']},{id:'genuss',title:'Frankfurt genießen',categories:['Cafés','Restaurants','Brunch','Imbiss']},{id:'gruen',title:'Natur und Bewegung',categories:['Natur','Freizeit','Sport']}];
-    return ok({items:templates.map(t=>({id:t.id,title:t.title,stops:r.rows.filter(p=>t.categories.includes(p.category)).slice(0,5)})).filter(t=>t.stops.length>=2),notice:'Nur unabhängig bestätigte Orte. Gehzeiten vor dem Besuch prüfen.'});
+    const items=templates.map(t=>{
+      const stops=r.rows.filter(p=>t.categories.includes(p.category)&&p.activity_status!=='permanently_closed').slice(0,5);
+      const verified=stops.every(p=>p.verification_status==='verified'&&p.activity_status==='operating'&&p.verified_at&&Date.now()-new Date(p.verified_at).getTime()<30*86400000);
+      return {id:t.id,title:t.title,stops,verification:verified?'verified':'unverified',mode:verified?'route':'preview'};
+    }).filter(t=>t.stops.length>=2);
+    return ok({items,notice:'Standorte, Zugang und Gehzeiten vor der Tour unabhängig beim Anbieter prüfen. Nicht bestätigte Stopps sind gekennzeichnet.'});
   }
   if(method==='GET'&&path==='event-favorites'){
     const u=need(user);
