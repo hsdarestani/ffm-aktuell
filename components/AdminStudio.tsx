@@ -7,6 +7,7 @@ import {
  Sparkles,SquarePen,UsersRound,X,CalendarDays,CheckCheck,EyeOff,Globe2
 } from 'lucide-react';
 import {KATEGORIEN} from '@/lib/ortskategorien';
+import {EDITORIAL_SOURCE_LEADS} from '@/lib/editorial-source-leads';
 import MediaEditorial from '@/components/MediaEditorial';
 
 type View='overview'|'review'|'moderation'|'publish';
@@ -343,6 +344,15 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
 
  {view==='review'&&<>
      <div className="ffm-studio-page-heading"><div><h1>Orte prüfen<span>.</span></h1></div></div>
+     <details className="ffm-evidence-leads">
+      <summary>Vier Orte mit unabhängigen Quellen zur Prüfung <span>Keine automatische Bestätigung</span></summary>
+      <p>Die folgenden Quellen helfen der Redaktion. Nur nach eigener Kontrolle von Standort, Datum und Betriebsstatus freigeben.</p>
+      <div className="ffm-evidence-leads-grid">{EDITORIAL_SOURCE_LEADS.map(item=><article key={item.name}>
+       <strong>{item.name}</strong><small>{item.publisher}</small>
+       <p>{item.note}</p>
+       <a href={item.source} target="_blank" rel="noopener noreferrer">Offizielle Quelle ansehen <ExternalLink size={14}/></a>
+      </article>)}</div>
+     </details>
      <div className="ffm-studio-review-tabs" role="tablist" aria-label="Prüfbereiche">
       {[{id:'unverified',label:'Noch ungeprüft',count:stats?.kandidaten},{id:'needs_review',label:'Rückfragen',count:stats?.rueckfragen},{id:'existing',label:'Erneut prüfen',count:stats?.offen_zur_pruefung}].map(r=><button key={r.id} type="button" role="tab" aria-selected={reviewMode===r.id} className={reviewMode===r.id?'active':''} onClick={()=>{setReviewMode(r.id as ReviewMode);setPage(0);setDrawer(false);setSelectedDue(null)}}>{r.label}<span>{fmt(r.count)}</span></button>)}
      </div>
