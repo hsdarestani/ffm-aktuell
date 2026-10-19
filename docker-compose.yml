@@ -28,6 +28,12 @@ services:
       CLAMD_HOST: ${CLAMD_HOST:-}
       CLAMD_PORT: ${CLAMD_PORT:-3310}
       FFM_MEDIA_DIR: /app/uploads
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      APPLE_SERVICE_ID: ${APPLE_SERVICE_ID:-}
+      APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
+      APPLE_KEY_ID: ${APPLE_KEY_ID:-}
+      APPLE_PRIVATE_KEY: ${APPLE_PRIVATE_KEY:-}
     volumes:
       - ffm_media:/app/uploads
     depends_on:
