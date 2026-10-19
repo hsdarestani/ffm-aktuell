@@ -429,6 +429,16 @@ try{
  const claimedAgain=await post('coupons/claim',reader,{deal_id:proposed.body.id});
  if(claimedAgain.status!==200||claimedAgain.body.redeemed!==true||claimedAgain.body.code!==coupon.body.code)
    throw Error('Claim replay reset a redeemed code');
+ const outsiderInsights=await get('business/insights?business_id='+createdBusiness.body.id,reader);
+ if(outsiderInsights.status!==403)throw Error('Former team member read merchant insights after removal');
+ const publicInsights=await get('business/insights?business_id='+createdBusiness.body.id);
+ if(publicInsights.status!==401)throw Error('Merchant insights leaked to a guest');
+ const insights=await get('business/insights?business_id='+createdBusiness.body.id,client);
+ if(insights.status!==200||insights.body.coupons_claimed!==1||insights.body.coupons_redeemed!==1||
+    insights.body.revenue!==null||insights.body.impressions!==null||insights.body.visit_conversions!==null)
+    throw Error('Business insights inconsistent or invented revenue/visits: '+JSON.stringify(insights));
+ if(insights.body.followers!==null)throw Error('Small follower aggregate ignored disclosure threshold');
+ console.log('PASS: authorized merchant aggregate counts, redeemed coupons, revocation and privacy thresholds');
  // Phase 5: proof of media privacy without accepting any unscanned file.
  // Fake media bytes are inserted DIRECTLY into this disposable CI database only.
  // This does not test or bypass the scanner on any production server.
