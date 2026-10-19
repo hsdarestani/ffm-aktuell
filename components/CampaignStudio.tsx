@@ -3,7 +3,7 @@ import {useCallback,useEffect,useState} from 'react';
 type Campaign={id:string;title:string;copy_de:string;placement:string;start_date:string;end_date:string;status:string;business_name:string;place_name:string;rejection_note:string|null};
 export default function CampaignStudio({onNotice}:{onNotice:(message:string,success:boolean)=>void}){
  const [items,setItems]=useState<Campaign[]>([]),[busy,setBusy]=useState(false),[reason,setReason]=useState('');
- const refresh=useCallback(async()=>{try{const r=await fetch('/api/admin/campaigns',{cache:'no-store'});if(!r.ok)throw Error('Nicht berechtigt');const d=await r.json();setItems(d.items||[])}catch(e){onNotice(e instanceof Error?e.message:'Daten nicht verfügbar',false)}},[onNotice]);
+ const refresh=useCallback(async()=>{try{const r=await fetch('/api/admin/campaigns',{cache:'no-store'});if(!r.ok)throw Error('Nicht berechtigt');const d=await r.json();setItems(d.items||[])}catch(e){onNotice(e instanceof Error?e.message:'Daten nicht verfügbar',false)}},[]);
  useEffect(()=>{void refresh()},[refresh]);
  async function review(id:string,approve:boolean){
   setBusy(true);try{const r=await fetch('/api/admin/campaigns',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,approve,note:reason})});
