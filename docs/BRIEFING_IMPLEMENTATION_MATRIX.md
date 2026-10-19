@@ -82,6 +82,15 @@ This is an implementation ledger, **not** a claim of complete product delivery. 
 - Sponsored listings/ad slots with fixed pricing, billing, review and trustworthy analytics
 - Redeemable codes, coupons, anti-replay security and loyalty cards after abuse/legal rules approved
 
+## Phase 4b: Zero-cost one-use coupon pilot (2026-10-19)
+- Uses the existing admin-approved real `deals`; no purchase, payments, loyalty-point claims or unverifiable visit status
+- Logged-in users may claim one code per real published offer from an approved business; each 144-bit random code remains private in `Mein Profil → Meine Gutscheine`
+- Approved business owner redeems a customer's presented code in their dashboard; a database atomic update prevents code reuse, and another business cannot redeem it
+- Account export/deletion cascades private coupon records; admin-approved deal review and expiry can disable further claims
+- Tests include guest denial, an unapproved deal, owner self-claim denial, per-user uniqueness, private wallet, false code, successful redemption and replay rejection
+- **Still open:** discount economics/legal terms confirmed per merchant, refund or exception handling, in-person fraud/identity verification, venue visit evidence, business staff permission model, quota limits and comprehensive analytics
+- This is a no-payment pilot, not the finalized commercial tariff/ad workflow.
+
 ## Phase 5: Native clients, operational compliance & launch
 - iOS and Android delivery, Apple/Google auth and approved telephone flow
 - User account deletion/data export, DSGVO/DSA operation, accessibility, rights/audit/retention
