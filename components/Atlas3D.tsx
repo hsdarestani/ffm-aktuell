@@ -328,7 +328,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
  useEffect(()=>{
   if(!mapDiv.current)return;
   let cancelled=false,hasStyle=false,triedRaster=false,revealed=false;
-  let baseTileErrors=0;
+  let baseTileErrors=0,vectorTileSeen=false,rasterTileSeen=false;
   let revealTimer:number|undefined;
   import('maplibre-gl').then(({default:maplibre})=>{
    if(cancelled||!mapDiv.current)return;
@@ -341,8 +341,23 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     canvasContextAttributes:{antialias:true},fadeDuration:250
    });
    mapRef.current=map;
+   const switchToSafeMap=()=>{
+    if(cancelled||triedRaster)return;
+    triedRaster=true;revealed=false;hasStyle=false;
+    setFallback(true);set3D(false);setLuftbild(false);setReady(false);
+    try{map.setStyle(fallbackRaster);}catch{setError(true);}
+   };
+   // Loading a style or an empty background is not proof of real tiles.
+   map.on('sourcedata',event=>{
+    if(cancelled)return;
+    const e=event as unknown as {sourceId?:string;sourceDataType?:string;coord?:unknown};
+    if(e.sourceDataType!=='content'||!e.coord)return;
+    if(triedRaster&&e.sourceId==='osm')rasterTileSeen=true;
+    if(!triedRaster&&(e.sourceId==='openmaptiles'||e.sourceId==='ffm-openmaptiles'))vectorTileSeen=true;
+   });
    const revealScene=()=>{
     if(cancelled||revealed)return;
+    if(triedRaster?!rasterTileSeen:!vectorTileSeen)return;
     revealed=true;
     if(revealTimer!==undefined)window.clearTimeout(revealTimer);
     setReady(true);
@@ -364,15 +379,14 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
      if(!triedRaster){add3DBuildings(map);addLuftbild(map);setColorScheme(map,state.current.mode);addGeoPins(map);addCandidatePins(map);addRealLod2Layer(map,setLod2Triangles);addCitywideLod2Layer(map);}
      else {addGeoPins(map);addCandidatePins(map);}
     }catch(e){console.warn('FFM Atlas optional 3D scene:',e);}
-    // MapLibre 'style.load' only means style metadata loaded, NOT tiles.
-    // 'idle' means the visible tile region has finished rendering.
+    // Idle may occur even when all vector tiles failed: don't dismiss loading.
+    if(revealTimer!==undefined)window.clearTimeout(revealTimer);
     map.once('idle',revealScene);
     revealTimer=window.setTimeout(()=>{
-      if(cancelled)return;
-      // A map stuck waiting for vector tiles should not show an empty grey scene.
-      if(!triedRaster&&!map.areTilesLoaded()){triedRaster=true;setFallback(true);set3D(false);map.setStyle(fallbackRaster);}
-      else revealScene();
-    },12000);
+      if(cancelled||revealed)return;
+      if(!triedRaster)switchToSafeMap();
+      else setError(true);
+    },10000);
    };
    map.on('style.load',onStyle);
       map.on('click',e=>{
@@ -402,13 +416,11 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     const message=String(e.error?.message||'');
     const sourceId=String((e as unknown as {sourceId?:string}).sourceId||'');
     const vectorFailure=/openfreemap|openmaptiles|tiles\\.openfreemap\\.org/i.test(message+' '+sourceId);
-    if(hasStyle&&!vectorFailure)return; // ignore optional layers such as LoD2
-    if(vectorFailure&&++baseTileErrors<2)return; // one transient error is not a blank map
+    if(hasStyle&&!vectorFailure)return; // ignore optional LoD2 layers
+    if(vectorFailure&&++baseTileErrors<2)return; // one transient request
     console.warn('FFM Atlas base map:',e.error);
-    if(!triedRaster){
-     triedRaster=true;setFallback(true);set3D(false);
-     map.setStyle(fallbackRaster);
-    }else if(!hasStyle){setError(true);}
+    if(!triedRaster)switchToSafeMap();
+    else if(!rasterTileSeen)setError(true);
    });
    map.addControl(new maplibre.AttributionControl({compact:true}),'bottom-right');
   }).catch(()=>{if(!cancelled)setError(true);});
@@ -532,6 +544,6 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   {fallback&&<div className="atlas-luftbild-warning" role="status">3D Kartendienst nicht erreichbar. Einfacher OSM Stadtplan aktiv.</div>}
   {luftbildFehler&&<div className="atlas-luftbild-warning" role="status">Luftbild gerade nicht verfügbar. Stadtplan wird angezeigt.</div>}
   {!ready&&!error&&<div className="atlas-map-loading" role="status"><div className="atlas-loading-mark"><span/></div><strong>FFM ATLAS</strong><small>{t.loading}</small></div>}
-  {error&&<div className="atlas-map-loading atlas-map-error" role="alert"><strong>{t.error}</strong><button onClick={()=>window.location.reload()}>{t.retry}</button></div>}
+  {error&&<div className="atlas-map-loading atlas-map-error" role="alert"><strong>{t.error}</strong><small>{lang==='de'?'Kartendaten konnten nicht geladen werden.':'Map tiles are unavailable.'}</small><button onClick={()=>window.location.reload()}>{t.retry}</button><a href="https://www.openstreetmap.org/#map=14/50.1114/8.6813" target="_blank" rel="noopener noreferrer">{lang==='de'?'Karte bei OpenStreetMap öffnen':'Open map on OpenStreetMap'}</a></div>}
  </section>;
 }
