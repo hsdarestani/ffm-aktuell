@@ -34,6 +34,8 @@ services:
       APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
       APPLE_KEY_ID: ${APPLE_KEY_ID:-}
       APPLE_PRIVATE_KEY: ${APPLE_PRIVATE_KEY:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      FFM_EMAIL_FROM: ${FFM_EMAIL_FROM:-}
     volumes:
       - ffm_media:/app/uploads
     depends_on:
