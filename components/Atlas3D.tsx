@@ -328,6 +328,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
  useEffect(()=>{
   if(!mapDiv.current)return;
   let cancelled=false,hasStyle=false,triedRaster=false,revealed=false;
+  let baseTileErrors=0;
   let revealTimer:number|undefined;
   import('maplibre-gl').then(({default:maplibre})=>{
    if(cancelled||!mapDiv.current)return;
@@ -361,11 +362,17 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     hasStyle=true;setError(false);
     try{
      if(!triedRaster){add3DBuildings(map);addLuftbild(map);setColorScheme(map,state.current.mode);addGeoPins(map);addCandidatePins(map);addRealLod2Layer(map,setLod2Triangles);addCitywideLod2Layer(map);}
+     else {addGeoPins(map);addCandidatePins(map);}
     }catch(e){console.warn('FFM Atlas optional 3D scene:',e);}
     // MapLibre 'style.load' only means style metadata loaded, NOT tiles.
     // 'idle' means the visible tile region has finished rendering.
     map.once('idle',revealScene);
-    revealTimer=window.setTimeout(revealScene,15000); // recover from slow/blocking tiles
+    revealTimer=window.setTimeout(()=>{
+      if(cancelled)return;
+      // A map stuck waiting for vector tiles should not show an empty grey scene.
+      if(!triedRaster&&!map.areTilesLoaded()){triedRaster=true;setFallback(true);set3D(false);map.setStyle(fallbackRaster);}
+      else revealScene();
+    },12000);
    };
    map.on('style.load',onStyle);
       map.on('click',e=>{
@@ -392,12 +399,16 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    map.on('error',e=>{
     if(cancelled)return;
     if(String(e.error?.message||'').includes('gds-srv.hessen.de')){setLuftbildFehler(true);setLuftbild(false);return;}
-    if(hasStyle)return;
+    const message=String(e.error?.message||'');
+    const sourceId=String((e as unknown as {sourceId?:string}).sourceId||'');
+    const vectorFailure=/openfreemap|openmaptiles|tiles\\.openfreemap\\.org/i.test(message+' '+sourceId);
+    if(hasStyle&&!vectorFailure)return; // ignore optional layers such as LoD2
+    if(vectorFailure&&++baseTileErrors<2)return; // one transient error is not a blank map
     console.warn('FFM Atlas base map:',e.error);
     if(!triedRaster){
-     triedRaster=true;setFallback(true);
+     triedRaster=true;setFallback(true);set3D(false);
      map.setStyle(fallbackRaster);
-    }else{setError(true);}
+    }else if(!hasStyle){setError(true);}
    });
    map.addControl(new maplibre.AttributionControl({compact:true}),'bottom-right');
   }).catch(()=>{if(!cancelled)setError(true);});
@@ -437,7 +448,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
  },[ready]);
  useEffect(()=>{
   const map=mapRef.current;
-  if(!ready||fallback||!map||!map.getSource(OSM_SOURCE))return;
+  if(!ready||!map||!map.getSource(OSM_SOURCE))return;
   let cancelled=false,timer:number|undefined,active:AbortController|null=null;
   const load=()=>{
    if(cancelled)return;
@@ -472,7 +483,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
  },[ready,filtered]);
  useEffect(()=>{
   const map=mapRef.current;
-  if(ready&&map&&!fallback)updateSelectedPin(map,selected);
+  if(ready&&map)updateSelectedPin(map,selected);
  },[ready,selected,fallback]);
  return <section className={'atlas-root atlas-'+variant+' atlas-tone-'+mode} aria-label={t.map}>
   <div className="atlas-map-host" ref={mapDiv} aria-label={t.map} role="application"/>
@@ -484,6 +495,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     <details className="atlas-map-more-views"><summary>Ansicht <Plus size={14}/></summary><div>
       <button type="button" className={'atlas-tone-button'+(mode==='golden'?' active':'')} onClick={()=>setMode(x=>x==='day'?'golden':'day')} title={mode==='day'?t.golden:t.day} aria-label={mode==='day'?t.golden:t.day}>{mode==='day'?<Sunset size={17}/>:<Sun size={17}/>}<span>{mode==='day'?t.golden:t.day}</span></button>
       <button type="button" className={'atlas-air-button'+(luftbild?' active':'')} aria-pressed={luftbild} onClick={()=>{setLuftbildFehler(false);if(!luftbild)set3D(false);else set3D(true);setLuftbild(v=>!v)}} title="Amtliche Luftbilder statt Kartenzeichnung">{luftbild?'Stadtplan':'Luftbild'}</button>
+      <button type="button" disabled={fallback} onClick={()=>{const m=mapRef.current;if(!m)return;set3D(false);setLuftbild(false);setFallback(true);m.setStyle(fallbackRaster);}} title="Bei grauer oder leerer Karte auf OSM wechseln">{fallback?'OSM aktiv':'Einfache Karte laden'}</button>
     </div></details>
    </div>
   </div>
@@ -517,6 +529,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    </div>}
   </div>
   <div className="atlas-credits"><span>{luftbild?'Luftbild: © Land Hessen · DOP20 · Datenlizenz Deutschland Zero 2.0':t.credit}</span><span>{luftbild?'Amtliches Luftbild, keine Fototexturen auf Gebäuden':lod2Triangles>0?'Echte LoD2 Dach- und Wandflächen · Innenstadt-Ausschnitt · Powered by Lodapi':t.tip}</span></div>
+  {fallback&&<div className="atlas-luftbild-warning" role="status">3D Kartendienst nicht erreichbar. Einfacher OSM Stadtplan aktiv.</div>}
   {luftbildFehler&&<div className="atlas-luftbild-warning" role="status">Luftbild gerade nicht verfügbar. Stadtplan wird angezeigt.</div>}
   {!ready&&!error&&<div className="atlas-map-loading" role="status"><div className="atlas-loading-mark"><span/></div><strong>FFM ATLAS</strong><small>{t.loading}</small></div>}
   {error&&<div className="atlas-map-loading atlas-map-error" role="alert"><strong>{t.error}</strong><button onClick={()=>window.location.reload()}>{t.retry}</button></div>}

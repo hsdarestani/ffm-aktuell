@@ -25,7 +25,8 @@ test('visible navigational and editorial content does not use unwanted English w
  for(const old of ['03 / CITY JOURNAL','04 / THE PEOPLE','YOUR CITY / YOUR VOICE','COMMUNITY / POST','LOCAL BUSINESS / PARTNERS','01 / DISCOVER FRANKFURT','PLACES / FRANKFURT','MEMBER ACCESS / FFM AKTUELL'])assert.ok(!page.includes(old),old);
  assert.match(page,/events:'Veranstaltungen'/);
  assert.match(page,/community:'Miteinander'/);
- assert.doesNotMatch(page,/setLang\(/);
+ assert.match(page,/setLang\(/);
+ assert.match(page,/lang==='de'\?'EN':'DE'/);
  assert.doesNotMatch(atlas,/setLang\(/);
  assert.match(home,/03 \/ STADTJOURNAL/);
 });
