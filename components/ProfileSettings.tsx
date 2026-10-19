@@ -20,8 +20,10 @@ export default function ProfileSettings({user,onLogin,onNotice,onDeleted,onSaved
  const [busy,setBusy]=useState(false);
  const [loaded,setLoaded]=useState(false);
  const [deleteOpen,setDeleteOpen]=useState(false);
+ const [security,setSecurity]=useState<{social_providers:string[];social_deletion_available:boolean;requires_password:boolean}|null>(null);
  const [password,setPassword]=useState('');
  const [confirm,setConfirm]=useState('');
+ useEffect(()=>{if(!user)return;let alive=true;request('me/account-security').then(d=>{if(alive)setSecurity(d)}).catch(()=>{});return()=>{alive=false}},[user?.id]);
  useEffect(()=>{
   if(!user){setLoaded(true);return}
   let live=true;
@@ -51,11 +53,11 @@ export default function ProfileSettings({user,onLogin,onNotice,onDeleted,onSaved
  };
  const deleteAccount=async(e:FormEvent)=>{
   e.preventDefault();
-  if(confirm!=='KONTO LÖSCHEN'||!password||busy)return;
+  if(confirm!=='KONTO LÖSCHEN'||(!password&&!security?.social_deletion_available)||busy)return;
   if(!window.confirm('Dein Konto und deine privaten Daten dauerhaft löschen?'))return;
   setBusy(true);
   try{await request('me/delete',{password,confirmation:'KONTO LÖSCHEN'});setPassword('');setConfirm('');onDeleted();}
-  catch{onNotice('Konto konnte nicht gelöscht werden. Bitte Passwort prüfen und ggf. Firmenzugänge übertragen.')}
+  catch{onNotice('Konto konnte nicht gelöscht werden. Bitte Passwort prüfen oder mit Apple/Google neu anmelden; bestehende Firmenzugänge zuerst übertragen.')}
   finally{setBusy(false)}
  };
  if(!user)return <main className="ffm-profile-page"><h1>Mein Profil</h1><p>Melde dich an, um deine Einstellungen zu verwalten.</p><button type="button" className="ffm-profile-primary" onClick={onLogin}>Anmelden</button></main>;
@@ -84,9 +86,10 @@ export default function ProfileSettings({user,onLogin,onNotice,onDeleted,onSaved
    {user.role!=='admin'&&<div className="ffm-profile-danger">
     <button type="button" onClick={()=>setDeleteOpen(v=>!v)} aria-expanded={deleteOpen}><Trash2 size={16}/> Konto löschen</button>
     {deleteOpen&&<form onSubmit={deleteAccount}><p>Dein Konto und private Inhalte werden dauerhaft gelöscht. Freigegebene Medienrechte und Sicherungskopien müssen gegebenenfalls zusätzlich geprüft werden.</p>
-     <label>Passwort<input type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/></label>
+     {security?.social_providers?.length>0&&<p>Bei Anmeldung mit Google oder Apple kannst du dein Konto innerhalb von 5 Minuten nach erneutem Login auch ohne Passwort löschen.</p>}
+     {(!security?.social_deletion_available||security?.requires_password)&&<label>Passwort<input type="password" autoComplete="current-password" required={!security?.social_deletion_available} value={password} onChange={e=>setPassword(e.target.value)}/></label>}
      <label>Zur Bestätigung KONTO LÖSCHEN eingeben<input required value={confirm} onChange={e=>setConfirm(e.target.value)}/></label>
-     <button type="submit" disabled={busy||confirm!=='KONTO LÖSCHEN'||!password}><LockKeyhole size={15}/> Konto endgültig löschen</button>
+     <button type="submit" disabled={busy||confirm!=='KONTO LÖSCHEN'||(!password&&!security?.social_deletion_available)}><LockKeyhole size={15}/> Konto endgültig löschen</button>
     </form>}
    </div>}
   </section>
