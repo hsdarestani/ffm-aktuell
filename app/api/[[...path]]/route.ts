@@ -116,7 +116,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     const category=trim(qs.get('category'));const district=trim(qs.get('district'));const search=trim(qs.get('q'));
     const mode=trim(qs.get('mode'));
     if(mode&&mode!=='verified'&&mode!=='top')return bad('Unbekannter Ansichtsmodus');
-    const r=await query("SELECT id,name,category,district,description_de,description_en,address,latitude,longitude,website,image_url,source_url,verification_status,activity_status,verified_at,verification_source,editorial_rank,opening_hours_text FROM places WHERE status='published' AND activity_status!='permanently_closed' AND ($1='' OR category=$1) AND ($2='' OR district=$2) AND ($3='' OR (name||' '||description_de||' '||district) ILIKE '%'||$3||'%') AND ($4='' OR (verification_status='verified' AND activity_status='operating' AND verified_at BETWEEN now()-interval '30 days' AND now() AND ($4!='top' OR editorial_rank>0))) ORDER BY CASE WHEN verification_status='verified' AND activity_status='operating' AND verified_at > now()-interval '30 days' THEN 0 ELSE 1 END, editorial_rank DESC, name LIMIT 80",[category,district,search.slice(0,100),mode]);
+    const r=await query("SELECT id,name,category,district,description_de,description_en,address,latitude,longitude,website,image_url,source_url,verification_status,activity_status,verified_at,verification_source,editorial_rank,opening_hours_text, CASE WHEN business_id IN (SELECT id FROM businesses WHERE status='approved') THEN business_id ELSE NULL END AS business_id, EXISTS(SELECT 1 FROM business_follows bf WHERE bf.follower_id=$5 AND bf.business_id=places.business_id) AS following_business FROM places WHERE status='published' AND activity_status!='permanently_closed' AND ($1='' OR category=$1) AND ($2='' OR district=$2) AND ($3='' OR (name||' '||description_de||' '||district) ILIKE '%'||$3||'%') AND ($4='' OR (verification_status='verified' AND activity_status='operating' AND verified_at BETWEEN now()-interval '30 days' AND now() AND ($4!='top' OR editorial_rank>0))) ORDER BY CASE WHEN verification_status='verified' AND activity_status='operating' AND verified_at > now()-interval '30 days' THEN 0 ELSE 1 END, editorial_rank DESC, name LIMIT 80",[category,district,search.slice(0,100),mode,user?.id||null]);
     return ok({items:r.rows});
   }
   if(method==='GET'&&path==='discovery'){
@@ -172,8 +172,63 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     return ok({summary:summary.rows[0],items:items.rows});
   }
   if(method==='GET'&&path==='posts'){
-    const r=await query("SELECT p.id,p.body,p.media_url,p.created_at,LEFT(u.display_name,1) AS display_name,COALESCE(pl.name,dc.name) AS place_name,(SELECT count(*)::int FROM post_likes l WHERE l.post_id=p.id) AS likes_count,(SELECT count(*)::int FROM post_comments c WHERE c.post_id=p.id AND c.status='published') AS comments_count,EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id=p.id AND l.user_id=$1) AS liked FROM posts p JOIN users u ON u.id=p.user_id LEFT JOIN places pl ON pl.id=p.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=p.candidate_osm_id WHERE p.status='published' ORDER BY p.created_at DESC LIMIT 40",[user?.id||null]);
-    return ok({items:r.rows});
+    const following=qs.get('scope')==='following';
+    if(qs.has('scope')&&!['all','following'].includes(qs.get('scope')||''))return bad('Invalid feed scope');
+    if(following&&!user)return bad('Login required',401);
+    const r=await query(`SELECT p.id,p.user_id AS author_id,p.body,p.media_url,p.created_at,
+      LEFT(u.display_name,1) AS display_name,COALESCE(pl.name,dc.name) AS place_name,
+      (SELECT count(*)::int FROM post_likes l WHERE l.post_id=p.id) AS likes_count,
+      (SELECT count(*)::int FROM post_comments c WHERE c.post_id=p.id AND c.status='published') AS comments_count,
+      EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id=p.id AND l.user_id=$1) AS liked,
+      EXISTS(SELECT 1 FROM user_follows uf WHERE uf.follower_id=$1 AND uf.followed_id=p.user_id) AS following_author,
+      (p.user_id=$1) AS own_post
+      FROM posts p JOIN users u ON u.id=p.user_id
+      LEFT JOIN places pl ON pl.id=p.place_id
+      LEFT JOIN businesses bu ON bu.id=pl.business_id AND bu.status='approved'
+      LEFT JOIN discovery_candidates dc ON dc.osm_id=p.candidate_osm_id
+      WHERE p.status='published' AND ($2::boolean IS FALSE OR
+        EXISTS(SELECT 1 FROM user_follows uf WHERE uf.follower_id=$1 AND uf.followed_id=p.user_id)
+        OR (bu.id IS NOT NULL AND EXISTS(SELECT 1 FROM business_follows bf WHERE bf.follower_id=$1 AND bf.business_id=bu.id)))
+      ORDER BY p.created_at DESC LIMIT 40`,[user?.id||null,following]);
+    return ok({items:r.rows,scope:following?'following':'all'});
+  }
+  if(method==='GET'&&path==='follows'){
+    // Only the current user can see their own followed people and businesses.
+    const u=need(user);
+    const [people,businesses]=await Promise.all([
+      query("SELECT uf.followed_id AS id,LEFT(us.display_name,1) AS display_name FROM user_follows uf JOIN users us ON us.id=uf.followed_id WHERE uf.follower_id=$1 ORDER BY uf.created_at DESC LIMIT 100",[u.id]),
+      query("SELECT bf.business_id AS id,b.name FROM business_follows bf JOIN businesses b ON b.id=bf.business_id WHERE bf.follower_id=$1 AND b.status='approved' ORDER BY bf.created_at DESC LIMIT 100",[u.id])
+    ]);
+    return ok({people:people.rows,businesses:businesses.rows});
+  }
+  if(method==='POST'&&path==='follows'){
+    rate(req,'follow');const u=need(user);
+    const b=parse(z.object({
+      target_type:z.enum(['user','business']),
+      target_id:id,
+      active:z.boolean()
+    }),await payload(req));
+    if(b.target_type==='user'){
+      if(b.target_id===u.id)return bad('Cannot follow yourself');
+      if(b.active){
+        const created=await query("INSERT INTO user_follows(follower_id,followed_id) SELECT $1,id FROM users WHERE id=$2 AND EXISTS(SELECT 1 FROM posts WHERE user_id=$2 AND status='published') ON CONFLICT DO NOTHING RETURNING followed_id",[u.id,b.target_id]);
+        if(!created.rowCount){
+          const existing=await query('SELECT followed_id FROM user_follows WHERE follower_id=$1 AND followed_id=$2',[u.id,b.target_id]);
+          if(!existing.rowCount)return bad('Author not available',404);
+        }
+      }else await query('DELETE FROM user_follows WHERE follower_id=$1 AND followed_id=$2',[u.id,b.target_id]);
+    }else{
+      if(b.active){
+        // Businesses are followable only after approval AND after a location
+        // is publicly published; claiming an OSM record does not qualify.
+        const created=await query("INSERT INTO business_follows(follower_id,business_id) SELECT $1,b.id FROM businesses b WHERE b.id=$2 AND b.status='approved' AND b.owner_id!=$1 AND EXISTS(SELECT 1 FROM places p WHERE p.business_id=b.id AND p.status='published' AND p.activity_status!='permanently_closed') ON CONFLICT DO NOTHING RETURNING business_id",[u.id,b.target_id]);
+        if(!created.rowCount){
+          const existing=await query('SELECT business_id FROM business_follows WHERE follower_id=$1 AND business_id=$2',[u.id,b.target_id]);
+          if(!existing.rowCount)return bad('Business not available',404);
+        }
+      }else await query('DELETE FROM business_follows WHERE follower_id=$1 AND business_id=$2',[u.id,b.target_id]);
+    }
+    return ok({following:b.active});
   }
   if(method==='GET'&&path==='comments'){
     const postId=qs.get('post_id')||'';if(!id.safeParse(postId).success)return bad('Invalid post ID');
@@ -191,14 +246,14 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       if(!r.rowCount)return bad('Place not found',404);
       return ok({place:r.rows[0]});
     }
-    const r=await query("SELECT id,name,category,district,description_de,description_en,address,latitude,longitude,website,image_url,source_url,verification_status,activity_status,verified_at,verification_source,editorial_rank,opening_hours_text FROM places WHERE id=$1 AND status='published' AND activity_status!='permanently_closed'",[place_id]);
+    const r=await query("SELECT id,name,category,district,description_de,description_en,address,latitude,longitude,website,image_url,source_url,verification_status,activity_status,verified_at,verification_source,editorial_rank,opening_hours_text, CASE WHEN business_id IN (SELECT id FROM businesses WHERE status='approved') THEN business_id ELSE NULL END AS business_id, EXISTS(SELECT 1 FROM business_follows bf WHERE bf.follower_id=$2 AND bf.business_id=places.business_id) AS following_business FROM places WHERE id=$1 AND status='published' AND activity_status!='permanently_closed'",[place_id,user?.id||null]);
     if(!r.rowCount)return bad('Place not found',404);
     return ok({place:r.rows[0]});
   }
   if(method==='GET'&&path==='favorites/details'){
     const u=need(user);
     const [listed,candidates]=await Promise.all([
-      query("SELECT p.id,p.name,p.category,p.district,p.address,p.latitude,p.longitude,p.website,p.description_de,p.description_en,p.source_url,p.image_url,p.verification_status,p.activity_status,p.verified_at,p.verification_source,p.opening_hours_text,f.created_at AS saved_at,false AS candidate FROM favorites f JOIN places p ON p.id=f.place_id WHERE f.user_id=$1 AND p.status='published' AND p.activity_status!='permanently_closed' ORDER BY f.created_at DESC LIMIT 120",[u.id]),
+      query("SELECT p.id,p.name,p.category,p.district,p.address,p.latitude,p.longitude,p.website,p.description_de,p.description_en,p.source_url,p.image_url,p.verification_status,p.activity_status,p.verified_at,p.verification_source,p.opening_hours_text,(SELECT b.id FROM businesses b WHERE b.id=p.business_id AND b.status='approved') AS business_id,EXISTS(SELECT 1 FROM business_follows bf WHERE bf.follower_id=$1 AND bf.business_id=p.business_id) AS following_business,f.created_at AS saved_at,false AS candidate FROM favorites f JOIN places p ON p.id=f.place_id WHERE f.user_id=$1 AND p.status='published' AND p.activity_status!='permanently_closed' ORDER BY f.created_at DESC LIMIT 120",[u.id]),
       query("SELECT dc.osm_id AS id,dc.osm_id,dc.name,dc.category,dc.address,dc.latitude,dc.longitude,dc.website,dc.phone,dc.osm_url AS source_url,dc.activity_status,'unverified' AS verification_status,dc.opening_hours AS opening_hours_text,cf.created_at AS saved_at,true AS candidate FROM candidate_favorites cf JOIN discovery_candidates dc ON dc.osm_id=cf.osm_id WHERE cf.user_id=$1 AND dc.reviewed_status='unverified' ORDER BY cf.created_at DESC LIMIT 120",[u.id])
     ]);
     const items=[...listed.rows,...candidates.rows].sort((a,b)=>new Date(b.saved_at).getTime()-new Date(a.saved_at).getTime()).slice(0,120);
