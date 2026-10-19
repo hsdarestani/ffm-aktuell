@@ -1,7 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {completeLogin,configured,exchange,failure,stateCookie,validate,validProvider} from '@/lib/oauth';
 export const runtime='nodejs';
-export async function handle(req:NextRequest,{params}:{params:Promise<{provider:string}>}){
+async function handle(req:NextRequest,{params}:{params:Promise<{provider:string}>}){
  const {provider}=await params;
  if(!validProvider(provider))return new NextResponse(null,{status:404});
  if(!configured(provider))return failure('not_configured');
