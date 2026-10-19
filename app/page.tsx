@@ -29,7 +29,7 @@ const BusinessHighlightsManager=dynamic(()=>import('@/components/BusinessHighlig
 const ProfileSettings=dynamic(()=>import('@/components/ProfileSettings'),{ssr:false});
 const EventActions=dynamic(()=>import('@/components/EventActions'),{ssr:false});
 const BusinessBranchEditor=dynamic(()=>import('@/components/BusinessBranchEditor'),{ssr:false});
-type Place=MapPlace & {district:string,address:string,description_de:string,description_en:string,website:string|null,source_url:string|null,image_url?:string|null,demo?:true,candidate?:boolean,osm_id?:string,phone?:string,verification_status?:'verified'|'unverified'|'disputed',activity_status?:'unknown'|'operating'|'temporarily_closed'|'permanently_closed',verified_at?:string|null,verification_source?:string|null,editorial_rank?:number|null,opening_hours_text?:string|null,business_id?:string|null,following_business?:boolean};
+type Place=MapPlace & {categories?:string[];district:string,address:string,description_de:string,description_en:string,website:string|null,source_url:string|null,image_url?:string|null,demo?:true,candidate?:boolean,osm_id?:string,phone?:string,verification_status?:'verified'|'unverified'|'disputed',activity_status?:'unknown'|'operating'|'temporarily_closed'|'permanently_closed',verified_at?:string|null,verification_source?:string|null,editorial_rank?:number|null,opening_hours_text?:string|null,business_id?:string|null,following_business?:boolean};
 type User={id:string,email:string,display_name:string,role:string};
 type Event={id:string,title:string,venue:string,starts_at:string,description_de:string,description_en:string,ticket_url:string|null,image_url?:string,demo?:true};
 type News={id:string,title:string,body_de:string,body_en:string,source_url:string|null,published_at:string,image_url?:string,demo?:true};
@@ -53,6 +53,7 @@ export default function Home(){
  const [followingOnly,setFollowingOnly]=useState(false);
  const [nearby,setNearby]=useState<{lat:number;lon:number}|null>(null);
  const [findingNearby,setFindingNearby]=useState(false);
+  const [managedCategories,setManagedCategories]=useState<{slug:string;label_de:string;label_en:string;parent_slug:string|null}[]>([]);
  const [eventFavorites,setEventFavorites]=useState<string[]>([]);
  const [oauthReady,setOauthReady]=useState({google:false,apple:false});
  const [auth,setAuth]=useState(false),[register,setRegister]=useState(false),[menu,setMenu]=useState(false),[toast,setToast]=useState(''),[refresh,setRefresh]=useState(0);
@@ -65,6 +66,7 @@ export default function Home(){
  },[refresh]);
  useEffect(()=>{void load()},[load]);
  useEffect(()=>{document.documentElement.lang=lang},[lang]);
+  useEffect(()=>{let alive=true;fetch('/api/categories',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject()).then(d=>{if(alive)setManagedCategories(d.items||[])}).catch(()=>{});return()=>{alive=false}},[refresh]);
  useEffect(()=>{if(!auth)return;let current=true;fetch('/api/auth/oauth/status',{cache:'no-store'}).then(r=>r.json()).then(d=>{if(current)setOauthReady({google:Boolean(d.google),apple:Boolean(d.apple)})}).catch(()=>{});return()=>{current=false}},[auth]);
  useEffect(()=>{const problem=new URLSearchParams(window.location.search).get('login_error');
   if(problem){flash(problem==='existing_account'?'Dieses E-Mail-Konto besteht bereits. Bitte zuerst mit E-Mail und Passwort anmelden.':'Social Login ist derzeit nicht verfügbar. Bitte E-Mail Anmeldung nutzen.');
@@ -149,8 +151,9 @@ export default function Home(){
  const picture=(index:number,p?:Place)=> <div className="v3-photo"><img src={ortsbild(p?.name||'',p?.image_url)} alt="Stimmungsbild zur Stadtempfehlung" loading="lazy"/><span className="v3-photo-index">{String(index+1).padStart(2,'0')}</span><span className="v3-photo-credit">Stimmungsbild</span></div>;
  const cards=(arr:Place[])=>arr.length?<div className="cards v3-place-grid">{arr.map((p,i)=><article className="card v3-place-card" key={p.id}><button className="card-cover" onClick={()=>setSelected(p)} aria-label={p.name}>{picture(i,p)}<span className="v3-visit-mark"><Plus size={18}/></span></button><div className="card-info"><div className="v3-card-label"><span>{catBezeichnungen[p.category]||p.category} · {p.district||t.city}</span><span className="v4-check-label">{statusLabel(p)}</span></div><div><button onClick={()=>setSelected(p)}>{p.name}</button><button className={'heart '+(favorites.includes(p.id)?'liked':'')} onClick={()=>favorite(p.id)} aria-label={t.save}><Heart size={19} fill={favorites.includes(p.id)?'currentColor':'none'}/></button></div><p>{p.description_de}</p><span><MapPin size={14}/>{p.district||t.city}</span></div></article>)}</div>:<div className="empty"><Compass size={28}/><p>{t.empty}</p></div>;
  const sectionHeading=(index:string,head:string,sub:string)=> <div className="section-head"><small>{index} / FFM JOURNAL <span/></small><h2>{head}</h2><p>{sub}</p></div>;
- const catBezeichnungen:Record<string,string>=kategorienAnzeigen;
- const categoriesEl=<div className="chips">{categories.map(cat=><button key={cat} className={category===cat?'active':''} onClick={()=>setCategory(cat)}>{catBezeichnungen[cat]||cat}</button>)}</div>;
+ const catBezeichnungen:Record<string,string>={...kategorienAnzeigen,...Object.fromEntries(managedCategories.map(c=>[c.slug,lang==='de'?c.label_de:c.label_en]))};
+ const categoryIds=[...new Set([...categories,...managedCategories.map(c=>c.slug)])];
+ const categoriesEl=<div className="chips">{categoryIds.map(cat=><button key={cat} className={category===cat?'active':''} onClick={()=>setCategory(cat)}>{catBezeichnungen[cat]||cat}</button>)}</div>;
  const formField=(label:string,name:string,required=false,type='text')=><label className="form-label">{label}<input name={name} type={type} required={required}/></label>;
  const reviewSection=(type:string,items:any[])=><div className="review-section" key={type}><h3>{{businesses:'Unternehmen',claims:'Inhaberschaft',places:'Orte',deals:'Angebote',posts:'Beiträge'}[type]||'Einträge'} <span>{items.length}</span></h3>{items.map(a=><div className="review-row" key={a.id}><span>{a.name||a.title||a.body||a.business_name+' / '+a.place_name}</span><div><button title={t.approve} onClick={()=>submit('admin/review',{type:type==='businesses'?'business':type==='claims'?'claim':type==='places'?'place':type==='deals'?'deal':'post',id:a.id,approve:true},t.approve)}><Check size={18}/></button><button title={t.reject} onClick={()=>submit('admin/review',{type:type==='businesses'?'business':type==='claims'?'claim':type==='places'?'place':type==='deals'?'deal':'post',id:a.id,approve:false},t.reject)}><X size={18}/></button></div></div>)}{items.length===0&&<p className="subdued">—</p>}</div>;
  return <div className={'site v3-site'+(page==='admin'?' ffm-studio-active':'')}>
@@ -190,7 +193,7 @@ export default function Home(){
    <summary><Plus size={16}/> Mehr {category!=='Alle'&&!['Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(category)?'· '+(catBezeichnungen[category]||category):''}</summary>
    <div className="ffm-find-extra">
     <button type="button" aria-pressed={Boolean(nearby)} disabled={findingNearby} onClick={toggleNearby}>{nearby?'✓ In meiner Nähe (3 km)':findingNearby?'Standort wird gesucht …':'Standort verwenden (3 km)'}</button>
-    <div className="ffm-find-extra-cats">{categories.filter(cat=>!['Alle','Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(cat)).map(cat=><button type="button" key={cat} className={category===cat?'active':''} onClick={()=>setCategory(cat)}>{catBezeichnungen[cat]||cat}</button>)}</div>
+    <div className="ffm-find-extra-cats">{categoryIds.filter(cat=>!['Alle','Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(cat)).map(cat=><button type="button" key={cat} className={category===cat?'active':''} onClick={()=>setCategory(cat)}>{catBezeichnungen[cat]||cat}</button>)}</div>
     <label className="ffm-find-verified"><input type="checkbox" checked={nurGepruefte} onChange={e=>setNurGepruefte(e.target.checked)}/> Nur aktuell geprüfte Betriebe</label>
    </div>
   </details>
