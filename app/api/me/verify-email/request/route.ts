@@ -4,6 +4,11 @@ import {sessionUser,trustedOrigin} from '@/lib/auth';
 import {query} from '@/lib/db';
 import {deliveryConfigured,sendTransactionalMail} from '@/lib/email-delivery';
 export const runtime='nodejs';
+export async function GET(req:NextRequest){
+ const u=await sessionUser(req);if(!u)return NextResponse.json({error:'Bitte anmelden'},{status:401});
+ const row=await query('SELECT email_verified_at FROM users WHERE id=$1',[u.id]);
+ return NextResponse.json({verified:Boolean(row.rows[0]?.email_verified_at),email:u.email,delivery_available:deliveryConfigured()},{headers:{'Cache-Control':'private,no-store'}});
+}
 export async function POST(req:NextRequest){
  if(!trustedOrigin(req))return NextResponse.json({error:'Ungültige Anfrage'},{status:403});
  const u=await sessionUser(req);if(!u)return NextResponse.json({error:'Bitte anmelden'},{status:401});
