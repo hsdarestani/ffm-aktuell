@@ -506,6 +506,29 @@ try{
  if(afterMediaDelete.status!==404)throw Error('Deleted media remained accessible');
  const afterStoryDelete=await get('stories');
  if(afterStoryDelete.body.items.some(item=>item.id===createdStory.body.story.id))throw Error('Deleted media left a public story');
+ // Privacy export must cover the newer social, team, media and rights tables.
+ const fullData=await get('me/export',reader);
+ if(fullData.status!==200||!Array.isArray(fullData.body.company_memberships)||
+   !Array.isArray(fullData.body.uploaded_media)||!Array.isArray(fullData.body.media_rights)||
+   !Array.isArray(fullData.body.coupon_claims)||!fullData.body.email_verified_at)
+    throw Error('GDPR export omitted recent personal data types');
+ const socialCookie=await signup('social-delete');
+ const who=(await get('me',socialCookie)).body.user;
+ await pool.query("INSERT INTO social_identities(provider,provider_subject,user_id,email_at_link) VALUES('google',$1,$2,$3)",['ci-social-'+randomBytes(8).toString('hex'),who.id,who.email]);
+ const security=await get('me/account-security',socialCookie);
+ if(security.status!==200||!security.body.social_deletion_available||security.body.requires_password)
+  throw Error('Fresh social account cannot offer account deletion');
+ await pool.query("UPDATE sessions SET authenticated_at=now()-interval '10 minutes' WHERE user_id=$1",[who.id]);
+ const staleSecurity=await get('me/account-security',socialCookie);
+ if(staleSecurity.body.social_deletion_available)throw Error('Stale social login treated as fresh');
+ const staleDelete=await post('me/delete',socialCookie,{confirmation:'KONTO LÖSCHEN'});
+ if(staleDelete.status!==403)throw Error('Stale social account deleted without reauthentication');
+ await pool.query('UPDATE sessions SET authenticated_at=now() WHERE user_id=$1',[who.id]);
+ const allowedDelete=await post('me/delete',socialCookie,{confirmation:'KONTO LÖSCHEN'});
+ if(allowedDelete.status!==200||!allowedDelete.body.success)throw Error('Recently authenticated social user cannot delete their account');
+ const goneSocial=await pool.query('SELECT id FROM users WHERE id=$1',[who.id]);
+ if(goneSocial.rowCount)throw Error('OAuth user still present after confirmed deletion');
+ console.log('PASS: expanded personal data export, fresh social account deletion, stale session denial and cascade cleanup');
  console.log('PASS: media isolation, moderated 24h Story, private consent, Highlight review, revocation, 206 playback and owner delete');
  console.log('PASS: moderated coupon issue, private wallet, issuer ownership, single-use redemption and replay prevention');
  console.log('PASS: ownership gates, private pending branch corrections, editorial approval, reject and verification reset');
