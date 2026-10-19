@@ -218,21 +218,47 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   }
   if(method==='GET'&&path==='recommendations'){
     rate(req,'recommendations');const search=trim(qs.get('q')).slice(0,180);
+    const lang=qs.get('lang')==='en'?'en':'de';
+    const useInterests=qs.get('use_interests')==='1'&&Boolean(user);
+    let interests:string[]=[];
+    if(useInterests&&user){
+     const pref=await query<{interests:string[],districts:string[]}>('SELECT interests,districts FROM user_preferences WHERE user_id=$1',[user.id]);
+     interests=Array.isArray(pref.rows[0]?.interests)?pref.rows[0].interests.slice(0,8):[];
+    }
     const r=await query("SELECT id,name,category,district,address,latitude,longitude,description_de,description_en,verified_at FROM places WHERE status='published' AND verification_status='verified' AND activity_status='operating' AND verified_at BETWEEN now()-interval '30 days' AND now() AND latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY editorial_rank DESC,name LIMIT 80");
-    const words=search.toLocaleLowerCase().split(/[^a-zäöüß0-9]+/i).filter(v=>v.length>=3);
+    const fullSearch=(search+' '+interests.join(' ')).toLocaleLowerCase();
+    const words=fullSearch.split(/[^a-zäöüß0-9]+/i).filter(v=>v.length>=3);
     const ranked=r.rows.map(p=>({p,score:words.reduce((n,w)=>n+([p.name,p.category,p.district,p.description_de,p.description_en].join(' ').toLocaleLowerCase().includes(w)?1:0),0)})).sort((a,b)=>b.score-a.score);
     let candidates=ranked.slice(0,6).map(x=>x.p);
-    let mode:'editorial'|'ai'='editorial';
-    if(search.length>=3&&candidates.length&&process.env.OPENAI_API_KEY){
+    let mode:'editorial'|'ai'|'discovery'='editorial';
+    // Unreviewed OSM places are shown only as explicitly unverified exploratory ideas,
+    // never as recommendations with confirmed opening status.
+    if(!candidates.length&&search.length>=3){
+     const hints=[
+      {terms:/kaffee|kaffe|café|cafe|coffee|espresso|brunch/i,cats:['Cafés','Brunch']},
+      {terms:/essen|restaurant|dinner|lunch|hunger|mittag/i,cats:['Restaurants','Imbiss']},
+      {terms:/bar|cocktail|drink|night|abend|shisha/i,cats:['Bars','Shisha Bars','Clubs']},
+      {terms:/kunst|museum|kultur|galerie|art/i,cats:['Museen','Kultur']},
+      {terms:/sport|padel|fußball|fitness|aktiv/i,cats:['Sport','Freizeit']},
+      {terms:/grün|natur|spazier|park|walk/i,cats:['Natur','Freizeit']}
+     ];
+     const categories=[...new Set(hints.filter(h=>h.terms.test(fullSearch)).flatMap(h=>h.cats))];
+     const results=await query("SELECT osm_id AS id,name,category,address,latitude,longitude,osm_url AS source_url,'unverified' AS verification_status,true AS candidate FROM discovery_candidates WHERE reviewed_status='unverified' AND activity_status<>'permanently_closed' AND (category=ANY($1::text[]) OR name ILIKE '%'||$2||'%' OR address ILIKE '%'||$2||'%') ORDER BY name LIMIT 8",[categories,search]);
+     if(results.rows.length){candidates=results.rows;mode='discovery';}
+    }
+    if(search.length>=3&&mode!=='discovery'&&candidates.length&&process.env.OPENAI_API_KEY){
       try{
         const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),6500);
         try{
-          const response=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',signal:ctl.signal,headers:{Authorization:'Bearer '+process.env.OPENAI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.OPENAI_RECOMMENDATION_MODEL||'gpt-4o-mini',response_format:{type:'json_object'},temperature:0,max_tokens:200,messages:[{role:'system',content:'Return JSON {"ids":[]} with up to 4 IDs from the candidates only. Never invent venues, prices, hours or availability.'},{role:'user',content:JSON.stringify({question:search,candidates:candidates.map(p=>({id:p.id,name:p.name,category:p.category,district:p.district,description:p.description_de}))})}]})});
+          const response=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',signal:ctl.signal,headers:{Authorization:'Bearer '+process.env.OPENAI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.OPENAI_RECOMMENDATION_MODEL||'gpt-4o-mini',response_format:{type:'json_object'},temperature:0,max_tokens:200,messages:[{role:'system',content:'Return JSON {"ids":[]} with up to 4 IDs from the candidates only. Never invent venues, prices, hours or availability.'},{role:'user',content:JSON.stringify({question:search,interests:useInterests?interests:[],language:lang,candidates:candidates.map(p=>({id:p.id,name:p.name,category:p.category,district:p.district,description:p.description_de}))})}]})});
           if(response.ok){const x=await response.json();const ids=JSON.parse(x.choices?.[0]?.message?.content||'{}').ids;if(Array.isArray(ids)){const approvedIds=ids.filter((v:unknown):v is string=>typeof v==='string');const found=candidates.filter(p=>approvedIds.includes(p.id)).slice(0,4);if(found.length){candidates=found;mode='ai';}}}
         }finally{clearTimeout(tm);}
       }catch{/* deterministic verified-only fallback */}
     }
-    return ok({items:candidates.slice(0,4),mode,notice:r.rows.length?'Nur unabhängig bestätigte Orte. Öffnungszeiten und Preise beim Anbieter prüfen.':'Noch keine aktuell bestätigten Orte. Ungeprüfte OSM Einträge findest du unter Entdecken.'});
+    return ok({items:candidates.slice(0,4),mode,notice:mode==='discovery'
+      ?(lang==='de'?'Diese OSM Orte sind NICHT unabhängig geprüft. Aktivität, Preise und Öffnungszeiten beim Anbieter bestätigen.':'These OSM places are NOT independently verified. Check activity, prices and opening hours with the venue.')
+      :r.rows.length?(lang==='de'?'Nur unabhängig bestätigte Orte. Zeiten und Preise beim Anbieter prüfen.':'Only independently verified places. Confirm hours and prices with the venue.')
+      :(lang==='de'?'Noch keine passenden unabhängig bestätigten Orte. Unter Entdecken findest du ungeprüfte OSM Einträge.':'No matching independently verified places yet. Unverified OSM listings are available under Explore.')});
   }
   if(method==='GET'&&path==='tours/curated'){
     const r=await query("SELECT id,name,category,district,address,latitude,longitude FROM places WHERE status='published' AND verification_status='verified' AND activity_status='operating' AND verified_at BETWEEN now()-interval '30 days' AND now() AND latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY editorial_rank DESC,name LIMIT 80");
