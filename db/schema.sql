@@ -79,6 +79,59 @@ CREATE INDEX IF NOT EXISTS places_status_category_idx ON places(status,category)
 CREATE INDEX IF NOT EXISTS places_name_idx ON places USING gin(to_tsvector('simple',name||' '||description_de||' '||district));
 -- Separate crowd-sourced discovery index. Raw OSM candidates are never
 -- published/verified places, cannot receive favorites and never imply openNow.
+-- Dynamic editorial taxonomy: no auto-promotion of OSM tags to certified facts.
+CREATE TABLE IF NOT EXISTS catalog_categories (
+ slug text PRIMARY KEY CHECK(char_length(slug) BETWEEN 2 AND 70),
+ label_de text NOT NULL CHECK(char_length(label_de) BETWEEN 2 AND 100),
+ label_en text NOT NULL CHECK(char_length(label_en) BETWEEN 2 AND 100),
+ parent_slug text REFERENCES catalog_categories(slug) ON DELETE SET NULL,
+ active boolean NOT NULL DEFAULT true,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ updated_at timestamptz NOT NULL DEFAULT now(),
+ CHECK(parent_slug IS DISTINCT FROM slug)
+);
+-- Seed accepted existing taxonomy; do not delete or overwrite editorial edits.
+INSERT INTO catalog_categories(slug,label_de,label_en) VALUES
+ ('Apotheken','Apotheken','Pharmacies'),
+ ('Cafés','Cafés','Cafés'),
+ ('Bars','Bars','Bars'),
+ ('Clubs','Nachtclubs','Nightclubs'),
+ ('Shisha Bars','Shishabars','Shisha bars'),
+ ('Restaurants','Restaurants','Restaurants'),
+ ('Imbiss','Imbiss','Fast food'),
+ ('Brunch','Frühstück & Brunch','Breakfast & Brunch'),
+ ('Museen','Museen','Museums'),
+ ('Kultur','Kultur','Culture'),
+ ('Sehenswürdigkeiten','Sehenswertes','Landmarks'),
+ ('Natur','Parks & Natur','Parks & Nature'),
+ ('Fußball','Fußball','Football'),
+ ('Padel','Padel','Padel'),
+ ('Sport','Weitere Sportarten','Sports'),
+ ('Laufgruppen','Laufgruppen','Running clubs'),
+ ('Spaziergruppen','Spaziergruppen','Walking clubs'),
+ ('Lesegruppen','Lesegruppen','Reading clubs'),
+ ('Freizeit','Freizeit','Activities'),
+ ('Wellness','Entspannung','Wellness'),
+ ('Shopping','Einkaufen','Shopping'),
+ ('Familie','Familie','Family'),
+ ('Kostenlos','Kostenlos','Free activities'),
+ ('Fitness','Fitness','Fitness'),
+ ('Beauty','Beauty','Beauty'),
+ ('Hotels','Hotels','Hotels'),
+ ('Neueröffnungen','Neueröffnungen','New openings'),
+ ('Geheimtipps','Geheimtipps','Hidden gems')
+ON CONFLICT(slug) DO NOTHING;
+CREATE TABLE IF NOT EXISTS place_categories (
+ place_id uuid NOT NULL REFERENCES places(id) ON DELETE CASCADE,
+ category_slug text NOT NULL REFERENCES catalog_categories(slug) ON DELETE RESTRICT,
+ PRIMARY KEY(place_id,category_slug)
+);
+CREATE INDEX IF NOT EXISTS place_categories_slug_idx ON place_categories(category_slug,place_id);
+-- Back-fill canonical existing primary categories without altering editorial statuses.
+INSERT INTO place_categories(place_id,category_slug)
+ SELECT p.id,p.category FROM places p JOIN catalog_categories c ON c.slug=p.category
+ ON CONFLICT DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS discovery_candidates (
  osm_id text PRIMARY KEY,
  name text NOT NULL,
