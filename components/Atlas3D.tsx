@@ -375,10 +375,17 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    const onStyle=()=>{
     if(cancelled)return;
     hasStyle=true;setError(false);
-    try{
-     if(!triedRaster){add3DBuildings(map);addLuftbild(map);setColorScheme(map,state.current.mode);addGeoPins(map);addCandidatePins(map);addRealLod2Layer(map,setLod2Triangles);addCitywideLod2Layer(map);}
-     else {addGeoPins(map);addCandidatePins(map);}
-    }catch(e){console.warn('FFM Atlas optional 3D scene:',e);}
+    // One failing optional city model or imagery request must never prevent
+    // place pins or the basic road map from loading.
+    try{addGeoPins(map);}catch(e){console.warn('FFM place pin layer:',e);}
+    try{addCandidatePins(map);}catch(e){console.warn('FFM discovery pin layer:',e);}
+    if(!triedRaster){
+     try{add3DBuildings(map);}catch(e){console.warn('FFM optional vector buildings:',e);}
+     try{addLuftbild(map);}catch(e){console.warn('FFM optional aerial layer:',e);}
+     try{setColorScheme(map,state.current.mode);}catch(e){console.warn('FFM optional colors:',e);}
+     try{addRealLod2Layer(map,setLod2Triangles);}catch(e){console.warn('FFM optional nearby LoD2:',e);}
+     try{addCitywideLod2Layer(map);}catch(e){console.warn('FFM optional citywide LoD2:',e);}
+    }
     // Idle may occur even when all vector tiles failed: don't dismiss loading.
     if(revealTimer!==undefined)window.clearTimeout(revealTimer);
     map.once('idle',revealScene);
@@ -389,6 +396,9 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     },10000);
    };
    map.on('style.load',onStyle);
+   // Optional building requests can keep 'idle' from firing for a long time.
+   // Once a real tile is received, the first rendered frame is enough.
+   map.on('render',revealScene);
       map.on('click',e=>{
     if(map.getLayer('ffm-osm-points')){
       const point=map.queryRenderedFeatures(e.point,{layers:['ffm-osm-points']})[0];
