@@ -30,9 +30,9 @@ export async function POST(req:NextRequest){
   await tx.query('BEGIN');
   if(parentSlug){
    const p=await tx.query('SELECT slug,parent_slug FROM catalog_categories WHERE slug=$1 AND active=true FOR UPDATE',[parentSlug]);
-   if(!p.rowCount||p.rows[0].parent_slug)return NextResponse.json({error:'Nur aktive Hauptkategorien als Eltern erlaubt'},{status:400});
+   if(!p.rowCount||p.rows[0].parent_slug){await tx.query('ROLLBACK');return NextResponse.json({error:'Nur aktive Hauptkategorien als Eltern erlaubt'},{status:400})}
    const children=await tx.query('SELECT 1 FROM catalog_categories WHERE parent_slug=$1 LIMIT 1',[data.slug]);
-   if(children.rowCount)return NextResponse.json({error:'Eine Hauptkategorie mit Unterkategorien kann nicht verschachtelt werden'},{status:409});
+   if(children.rowCount){await tx.query('ROLLBACK');return NextResponse.json({error:'Eine Hauptkategorie mit Unterkategorien kann nicht verschachtelt werden'},{status:409})}
   }
   const r=await tx.query("INSERT INTO catalog_categories(slug,label_de,label_en,parent_slug) VALUES($1,$2,$3,$4) ON CONFLICT(slug) DO UPDATE SET label_de=EXCLUDED.label_de,label_en=EXCLUDED.label_en,parent_slug=EXCLUDED.parent_slug,updated_at=now() RETURNING slug,label_de,label_en,parent_slug,active",[data.slug,de,en,parentSlug]);
   await tx.query("INSERT INTO audit_log(actor_id,action,target_type,target_id) VALUES($1,'category:save','category',$2)",[u.id,data.slug]);
