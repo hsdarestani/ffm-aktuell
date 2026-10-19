@@ -128,6 +128,23 @@ CREATE TABLE IF NOT EXISTS post_comments (
 );
 CREATE INDEX IF NOT EXISTS post_comments_post_idx ON post_comments(post_id,created_at DESC) WHERE status='published';
 CREATE INDEX IF NOT EXISTS post_comments_review_idx ON post_comments(status,created_at);
+-- Phase 2c: private follow relationships. No public personal profile pages.
+-- A follow never gives access to unpublished posts or private activities.
+CREATE TABLE IF NOT EXISTS user_follows (
+ follower_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ followed_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(follower_id,followed_id),
+ CHECK(follower_id<>followed_id)
+);
+CREATE INDEX IF NOT EXISTS user_follows_followed_idx ON user_follows(followed_id);
+CREATE TABLE IF NOT EXISTS business_follows (
+ follower_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(follower_id,business_id)
+);
+CREATE INDEX IF NOT EXISTS business_follows_business_idx ON business_follows(business_id);
 CREATE TABLE IF NOT EXISTS favorites (
  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  place_id uuid NOT NULL REFERENCES places(id) ON DELETE CASCADE, created_at timestamptz NOT NULL DEFAULT now(),
