@@ -21,3 +21,7 @@
 .ffm-editorial-media article>div{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .ffm-editorial-media button:disabled{opacity:.4}
 @media(max-width:600px){.ffm-story-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ffm-rights-form{flex-direction:column;align-items:stretch}}
+
+.ffm-own-media-list{margin:16px 0 20px;display:flex;flex-direction:column;gap:9px}
+.ffm-own-media-list article{border:1px solid #dfebdf;border-radius:11px;background:#fff;padding:10px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.ffm-own-media-list button{font-size:12px;color:#a33736;border:1px solid #e8cece;padding:8px;border-radius:9px;background:#fff}
