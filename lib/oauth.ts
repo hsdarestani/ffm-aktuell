@@ -50,12 +50,12 @@ export async function completeLogin(provider:Provider,sub:string,email:string,na
   await tx.query('BEGIN');
   // Never auto-link an arbitrary social identity to an existing password account by email.
   const linked=await tx.query('SELECT user_id FROM social_identities WHERE provider=$1 AND provider_subject=$2 FOR UPDATE',[provider,sub]);
-  if(linked.rowCount){userId=linked.rows[0].user_id;}
+  if(linked.rowCount){userId=linked.rows[0].user_id;await tx.query('UPDATE users SET email_verified_at=COALESCE(email_verified_at,now()) WHERE id=$1 AND lower(email)=lower($2)',[userId,email]);}
   else {
    const existing=await tx.query('SELECT id FROM users WHERE lower(email)=lower($1)',[email]);
    if(existing.rowCount)throw Error('ACCOUNT_EXISTS');
    const secret=hashPassword(randomBytes(32).toString('hex'));
-   const created=await tx.query("INSERT INTO users(email,password_hash,display_name,language) VALUES($1,$2,$3,'de') RETURNING id",[email,secret,name]);
+   const created=await tx.query("INSERT INTO users(email,password_hash,display_name,language,email_verified_at) VALUES($1,$2,$3,'de',now()) RETURNING id",[email,secret,name]);
    userId=created.rows[0].id;
    await tx.query('INSERT INTO social_identities(user_id,provider,provider_subject,email_at_link) VALUES($1,$2,$3,$4)',[userId,provider,sub,email]);
   }
