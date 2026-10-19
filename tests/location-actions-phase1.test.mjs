@@ -60,7 +60,7 @@ test('bad-location reports enter admin queue, but never directly hide a business
 });
 test('tips attached to imported OSM venues are moderated',()=>{
  assert.match(db,/ALTER TABLE posts ADD COLUMN IF NOT EXISTS candidate_osm_id/);
- assert.match(api,/INSERT INTO posts\(user_id,place_id,candidate_osm_id,body,media_url\)/);
+ assert.match(api,/INSERT INTO posts\(user_id,place_id,candidate_osm_id,body,media_id\)/);\n assert.match(api,/owner_id=\$2 AND status IN \('pending','approved'\)/);
  assert.match(api,/COALESCE\(pl.name,dc.name\) AS place_name/);
  assert.match(ui,/Dein Beitrag wird vor der Veröffentlichung geprüft/);
  assert.match(ui,/onPost\(body\)/);
