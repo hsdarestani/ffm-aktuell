@@ -267,6 +267,19 @@ try{
  const eventCreate=await post('admin/events',cookie,{title:'CI Frankfurt Event',description_de:'Ein echter CI Termin',venue:'CI Venue',starts_at:future});
  if(eventCreate.status!==201)throw Error('CI event creation failed');
  const eventId=eventCreate.body.id;
+ const unsourcedPrice=await post('admin/events',cookie,{title:'CI Ticket Event',venue:'CI Venue',starts_at:future,price_cents:2300});
+ if(unsourcedPrice.status!==400)throw Error('Event with an unsourced ticket price was accepted');
+ const sourcedEvent=await post('admin/events',cookie,{title:'CI Sourced Event',venue:'CI Venue',starts_at:future,category:'Kultur',organizer:'CI Organizer',price_cents:2300,price_source_url:'https://example.org/tickets',source_url:'https://example.org/event'});
+ if(sourcedEvent.status!==201)throw Error('Sourced event price rejected: '+JSON.stringify(sourcedEvent));
+ const eventFeed=await get('events');
+ if(!eventFeed.body.items.some(x=>x.id===sourcedEvent.body.id&&x.price_cents===2300&&x.price_source_url==='https://example.org/tickets'))throw Error('Source details missing in event feed');
+ const nextMonth=new Date(Date.now()+30*86400000).toISOString();
+ const plannedNews=await post('admin/news',cookie,{title:'CI Scheduled News',body_de:'Nicht vorab veröffentlichen',category:'Kultur',published_at:nextMonth,source_url:'https://example.org/news'});
+ if(plannedNews.status!==201||!plannedNews.body.scheduled)throw Error('Future editorial article not saved as scheduled');
+ const publicBeforeNews=await get('news');
+ if(publicBeforeNews.body.items.some(x=>x.id===plannedNews.body.id))throw Error('Future article leaked early to the public');
+ console.log('PASS: evidence-backed event prices, event metadata and non-leaking scheduled articles');
+
  const guestEventBookmark=await get('event-favorites');
  if(guestEventBookmark.status!==401)throw Error('Guest could read private event bookmarks');
  const saveEvent=await post('event-favorites',reader,{event_id:eventId,active:true});
