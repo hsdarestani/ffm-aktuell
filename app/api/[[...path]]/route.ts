@@ -290,7 +290,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     return ok({saved:b.active});
   }
   if(method==='GET'&&path==='events'){const r=await query("SELECT * FROM events WHERE status='published' AND starts_at>=now()-interval '1 day' ORDER BY starts_at LIMIT 40");return ok({items:r.rows});}
-  if(method==='GET'&&path==='news'){const r=await query("SELECT * FROM news WHERE status='published' ORDER BY published_at DESC LIMIT 40");return ok({items:r.rows});}
+  if(method==='GET'&&path==='news'){const r=await query("SELECT * FROM news WHERE status='published' AND published_at<=now() ORDER BY published_at DESC LIMIT 40");return ok({items:r.rows});}
   if(method==='GET'&&path==='reviews'){
     const venueId=trim(qs.get('place_id'));
     if(!validLocationId(venueId))return bad('Invalid place ID');
@@ -836,16 +836,27 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     await audit(u,'create','place',r.rows[0].id);return ok({id:r.rows[0].id},201);
   }
   if(method==='POST'&&path==='admin/events'){
-    const u=admin(user);const b=parse(z.object({title:text(150),description_de:optionalText(3000),description_en:optionalText(3000),venue:text(150),starts_at:z.iso.datetime({offset:true}),ticket_url:z.string().optional()}),await payload(req));
-    if(b.ticket_url&&!allowedUrl(b.ticket_url))return bad('Invalid link');
-    const r=await query("INSERT INTO events(title,description_de,description_en,venue,starts_at,ticket_url,status) VALUES($1,$2,$3,$4,$5,$6,'published') RETURNING id",[b.title,b.description_de,b.description_en,b.venue,b.starts_at,b.ticket_url||null]);
+    const u=admin(user);const b=parse(z.object({
+      title:text(150),description_de:optionalText(3000),description_en:optionalText(3000),venue:text(150),
+      starts_at:z.iso.datetime({offset:true}),ends_at:z.iso.datetime({offset:true}).nullish(),
+      category:optionalText(80),organizer:optionalText(150),
+      price_cents:z.number().int().min(0).max(100000000).nullish(),
+      price_source_url:z.string().max(1000).optional(),source_url:z.string().max(1000).optional(),
+      ticket_url:z.string().max(1000).optional()
+    }),await payload(req));
+    if([b.ticket_url,b.source_url,b.price_source_url].some(x=>x&&!allowedUrl(x)))return bad('Invalid source URL');
+    if(b.ends_at&&Date.parse(b.ends_at)<Date.parse(b.starts_at))return bad('Event end before start');
+    if(b.price_cents!=null&&!b.price_source_url)return bad('Price requires a verifiable source URL');
+    const r=await query("INSERT INTO events(title,description_de,description_en,venue,starts_at,ticket_url,status,category,organizer,ends_at,price_cents,price_source_url,source_url) VALUES($1,$2,$3,$4,$5,$6,'published',$7,$8,$9,$10,$11,$12) RETURNING id",
+      [b.title,b.description_de,b.description_en,b.venue,b.starts_at,b.ticket_url||null,b.category||'Weitere',b.organizer||'',b.ends_at||null,b.price_cents??null,b.price_source_url||null,b.source_url||null]);
     await audit(u,'create','event',r.rows[0].id);return ok({id:r.rows[0].id},201);
   }
   if(method==='POST'&&path==='admin/news'){
-    const u=admin(user);const b=parse(z.object({title:text(150),body_de:optionalText(10000),body_en:optionalText(10000),source_url:z.string().optional()}),await payload(req));
+    const u=admin(user);const b=parse(z.object({title:text(150),body_de:optionalText(10000),body_en:optionalText(10000),category:optionalText(80),published_at:z.iso.datetime({offset:true}).nullish(),source_url:z.string().max(1000).optional()}),await payload(req));
     if(b.source_url&&!allowedUrl(b.source_url))return bad('Invalid link');
-    const r=await query("INSERT INTO news(title,body_de,body_en,source_url,status) VALUES($1,$2,$3,$4,'published') RETURNING id",[b.title,b.body_de,b.body_en,b.source_url||null]);
-    await audit(u,'create','news',r.rows[0].id);return ok({id:r.rows[0].id},201);
+    const r=await query("INSERT INTO news(title,body_de,body_en,source_url,status,category,published_at) VALUES($1,$2,$3,$4,'published',$5,COALESCE($6::timestamptz,now())) RETURNING id,published_at",
+      [b.title,b.body_de,b.body_en,b.source_url||null,b.category||'Stadtleben',b.published_at||null]);
+    await audit(u,'create','news',r.rows[0].id);return ok({id:r.rows[0].id,published_at:r.rows[0].published_at,scheduled:Date.parse(String(r.rows[0].published_at))>Date.now()},201);
   }
   return bad('Not found',404);
  }catch(e:unknown){const err=e as {message?:string,status?:number,code?:string};
