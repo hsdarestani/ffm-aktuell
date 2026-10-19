@@ -240,7 +240,7 @@ export default function Home(){
     <button className="ffm-saved-remove" title="Aus Merkliste entfernen" aria-label={p.name+' entfernen'} onClick={()=>void favorite(p.id)}><Heart size={20} fill="currentColor"/></button>
    </article>)}</div>}
   </main>}
- {page==='tours'&&<><CuratedTours/><TourPlanner loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/></>}
+ {page==='tours'&&<><CuratedTours lang={lang}/><TourPlanner loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/></>}
  {page==='profile'&&<><ProfileSettings user={user} onLogin={()=>setAuth(true)} onNotice={flash}
   onSavedPlaces={()=>navigate('saved')} onTours={()=>navigate('tours')}
   onDeleted={()=>{setUser(null);setFavorites([]);setSelected(null);navigate('home');flash('Dein Konto wurde gelöscht.')}}/>{user&&<MediaRightsPanel onNotice={flash}/>}</>}
