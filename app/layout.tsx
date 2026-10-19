@@ -13,6 +13,7 @@ import './saved-places.css';
 import './tour-planner.css';
 import './account-events.css';
 import './business-branches.css';
+import './coupon-pilot.css';
 import './quick-home.css';
 import './find-fast.css';
 import './stadtstudio.css';

@@ -229,6 +229,20 @@ CREATE TABLE IF NOT EXISTS deals (
  created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS deals_status_idx ON deals(status);
+-- Pilot coupons are free of charge and never count as payment, ticket or proof
+-- of visiting a venue. Codes are 144-bit random and redeemable only once.
+CREATE TABLE IF NOT EXISTS coupon_claims (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ deal_id uuid NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+ user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ code text UNIQUE NOT NULL CHECK(char_length(code) BETWEEN 22 AND 40),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ redeemed_at timestamptz,
+ redeemed_by uuid REFERENCES users(id) ON DELETE SET NULL,
+ UNIQUE(deal_id,user_id)
+);
+CREATE INDEX IF NOT EXISTS coupon_claims_redemption_idx ON coupon_claims(deal_id,redeemed_at);
+
 -- User bookmarks for raw OSM candidates are private and never verification.
 -- Separate table keeps the existing favorites foreign key and its legacy PK intact.
 CREATE TABLE IF NOT EXISTS candidate_favorites (

@@ -289,6 +289,38 @@ try{
  if(rejectBranch.status!==200)throw Error('Branch reject failed');
  const afterReject=await get('location?id='+publicPlace.rows[0].id);
  if(afterReject.body.place.name!=='CI New Name')throw Error('Rejected change overwrote public details');
+ // Coupon pilot uses existing editor-approved Deals. Codes are private,
+ // random and cannot be redeemed by a different business or twice.
+ const proposed=await post('deals',client,{title:'CI Coffee Voucher',details:'10 percent off one drink',place_id:publicPlace.rows[0].id});
+ if(proposed.status!==201||proposed.body.status!=='pending')throw Error('New deal was not pending');
+ const pendingClaim=await post('coupons/claim',reader,{deal_id:proposed.body.id});
+ if(pendingClaim.status!==404)throw Error('Unreviewed deal was claimable');
+ const approval=await post('admin/review',cookie,{type:'deal',id:proposed.body.id,approve:true});
+ if(approval.status!==200)throw Error('Offer editorial approval failed');
+ const ownerClaim=await post('coupons/claim',client,{deal_id:proposed.body.id});
+ if(ownerClaim.status!==404)throw Error('Merchant claimed own offer');
+ const guestClaim=await post('coupons/claim','',{deal_id:proposed.body.id});
+ if(guestClaim.status!==401)throw Error('Guest claimed a coupon');
+ const coupon=await post('coupons/claim',reader,{deal_id:proposed.body.id});
+ if(coupon.status!==200||coupon.body.code?.length!==24)throw Error('Secure coupon not issued');
+ const repeatClaim=await post('coupons/claim',reader,{deal_id:proposed.body.id});
+ if(repeatClaim.status!==200||repeatClaim.body.code!==coupon.body.code)throw Error('Duplicate coupon issued to one user');
+ const hiddenCoupons=await get('coupons');
+ if(hiddenCoupons.status!==401)throw Error('Guest could see coupon wallet');
+ const ownCoupons=await get('coupons',reader);
+ if(ownCoupons.status!==200||ownCoupons.body.items?.length!==1||ownCoupons.body.items[0]?.code!==coupon.body.code)throw Error('Private coupon wallet incorrect');
+ const forbiddenRedeem=await post('business/coupons/redeem',reader,{code:coupon.body.code});
+ if(forbiddenRedeem.status!==403)throw Error('Unapproved account redeemed coupon');
+ const wrongCodeRedeem=await post('business/coupons/redeem',client,{code:'X'.repeat(24)});
+ if(wrongCodeRedeem.status!==409)throw Error('Bogus coupon accepted');
+ const redeem=await post('business/coupons/redeem',client,{code:coupon.body.code});
+ if(redeem.status!==200||!redeem.body.success)throw Error('One-time merchant redemption failed');
+ const twice=await post('business/coupons/redeem',client,{code:coupon.body.code});
+ if(twice.status!==409)throw Error('Coupon replay accepted');
+ const claimedAgain=await post('coupons/claim',reader,{deal_id:proposed.body.id});
+ if(claimedAgain.status!==200||claimedAgain.body.redeemed!==true||claimedAgain.body.code!==coupon.body.code)
+   throw Error('Claim replay reset a redeemed code');
+ console.log('PASS: moderated coupon issue, private wallet, issuer ownership, single-use redemption and replay prevention');
  console.log('PASS: ownership gates, private pending branch corrections, editorial approval, reject and verification reset');
  console.log('PASS: event bookmarking, private preferences, secure data export and confirmed account deletion');
  console.log('PASS: private ordered tour planning, timetable, safe shared link, revocation and deletion');

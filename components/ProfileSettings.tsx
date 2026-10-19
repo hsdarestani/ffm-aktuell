@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useState,type FormEvent} from 'react';
 import {BookMarked,CalendarDays,Download,LockKeyhole,MapPin,Save,Trash2} from 'lucide-react';
+import {CouponWallet} from '@/components/CouponPilot';
 type User={id:string;email:string;display_name:string;role:string};
 type Prefs={interests:string[];districts:string[];share_activity:boolean;notify_events:boolean;notify_news:boolean;notify_offers:boolean};
 type Props={user:User|null;onLogin:()=>void;onNotice:(message:string)=>void;onDeleted:()=>void;onSavedPlaces:()=>void;onTours:()=>void};
@@ -76,6 +77,7 @@ export default function ProfileSettings({user,onLogin,onNotice,onDeleted,onSaved
     <label className="ffm-profile-check" key={key}><input type="checkbox" checked={pref[key]} onChange={e=>setPref(v=>({...v,[key]:e.target.checked}))}/><span>{title}</span></label>)}
    <button type="submit" disabled={busy||!loaded} className="ffm-profile-primary"><Save size={16}/> Speichern</button>
   </form>
+  <CouponWallet onNotice={onNotice}/>
   <section className="ffm-profile-panel">
    <h2>Meine Daten</h2><p className="ffm-profile-tip">Du kannst deine Kontodaten als JSON Datei herunterladen.</p>
    <button type="button" className="ffm-profile-outline" onClick={()=>void exportData()}><Download size={16}/> Daten exportieren</button>
