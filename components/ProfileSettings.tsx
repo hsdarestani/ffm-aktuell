@@ -86,7 +86,7 @@ export default function ProfileSettings({user,onLogin,onNotice,onDeleted,onSaved
    {user.role!=='admin'&&<div className="ffm-profile-danger">
     <button type="button" onClick={()=>setDeleteOpen(v=>!v)} aria-expanded={deleteOpen}><Trash2 size={16}/> Konto löschen</button>
     {deleteOpen&&<form onSubmit={deleteAccount}><p>Dein Konto und private Inhalte werden dauerhaft gelöscht. Freigegebene Medienrechte und Sicherungskopien müssen gegebenenfalls zusätzlich geprüft werden.</p>
-     {security?.social_providers?.length>0&&<p>Bei Anmeldung mit Google oder Apple kannst du dein Konto innerhalb von 5 Minuten nach erneutem Login auch ohne Passwort löschen.</p>}
+     {(security?.social_providers?.length||0)>0&&<p>Bei Anmeldung mit Google oder Apple kannst du dein Konto innerhalb von 5 Minuten nach erneutem Login auch ohne Passwort löschen.</p>}
      {(!security?.social_deletion_available||security?.requires_password)&&<label>Passwort<input type="password" autoComplete="current-password" required={!security?.social_deletion_available} value={password} onChange={e=>setPassword(e.target.value)}/></label>}
      <label>Zur Bestätigung KONTO LÖSCHEN eingeben<input required value={confirm} onChange={e=>setConfirm(e.target.value)}/></label>
      <button type="submit" disabled={busy||confirm!=='KONTO LÖSCHEN'||(!password&&!security?.social_deletion_available)}><LockKeyhole size={15}/> Konto endgültig löschen</button>
