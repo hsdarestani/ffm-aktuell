@@ -515,6 +515,13 @@ try{
  const socialCookie=await signup('social-delete');
  const who=(await get('me',socialCookie)).body.user;
  await pool.query("INSERT INTO social_identities(provider,provider_subject,user_id,email_at_link) VALUES('google',$1,$2,$3)",['ci-social-'+randomBytes(8).toString('hex'),who.id,who.email]);
+ const socialMediaKey=randomUUID(),socialMedia=Buffer.from('PRIVATE-MEDIA-FOR-ERASURE-CI');
+ await writeFile(mediaDir+'/'+socialMediaKey,socialMedia,{flag:'wx',mode:0o600});
+ await pool.query("INSERT INTO user_media(owner_id,media_type,size_bytes,storage_key,sha256,license_confirmed,status) VALUES($1,'image/png',$2,$3,$4,true,'pending')",
+  [who.id,socialMedia.length,socialMediaKey,createHash('sha256').update(socialMedia).digest('hex')]);
+ const inviteForSocial=randomBytes(32).toString('hex');
+ await pool.query("INSERT INTO business_team_invites(business_id,inviter_id,invite_email,role,token_hash,expires_at) VALUES($1,$2,$3,'viewer',$4,now()+interval '7 days')",
+  [createdBusiness.body.id,authorId,who.email,createHash('sha256').update(inviteForSocial).digest('hex')]);
  const security=await get('me/account-security',socialCookie);
  if(security.status!==200||!security.body.social_deletion_available||security.body.requires_password)
   throw Error('Fresh social account cannot offer account deletion');
@@ -528,6 +535,10 @@ try{
  if(allowedDelete.status!==200||!allowedDelete.body.success)throw Error('Recently authenticated social user cannot delete their account');
  const goneSocial=await pool.query('SELECT id FROM users WHERE id=$1',[who.id]);
  if(goneSocial.rowCount)throw Error('OAuth user still present after confirmed deletion');
+ const emailInvites=await pool.query('SELECT id FROM business_team_invites WHERE lower(invite_email)=lower($1)',[who.email]);
+ if(emailInvites.rowCount)throw Error('Deleted user left recipient email in staff invitation');
+ let existsAfter=false;try{await readFile(mediaDir+'/'+socialMediaKey);existsAfter=true}catch{}
+ if(existsAfter)throw Error('Deleted user private media file remained on disk');
  console.log('PASS: expanded personal data export, fresh social account deletion, stale session denial and cascade cleanup');
  console.log('PASS: media isolation, moderated 24h Story, private consent, Highlight review, revocation, 206 playback and owner delete');
  console.log('PASS: moderated coupon issue, private wallet, issuer ownership, single-use redemption and replay prevention');
