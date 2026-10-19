@@ -14,7 +14,7 @@ export async function POST(req:NextRequest){
   if(!t.rowCount){await tx.query('ROLLBACK');return NextResponse.json({error:'Code abgelaufen, fremd oder bereits verwendet'},{status:409})}
   await tx.query('UPDATE users SET email_verified_at=COALESCE(email_verified_at,now()) WHERE id=$1',[u.id]);
   await tx.query('UPDATE email_verification_tokens SET redeemed_at=now() WHERE token_hash=$1',[hash]);
-  await tx.query("INSERT INTO audit_log(actor_id,action,target_type,target_id) VALUES($1,'email:verified','user',$1)",[u.id]);
+  await tx.query("INSERT INTO audit_log(actor_id,action,target_type,target_id) VALUES($1,'email:verified','user',$1::text)",[u.id]);
   await tx.query('COMMIT');return NextResponse.json({verified:true});
  }catch(e){await tx.query('ROLLBACK');console.error('Verify email',e);return NextResponse.json({error:'Bestätigung fehlgeschlagen'},{status:500})}
  finally{tx.release()}
