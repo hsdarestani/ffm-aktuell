@@ -6,6 +6,13 @@ const uuid=/^[0-9a-f-]{36}$/;
 export async function GET(req:NextRequest){
  const business=req.nextUrl.searchParams.get('business_id')||'';
  if(!uuid.test(business))return NextResponse.json({items:[]});
+ if(req.nextUrl.searchParams.get('scope')==='available'){
+  const u=await sessionUser(req);if(!u)return NextResponse.json({error:'Anmeldung erforderlich'},{status:401});
+  const owned=await query("SELECT id FROM businesses WHERE id=$1 AND owner_id=$2 AND status='approved'",[business,u.id]);
+  if(!owned.rowCount)return NextResponse.json({error:'Nicht berechtigt'},{status:403});
+  const granted=await query("SELECT g.id AS grant_id,g.media_id,m.media_type,'/api/media/'||m.id::text AS media_url,g.expires_at,COALESCE(h.status,'none') AS highlight_status FROM media_right_grants g JOIN user_media m ON m.id=g.media_id LEFT JOIN business_highlights h ON h.grant_id=g.id AND h.business_id=g.business_id WHERE g.business_id=$1 AND g.revoked_at IS NULL AND g.expires_at>now() AND m.status='approved' ORDER BY g.created_at DESC LIMIT 50",[business]);
+  return NextResponse.json({items:granted.rows},{headers:{'Cache-Control':'private,no-store'}});
+ }
  const r=await query("SELECT h.id,g.expires_at,m.media_type,'/api/media/'||m.id::text AS media_url FROM business_highlights h JOIN media_right_grants g ON g.id=h.grant_id JOIN user_media m ON m.id=g.media_id JOIN businesses b ON b.id=h.business_id WHERE h.business_id=$1 AND h.status='published' AND g.revoked_at IS NULL AND g.expires_at>now() AND m.status='approved' AND b.status='approved' ORDER BY h.created_at DESC LIMIT 30",[business]);
  return NextResponse.json({items:r.rows});
 }
