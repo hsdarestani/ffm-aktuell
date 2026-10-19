@@ -184,6 +184,40 @@ try{
  const businessPlace=await get('location?id='+publicPlace.rows[0].id,reader);
  if(businessPlace.body.place?.business_id!==createdBusiness.body.id||!businessPlace.body.place?.following_business)
    throw Error('Published venue was not connected to its verified followed business');
+ // Phase 3a: tours are private by default, shared only by unpredictable token.
+ await pool.query('UPDATE places SET latitude=$2,longitude=$3 WHERE id=$1',[publicPlace.rows[0].id,50.113,8.69]);
+ const guestTour=await get('tours');
+ if(guestTour.status!==401)throw Error('Guest could list private tours');
+ const wrongStop=await post('tours',reader,{action:'save',title:'Bad Tour',stop_ids:[testOsm,testOsm]});
+ if(wrongStop.status!==400)throw Error('Duplicate stop accepted');
+ const newTour=await post('tours',reader,{action:'save',title:'CI City Walk',stop_ids:[testOsm,publicPlace.rows[0].id],planned_times:['10:30','11:45']});
+ if(newTour.status!==201||!newTour.body.id)throw Error('Tour not created: '+JSON.stringify(newTour));
+ const listedTours=await get('tours',reader);
+ if(listedTours.body.items.length!==1||listedTours.body.items[0].share_token!==null)throw Error('Tour was not private by default');
+ const otherPerson=await get('tours/details?id='+newTour.body.id,client);
+ if(otherPerson.status!==404)throw Error('Other account read a private tour');
+ const tourOwner=await get('tours/details?id='+newTour.body.id,reader);
+ if(tourOwner.body.stops.map(s=>s.id).join(',')!==testOsm+','+publicPlace.rows[0].id
+   ||tourOwner.body.stops[0].planned_time!=='10:30')throw Error('Tour order or times invalid');
+ const deniedShared=await get('tours/shared?token='+'1'.repeat(43));
+ if(deniedShared.status!==404)throw Error('Unknown shared link succeeded');
+ const shareTour=await post('tours',reader,{action:'share',id:newTour.body.id,enabled:true});
+ if(shareTour.status!==200||shareTour.body.token?.length!==43)throw Error('Share token missing');
+ const publicTour=await get('tours/shared?token='+shareTour.body.token);
+ if(publicTour.status!==200||publicTour.body.stops?.length!==2||publicTour.body.tour.owner_id)throw Error('Shared tour leaked private details or stops');
+ const revoked=await post('tours',reader,{action:'share',id:newTour.body.id,enabled:false});
+ if(revoked.status!==200)throw Error('Tour share was not revoked');
+ const noLongerShared=await get('tours/shared?token='+shareTour.body.token);
+ if(noLongerShared.status!==404)throw Error('Revoked tour still publicly accessible');
+ const reordered=await post('tours',reader,{action:'save',id:newTour.body.id,title:'CI City Walk New',stop_ids:[publicPlace.rows[0].id,testOsm]});
+ if(reordered.status!==200)throw Error('Tour stop reorder failed');
+ const newOrder=await get('tours/details?id='+newTour.body.id,reader);
+ if(newOrder.body.stops[0]?.id!==publicPlace.rows[0].id)throw Error('Ordered stops did not update');
+ const deleted=await post('tours',reader,{action:'delete',id:newTour.body.id});
+ if(deleted.status!==200)throw Error('Tour deletion failed');
+ const afterDelete=await get('tours/details?id='+newTour.body.id,reader);
+ if(afterDelete.status!==404)throw Error('Deleted tour still accessible');
+ console.log('PASS: private ordered tour planning, timetable, safe shared link, revocation and deletion');
  console.log('PASS: private people/business follows, permissions, idempotency, following feed and editorial gating');
  console.log('PASS: moderated community posts, likes/unlikes, pending comment isolation and editorial approval');
  console.log('PASS: OSM bookmarks, hidden pending review, admin approval, public average, user report and explicit removal');

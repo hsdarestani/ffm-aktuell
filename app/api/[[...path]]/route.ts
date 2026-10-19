@@ -250,6 +250,100 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     if(!r.rowCount)return bad('Place not found',404);
     return ok({place:r.rows[0]});
   }
+  if(method==='GET'&&path==='tours'){
+    const u=need(user);
+    const r=await query("SELECT t.id,t.title,t.share_token,t.created_at,t.updated_at,(SELECT count(*)::int FROM tour_stops st WHERE st.tour_id=t.id) AS stop_count FROM user_tours t WHERE t.owner_id=$1 ORDER BY t.updated_at DESC LIMIT 50",[u.id]);
+    return ok({items:r.rows});
+  }
+  if(method==='GET'&&path==='tours/details'){
+    const u=need(user);
+    const tourId=qs.get('id')||'';if(!id.safeParse(tourId).success)return bad('Invalid tour ID');
+    const r=await query("SELECT id,title,share_token,created_at FROM user_tours WHERE id=$1 AND owner_id=$2",[tourId,u.id]);
+    if(!r.rowCount)return bad('Tour not found',404);
+    const stops=await query(`SELECT COALESCE(s.osm_id,p.id::text) AS id,coalesce(p.name,c.name) AS name,
+      coalesce(p.address,c.address) AS address,coalesce(p.category,c.category) AS category,
+      coalesce(p.latitude,c.latitude) AS latitude,coalesce(p.longitude,c.longitude) AS longitude,
+      CASE WHEN c.osm_id IS NOT NULL THEN 'unverified' ELSE p.verification_status END AS verification_status,
+      s.planned_time
+      FROM tour_stops s LEFT JOIN places p ON p.id=s.place_id
+      LEFT JOIN discovery_candidates c ON c.osm_id=s.osm_id
+      WHERE s.tour_id=$1 AND (p.status='published' AND p.activity_status!='permanently_closed'
+        OR c.reviewed_status='unverified')
+      ORDER BY s.position`,[tourId]);
+    return ok({tour:r.rows[0],stops:stops.rows});
+  }
+  if(method==='GET'&&path==='tours/shared'){
+    const token=trim(qs.get('token'));
+    if(!/^[A-Za-z0-9_-]{43}$/.test(token))return bad('Invalid tour link',404);
+    const r=await query("SELECT id,title FROM user_tours WHERE share_token=$1 AND shared_at IS NOT NULL",[token]);
+    if(!r.rowCount)return bad('Tour link not found',404);
+    const stops=await query(`SELECT COALESCE(s.osm_id,p.id::text) AS id,coalesce(p.name,c.name) AS name,
+      coalesce(p.address,c.address) AS address,coalesce(p.category,c.category) AS category,
+      coalesce(p.latitude,c.latitude) AS latitude,coalesce(p.longitude,c.longitude) AS longitude,
+      CASE WHEN c.osm_id IS NOT NULL THEN 'unverified' ELSE p.verification_status END AS verification_status,
+      s.planned_time FROM tour_stops s LEFT JOIN places p ON p.id=s.place_id
+      LEFT JOIN discovery_candidates c ON c.osm_id=s.osm_id
+      WHERE s.tour_id=$1 AND (p.status='published' AND p.activity_status!='permanently_closed'
+        OR c.reviewed_status='unverified') ORDER BY s.position`,[r.rows[0].id]);
+    return ok({tour:{title:r.rows[0].title},stops:stops.rows,shared:true});
+  }
+  if(method==='POST'&&path==='tours'){
+    rate(req,'tour');const u=need(user);
+    const b=parse(z.discriminatedUnion('action',[
+      z.object({action:z.literal('save'),id:id.optional(),title:text(100),
+        stop_ids:z.array(z.string().refine(validLocationId)).min(2).max(8),
+        planned_times:z.array(z.string().regex(/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/).nullable()).max(8).optional()}),
+      z.object({action:z.literal('share'),id,enabled:z.boolean()}),
+      z.object({action:z.literal('delete'),id})
+    ]),await payload(req));
+    if(b.action==='delete'){
+      const removed=await query('DELETE FROM user_tours WHERE id=$1 AND owner_id=$2 RETURNING id',[b.id,u.id]);
+      if(!removed.rowCount)return bad('Tour not found',404);
+      return ok({success:true});
+    }
+    if(b.action==='share'){
+      const token=randomBytes(32).toString('base64url');
+      const changed=await query(b.enabled
+        ?"UPDATE user_tours SET share_token=coalesce(share_token,$3),shared_at=now(),updated_at=now() WHERE id=$1 AND owner_id=$2 RETURNING share_token"
+        :"UPDATE user_tours SET share_token=NULL,shared_at=NULL,updated_at=now() WHERE id=$1 AND owner_id=$2 RETURNING share_token",
+        b.enabled?[b.id,u.id,token]:[b.id,u.id]);
+      if(!changed.rowCount)return bad('Tour not found',404);
+      return ok({success:true,token:changed.rows[0].share_token||null});
+    }
+    if(new Set(b.stop_ids).size!==b.stop_ids.length)return bad('Each stop can appear only once');
+    if(b.planned_times&&b.planned_times.length!==b.stop_ids.length)return bad('Times do not match stops');
+    // Only actual public, geolocated venues may be stops. OSM data remains
+    // explicitly unverified and is never silently promoted to a published place.
+    for(const stop of b.stop_ids){
+      const candidate=osmId.test(stop);
+      const available=await query(candidate
+        ?"SELECT osm_id FROM discovery_candidates WHERE osm_id=$1 AND reviewed_status='unverified' AND latitude IS NOT NULL AND longitude IS NOT NULL"
+        :"SELECT id FROM places WHERE id=$1 AND status='published' AND activity_status!='permanently_closed' AND latitude IS NOT NULL AND longitude IS NOT NULL",[stop]);
+      if(!available.rowCount)return bad('Tour stop is not an accessible real venue',404);
+    }
+    const tx=await pool.connect();
+    try{
+      await tx.query('BEGIN');
+      let tourId=b.id;
+      if(tourId){
+        const owned=await tx.query('SELECT id FROM user_tours WHERE id=$1 AND owner_id=$2 FOR UPDATE',[tourId,u.id]);
+        if(!owned.rowCount){await tx.query('ROLLBACK');return bad('Tour not found',404)}
+        await tx.query('UPDATE user_tours SET title=$3,updated_at=now() WHERE id=$1 AND owner_id=$2',[tourId,u.id,b.title]);
+        await tx.query('DELETE FROM tour_stops WHERE tour_id=$1',[tourId]);
+      }else{
+        const created=await tx.query('INSERT INTO user_tours(owner_id,title) VALUES($1,$2) RETURNING id',[u.id,b.title]);
+        tourId=created.rows[0].id;
+      }
+      for(let i=0;i<b.stop_ids.length;i++){
+        const stop=b.stop_ids[i],candidate=osmId.test(stop);
+        await tx.query('INSERT INTO tour_stops(tour_id,position,place_id,osm_id,planned_time) VALUES($1,$2,$3,$4,$5)',
+          [tourId,i+1,candidate?null:stop,candidate?stop:null,b.planned_times?.[i]||null]);
+      }
+      await tx.query('COMMIT');
+      return ok({id:tourId,success:true},b.id?200:201);
+    }catch(e){await tx.query('ROLLBACK');throw e}finally{tx.release()}
+  }
+
   if(method==='GET'&&path==='favorites/details'){
     const u=need(user);
     const [listed,candidates]=await Promise.all([

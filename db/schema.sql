@@ -145,6 +145,28 @@ CREATE TABLE IF NOT EXISTS business_follows (
  PRIMARY KEY(follower_id,business_id)
 );
 CREATE INDEX IF NOT EXISTS business_follows_business_idx ON business_follows(business_id);
+-- Phase 3a: private tours and revocable share-only links.
+CREATE TABLE IF NOT EXISTS user_tours (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ owner_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ title text NOT NULL CHECK(char_length(title) BETWEEN 2 AND 100),
+ share_token text UNIQUE,
+ shared_at timestamptz,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS user_tours_owner_idx ON user_tours(owner_id,updated_at DESC);
+CREATE TABLE IF NOT EXISTS tour_stops (
+ tour_id uuid NOT NULL REFERENCES user_tours(id) ON DELETE CASCADE,
+ position smallint NOT NULL CHECK(position BETWEEN 1 AND 8),
+ place_id uuid REFERENCES places(id) ON DELETE CASCADE,
+ osm_id text REFERENCES discovery_candidates(osm_id) ON DELETE CASCADE,
+ planned_time text CHECK(planned_time IS NULL OR planned_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'),
+ PRIMARY KEY(tour_id,position),
+ CHECK ((place_id IS NOT NULL)::int+(osm_id IS NOT NULL)::int=1)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS tour_stop_unique_place ON tour_stops(tour_id,place_id) WHERE place_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS tour_stop_unique_osm ON tour_stops(tour_id,osm_id) WHERE osm_id IS NOT NULL;
 CREATE TABLE IF NOT EXISTS favorites (
  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  place_id uuid NOT NULL REFERENCES places(id) ON DELETE CASCADE, created_at timestamptz NOT NULL DEFAULT now(),

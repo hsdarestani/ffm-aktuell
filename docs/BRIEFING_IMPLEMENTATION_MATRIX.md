@@ -44,6 +44,15 @@ This is an implementation ledger, **not** a claim of complete product delivery. 
 - Likes, comments, follow, activity privacy, 24h stories and rights-managed business highlights with expiry/revocation
 - Real location-based post feed with authentic photos (no invented venue images)
 
+## Phase 3a: Private tours and external navigation (2026-10-19)
+- Registered users can create private tours with 2–8 real, geo-located stops selected from saved places, reorder their stops, and optionally schedule HH:mm stop times
+- Public published venues and visibly labelled unverified OSM candidates remain separate; locations without coordinates cannot enter a navigation route
+- Users can open ordered walking, cycling or driving navigation in an external maps provider
+- Explicit high-entropy shared link contains only tour title/stops, no author account or personal saved-list data; link can be revoked immediately
+- Full CRUD plus private authorization, order, source visibility, share and revocation covered by database-backed CI tests
+- UX lives behind `Meine Orte → Tour planen`, not another permanent navigation tab
+- **Still open:** editorially curated tour catalog, trip availability and accurate travel time estimates; cross-platform deep link test, provider/localization policy; native offline maps
+
 ## Phase 3: Real-life discovery and tours
 - Category taxonomy with multiple categories per venue and dynamic admin categories
 - Price, verified opening status, accessibility, occasion, city district, geodistance, indoor/outdoor filters only from actual corroborated data
