@@ -26,7 +26,7 @@ try{
  await pool.query(await readFile('db/schema.sql','utf8'));
  await pool.query("INSERT INTO admin_invites(token_hash,expires_at) VALUES($1,now()+interval '30 minutes')",[digest]);
  server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','-p','3101'],{
-  env:{...process.env,DATABASE_URL:raw,NEXT_PUBLIC_SITE_URL:site,NODE_ENV:'production',FFM_MEDIA_DIR:mediaDir},
+  env:{...process.env,DATABASE_URL:raw,NEXT_PUBLIC_SITE_URL:site,NODE_ENV:'production',FFM_MEDIA_DIR:mediaDir,RESEND_API_KEY:'',FFM_EMAIL_FROM:''},
   stdio:['ignore','pipe','pipe']
  });
  server.stdout.on('data',s=>{output=(output+String(s)).slice(-2500)});
@@ -171,6 +171,58 @@ try{
  const noPublicVenue=await post('follows',reader,{target_type:'business',target_id:createdBusiness.body.id,active:true});
  if(noPublicVenue.status!==404)throw Error('Business without a public venue was followable');
  const publicPlace=await pool.query("INSERT INTO places(business_id,name,category,address,status,activity_status) VALUES($1,'CI Follow Venue','Cafés','CI Main Street','published','operating') RETURNING id",[createdBusiness.body.id]);
+ // Role-scoped company teams require out-of-band verified user identity,
+ // an explicitly approved seat allocation and owner-scoped access.
+ const readerIdentity=(await get('me',reader)).body.user;
+ const initialProof=await get('me/verify-email/request',reader);
+ if(initialProof.status!==200||initialProof.body.verified)throw Error('Password-only user incorrectly marked verified');
+ const unavailableEmail=await post('me/verify-email/request',reader,{});
+ if(unavailableEmail.status!==503)throw Error('Email delivery falsely claimed success without provider');
+ const proofToken=randomBytes(32).toString('hex');
+ await pool.query("INSERT INTO email_verification_tokens(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '15 minutes')",
+  [createHash('sha256').update(proofToken).digest('hex'),readerIdentity.id]);
+ const confirmed=await post('me/verify-email/confirm',reader,{token:proofToken});
+ if(confirmed.status!==200||!confirmed.body.verified)throw Error('Reader email proof failed');
+ const replayEmail=await post('me/verify-email/confirm',reader,{token:proofToken});
+ if(replayEmail.status!==409)throw Error('Email verification proof could be replayed');
+ const deniedSeats=await post('admin/business-seats',reader,{business_id:createdBusiness.body.id,seats:2,terms_approved:true,reason:'Not authorized to approve these seats'});
+ if(deniedSeats.status!==403)throw Error('Unprivileged user allocated company seats');
+ const unapprovedSeats=await post('admin/business-seats',cookie,{business_id:createdBusiness.body.id,seats:2,terms_approved:false,reason:'CI signed authorization absent from this test'});
+ if(unapprovedSeats.status!==400)throw Error('Seat increase without explicit terms accepted');
+ const allocated=await post('admin/business-seats',cookie,{business_id:createdBusiness.body.id,seats:2,terms_approved:true,reason:'CI manual admin seat authorization for disposable database only'});
+ if(allocated.status!==200||allocated.body.seats!==2)throw Error('Admin seat allocation failed');
+ const ownerTeam=await get('business/team',client);
+ if(ownerTeam.status!==200||ownerTeam.body.business.team_seat_limit!==2)throw Error('Owner could not list company team');
+ const unknownTeam=await get('business/team',reader);
+ if(unknownTeam.body.business!==null)throw Error('Reader obtained another team');
+ const disabledInvite=await post('business/team',client,{action:'invite',email:readerIdentity.email,role:'editor'});
+ if(disabledInvite.status!==503)throw Error('No-provider staff invite was falsely sent');
+ const rawInvitation=randomBytes(32).toString('hex');
+ await pool.query("INSERT INTO business_team_invites(business_id,inviter_id,invite_email,role,token_hash,expires_at) VALUES($1,$2,$3,'viewer',$4,now()+interval '7 days')",
+ [createdBusiness.body.id,authorId,readerIdentity.email,createHash('sha256').update(rawInvitation).digest('hex')]);
+ const guestAccept=await post('business/team/accept','',{token:rawInvitation});
+ if(guestAccept.status!==401)throw Error('Guest accepted private team invitation');
+ const invitePreview=await get('business/team/accept?token='+rawInvitation,reader);
+ if(invitePreview.status!==200||invitePreview.body.invite.role!=='viewer')throw Error('Verified recipient unable to view invite');
+ const member=await post('business/team/accept',reader,{token:rawInvitation});
+ if(member.status!==200||member.body.role!=='viewer')throw Error('Staff invitation acceptance failed: '+JSON.stringify(member));
+ const replayInvite=await post('business/team/accept',reader,{token:rawInvitation});
+ if(replayInvite.status!==403)throw Error('Team invitation replay permitted');
+ const memberAccess=await get('business/team/access',reader);
+ if(!memberAccess.body.teams?.some(t=>t.business_id===createdBusiness.body.id&&t.role==='viewer'))throw Error('Member cannot view authorized company');
+ const viewerChange=await post('business/places/change',reader,{place_id:publicPlace.rows[0].id,name:'Unpermitted change'});
+ if(viewerChange.status!==403)throw Error('Viewer was able to change a business location');
+ const promote=await post('business/team',client,{action:'role',user_id:readerIdentity.id,role:'editor'});
+ if(promote.status!==200)throw Error('Owner could not promote team member');
+ const editorChange=await post('business/places/change',reader,{place_id:publicPlace.rows[0].id,name:'Approved editor proposal'});
+ if(editorChange.status!==201)throw Error('Authorized staff editor cannot propose reviewed correction: '+JSON.stringify(editorChange));
+ const invalidSeatDecrease=await post('admin/business-seats',cookie,{business_id:createdBusiness.body.id,seats:0,terms_approved:true,reason:'Cannot go below occupied seat while member active'});
+ if(invalidSeatDecrease.status!==409)throw Error('Admin could revoke below occupied seats');
+ const fired=await post('business/team',client,{action:'remove',user_id:readerIdentity.id});
+ if(fired.status!==200)throw Error('Owner could not revoke staff membership');
+ const afterFired=await post('business/places/change',reader,{place_id:publicPlace.rows[0].id,name:'Revoked editor proposal'});
+ if(afterFired.status!==403)throw Error('Revoked staff editor retained permission');
+ console.log('PASS: independent email verification, unreplayable team invites, admin-gated seats, viewer/editor scope and membership revocation');
  // Administrators manage audited taxonomy and multiple categories per location.
  const publicCats=await get('categories');
  if(publicCats.status!==200||!publicCats.body.items.some(c=>c.slug==='Cafés'))throw Error('Public taxonomy missing existing category');
