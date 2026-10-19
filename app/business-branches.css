@@ -1,0 +1,26 @@
+.ffm-branch-panel{max-width:1100px;margin:20px auto;padding:21px;background:#fff;border:1px solid #e1e7df;border-radius:14px;color:#294939}
+.ffm-branch-title{display:flex;gap:9px;align-items:center;padding:2px 1px 11px}
+.ffm-branch-title h2{font:400 29px/1.2 'Instrument Serif',Georgia,serif;margin:0;flex:1}
+.ffm-branch-title>span{font-size:12px;color:#7e927b}
+.ffm-branch-intro,.ffm-branch-panel>p{color:#798e7c;font-size:12px;line-height:1.55;margin:0 0 16px}
+.ffm-branch-item{border:1px solid #e7ede6;border-radius:11px;margin-top:9px;background:#fcfdfa}
+.ffm-branch-item>summary{display:flex;align-items:center;gap:11px;padding:14px;cursor:pointer;list-style:none}
+.ffm-branch-item>summary::-webkit-details-marker{display:none}
+.ffm-branch-item>summary>svg:last-child{transition:transform .2s;color:#91a594}
+.ffm-branch-item[open]>summary>svg:last-child{transform:rotate(180deg)}
+.ffm-branch-icon{height:37px;width:37px;border-radius:12px;background:#e7f1e7;display:grid;place-items:center;color:#477353}
+.ffm-branch-info{display:grid;gap:3px;min-width:0;flex:1}
+.ffm-branch-info strong{font-size:13px}
+.ffm-branch-info small{font-size:10px;color:#8e9e91;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ffm-branch-form{border-top:1px solid #e7eee7;padding:15px 15px 17px}
+.ffm-branch-form form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.ffm-branch-form form label{display:grid;gap:6px;font-size:11px;font-weight:750;color:#57735d}
+.ffm-branch-form form label:nth-child(5){grid-column:span 2}
+.ffm-branch-form form input,.ffm-branch-form form textarea{border-radius:8px;border:1px solid #d8e4d9;background:#fff;min-height:41px;padding:10px 11px;font-size:12px;color:#365740;max-width:100%}
+.ffm-branch-form form label small{font-weight:500;font-size:10px;color:#8a9e8d}
+.ffm-branch-form form button{border:0;border-radius:9px;padding:11px 14px;background:#27503b;color:#fff;display:flex;align-items:center;gap:7px;justify-content:center;font-size:11px;font-weight:800;width:max-content}
+.ffm-branch-form form button:disabled{opacity:.4}
+.ffm-branch-pending,.ffm-branch-approved{background:#fff8eb;color:#9b7e43;border:1px solid #f1e5c6;border-radius:9px;padding:11px;display:flex;align-items:center;gap:8px;font-size:11px;line-height:1.5}
+.ffm-branch-approved{background:#edf5eb;border-color:#dbe8d8;color:#467350}
+@media(max-width:600px){.ffm-branch-panel{margin:14px 13px;padding:15px}.ffm-branch-form{padding:11px}.ffm-branch-form form{grid-template-columns:1fr}.ffm-branch-form form label:nth-child(5){grid-column:auto}.ffm-branch-form form button{width:100%;min-height:43px}.ffm-branch-panel h2{font-size:27px}}
+@media(prefers-reduced-motion:reduce){.ffm-branch-item>summary>svg:last-child{transition:none}}

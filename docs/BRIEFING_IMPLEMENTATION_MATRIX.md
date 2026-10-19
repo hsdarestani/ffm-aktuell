@@ -68,6 +68,14 @@ This is an implementation ledger, **not** a claim of complete product delivery. 
 - Disposable PostgreSQL + actual API tests cover event ownership, preferences, export, deletion
 - **Still open:** native push-provider delivery and consent management, real event image licensing/category/prices, provider confirmed event end-times, Google/Apple/phone SSO and legal retention details
 
+## Phase 4a: Owner controlled branch corrections, editorial signoff (2026-10-19)
+- Approved business owners can submit and update base business location details (name, address, phone, website and opening hours) from a collapsible mobile panel without confusing campaign/advertisement settings
+- A pending change is NOT public. Requests are tied to an approved business ownership and visible to that business in its private dashboard
+- Admin moderation sits inside existing `Freigaben` with approve/reject, audit and a single active request per branch
+- Approved edits cause previous operating/existence verification to expire, leaving the location transparently *Ungeprüft* and its operational state unknown until independently reverified
+- Real PostgreSQL + API CI proves outsider denial, pending isolation, editor approval/rejection, contact propagation and review-status reset
+- **Still open:** multiple staff accounts and role limits, ownership document upload and independent verification, pricing, payments and ads/coupons, analytics disclosure and full business billing functionality
+
 ## Phase 4: Business & payments
 - Staff/subaccounts, editable multi-branch businesses and ownership verification documents
 - Tier entitlements, cancellation/invoices/SEPA/card provider choice, free and paid trials only after pricing approval

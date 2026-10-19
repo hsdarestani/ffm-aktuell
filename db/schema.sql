@@ -56,6 +56,7 @@ ALTER TABLE places ADD COLUMN IF NOT EXISTS verified_at timestamptz;
 ALTER TABLE places ADD COLUMN IF NOT EXISTS verification_source text;
 ALTER TABLE places ADD COLUMN IF NOT EXISTS editorial_rank smallint NOT NULL DEFAULT 0;
 ALTER TABLE places ADD COLUMN IF NOT EXISTS opening_hours_text text;
+ALTER TABLE places ADD COLUMN IF NOT EXISTS phone text;
 -- Redaktionelle Beweiskette: OSM-ID dient nur der Identität, nie als Betriebsnachweis.
 ALTER TABLE places ADD COLUMN IF NOT EXISTS osm_id text;
 ALTER TABLE places ADD COLUMN IF NOT EXISTS verification_method text;
@@ -201,6 +202,26 @@ CREATE TABLE IF NOT EXISTS claims (
  status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
  created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(business_id,place_id)
 );
+-- Pending branch changes must be reviewed by the editorial team before
+-- publication. A claimed OSM candidate never becomes a verified business.
+CREATE TABLE IF NOT EXISTS place_change_requests (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ place_id uuid NOT NULL REFERENCES places(id) ON DELETE CASCADE,
+ business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+ submitted_by uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ name text NOT NULL CHECK(char_length(name) BETWEEN 2 AND 150),
+ address text NOT NULL CHECK(char_length(address)<=200),
+ website text CHECK(website IS NULL OR char_length(website)<=1000),
+ phone text CHECK(phone IS NULL OR char_length(phone)<=40),
+ opening_hours_text text CHECK(opening_hours_text IS NULL OR char_length(opening_hours_text)<=300),
+ status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
+ submitted_at timestamptz NOT NULL DEFAULT now(),
+ reviewed_by uuid REFERENCES users(id) ON DELETE SET NULL,
+ reviewed_at timestamptz,
+ editor_note text NOT NULL DEFAULT ''
+);
+CREATE UNIQUE INDEX IF NOT EXISTS place_change_one_pending ON place_change_requests(place_id) WHERE status='pending';
+CREATE INDEX IF NOT EXISTS place_change_status_time ON place_change_requests(status,submitted_at);
 CREATE TABLE IF NOT EXISTS deals (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
  place_id uuid REFERENCES places(id) ON DELETE SET NULL, title text NOT NULL, details text NOT NULL DEFAULT '',
