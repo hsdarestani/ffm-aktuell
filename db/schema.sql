@@ -145,8 +145,7 @@ CREATE TABLE IF NOT EXISTS business_follows (
  PRIMARY KEY(follower_id,business_id)
 );
 CREATE INDEX IF NOT EXISTS business_follows_business_idx ON business_follows(business_id);
--- Phase 3a: private multi-stop city routes. A public share link reveals only
--- the chosen tour, never its author, account, saved places or other tours.
+-- Phase 3a: private tours and revocable share-only links.
 CREATE TABLE IF NOT EXISTS user_tours (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  owner_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -162,93 +161,7 @@ CREATE TABLE IF NOT EXISTS tour_stops (
  position smallint NOT NULL CHECK(position BETWEEN 1 AND 8),
  place_id uuid REFERENCES places(id) ON DELETE CASCADE,
  osm_id text REFERENCES discovery_candidates(osm_id) ON DELETE CASCADE,
- planned_time text CHECK(planned_time IS NULL OR planned_time ~ '^(?:[01][0-9]|2[0-3]):[0-5][0-9]
- user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
- place_id uuid NOT NULL REFERENCES places(id) ON DELETE CASCADE, created_at timestamptz NOT NULL DEFAULT now(),
- PRIMARY KEY(user_id,place_id)
-);
-CREATE TABLE IF NOT EXISTS claims (
- id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
- business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
- place_id uuid NOT NULL REFERENCES places(id) ON DELETE CASCADE,
- note text NOT NULL DEFAULT '',
- status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
- created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(business_id,place_id)
-);
-CREATE TABLE IF NOT EXISTS deals (
- id uuid PRIMARY KEY DEFAULT gen_random_uuid(), business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
- place_id uuid REFERENCES places(id) ON DELETE SET NULL, title text NOT NULL, details text NOT NULL DEFAULT '',
- valid_until timestamptz, status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','published','rejected')),
- created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS deals_status_idx ON deals(status);
--- User bookmarks for raw OSM candidates are private and never verification.
--- Separate table keeps the existing favorites foreign key and its legacy PK intact.
-CREATE TABLE IF NOT EXISTS candidate_favorites (
- user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
- osm_id text NOT NULL REFERENCES discovery_candidates(osm_id) ON DELETE CASCADE,
- created_at timestamptz NOT NULL DEFAULT now(),
- PRIMARY KEY(user_id,osm_id)
-);
-CREATE INDEX IF NOT EXISTS candidate_favorites_osm_idx ON candidate_favorites(osm_id);
--- Feedback appears in the existing editorial review queue; submitting a report
--- must never automatically hide a venue or assert it is permanently closed.
-CREATE TABLE IF NOT EXISTS place_reports (
- id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
- user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
- place_id uuid REFERENCES places(id) ON DELETE CASCADE,
- osm_id text REFERENCES discovery_candidates(osm_id) ON DELETE CASCADE,
- reason text NOT NULL CHECK(reason IN ('closed','address','details','other')),
- message text NOT NULL DEFAULT '',
- status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','reviewed','rejected')),
- created_at timestamptz NOT NULL DEFAULT now(),
- reviewed_at timestamptz,
- reviewed_by uuid REFERENCES users(id) ON DELETE SET NULL,
- CHECK ((place_id IS NOT NULL)::int + (osm_id IS NOT NULL)::int = 1)
-);
-CREATE INDEX IF NOT EXISTS place_reports_queue_idx ON place_reports(status,created_at);
-CREATE INDEX IF NOT EXISTS place_reports_user_idx ON place_reports(user_id,created_at);
--- Reviews belong to a verified/published catalogue record or a raw OSM
--- candidate. Publishing a user's opinion is NEVER verification of operation.
-CREATE TABLE IF NOT EXISTS venue_reviews (
- id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
- user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
- place_id uuid REFERENCES places(id) ON DELETE CASCADE,
- osm_id text REFERENCES discovery_candidates(osm_id) ON DELETE CASCADE,
- rating smallint NOT NULL CHECK (rating BETWEEN 1 AND 5),
- body text NOT NULL CHECK (char_length(body) BETWEEN 20 AND 1000),
- status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','published','rejected')),
- created_at timestamptz NOT NULL DEFAULT now(),
- updated_at timestamptz NOT NULL DEFAULT now(),
- reviewed_by uuid REFERENCES users(id) ON DELETE SET NULL,
- reviewed_at timestamptz,
- CHECK ((place_id IS NOT NULL)::int + (osm_id IS NOT NULL)::int = 1)
-);
-CREATE UNIQUE INDEX IF NOT EXISTS venue_reviews_user_place_unique ON venue_reviews(user_id,place_id) WHERE place_id IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS venue_reviews_user_osm_unique ON venue_reviews(user_id,osm_id) WHERE osm_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS venue_reviews_published_place ON venue_reviews(place_id,created_at DESC) WHERE status='published';
-CREATE INDEX IF NOT EXISTS venue_reviews_published_osm ON venue_reviews(osm_id,created_at DESC) WHERE status='published';
-CREATE INDEX IF NOT EXISTS venue_reviews_moderation ON venue_reviews(status,created_at);
--- Abuse reports enter a human queue and cannot automatically unpublish content.
-CREATE TABLE IF NOT EXISTS venue_review_reports (
- id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
- review_id uuid NOT NULL REFERENCES venue_reviews(id) ON DELETE CASCADE,
- reporter_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
- reason text NOT NULL CHECK(reason IN ('spam','abuse','privacy','incorrect','other')),
- message text NOT NULL DEFAULT '' CHECK(char_length(message)<=500),
- status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','reviewed','rejected')),
- created_at timestamptz NOT NULL DEFAULT now(),
- reviewed_at timestamptz,
- reviewed_by uuid REFERENCES users(id) ON DELETE SET NULL,
- UNIQUE(review_id,reporter_id)
-);
-CREATE INDEX IF NOT EXISTS venue_review_reports_pending ON venue_review_reports(status,created_at);
-CREATE TABLE IF NOT EXISTS audit_log (
- id bigserial PRIMARY KEY, actor_id uuid REFERENCES users(id) ON DELETE SET NULL,
- action text NOT NULL, target_type text NOT NULL, target_id text NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
-);
-COMMIT;
-),
+ planned_time text CHECK(planned_time IS NULL OR planned_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'),
  PRIMARY KEY(tour_id,position),
  CHECK ((place_id IS NOT NULL)::int+(osm_id IS NOT NULL)::int=1)
 );
