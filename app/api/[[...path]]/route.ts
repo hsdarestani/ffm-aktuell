@@ -173,7 +173,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       isRecentlyAuthenticated(req,u.id)
     ]);
     return ok({social_providers:linked.rows.map(r=>r.provider),verified_email:Boolean(verified.rows[0]?.email_verified_at),
-      social_deletion_available:linked.rowCount>0&&fresh,requires_password:linked.rowCount===0});
+      social_deletion_available:linked.rowCount>0&&fresh,requires_password:!linked.rowCount});
   }
   if(method==='POST'&&path==='me/delete'){
     rate(req,'account-delete');const u=need(user);
@@ -187,7 +187,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       isRecentlyAuthenticated(req,u.id)
     ]);
     const passwordValid=Boolean(b.password&&saved.rowCount&&verifyPassword(b.password,saved.rows[0].password_hash));
-    const socialRecent=Boolean(linked.rowCount&&recent);
+    const socialRecent=Boolean((linked.rowCount||0)>0&&recent);
     if(!passwordValid&&!socialRecent)return bad('Password required, or please sign in again with Google/Apple within 5 minutes',403);
     // Foreign-key cascades remove private subscriptions, bookmarks, posts, tours,
     // comments, follows, sessions and owned business records. Existing editorial
