@@ -25,6 +25,11 @@ services:
       SESSION_SECRET: ${SESSION_SECRET:?Session secret missing}
       NEXT_PUBLIC_SITE_URL: https://ffm-aktuell.smarbiz.sbs
       NODE_ENV: production
+      CLAMD_HOST: ${CLAMD_HOST:-}
+      CLAMD_PORT: ${CLAMD_PORT:-3310}
+      FFM_MEDIA_DIR: /app/uploads
+    volumes:
+      - ffm_media:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -44,3 +49,4 @@ networks:
     external: true
 volumes:
   ffm_db:
+  ffm_media:
