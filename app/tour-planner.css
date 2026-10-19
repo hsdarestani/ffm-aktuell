@@ -1,0 +1,75 @@
+/* Phase 3a: minimalist private tours, mobile-first and no public profile listing. */
+.ffm-tour-page{background:#f8f8f3;color:#254433;min-height:70dvh;padding:45px max(16px,calc((100% - 1120px)/2)) 115px}
+.ffm-tour-head{margin:0 0 28px}
+.ffm-tour-head>span{font-size:10px;font-weight:800;letter-spacing:1.6px;color:#8c8575}
+.ffm-tour-head h1{font:400 clamp(43px,6vw,70px)/1.02 'Instrument Serif',Georgia,serif;margin:8px 0;overflow-wrap:anywhere}
+.ffm-tour-head h1>span{color:#bd775a}
+.ffm-tour-head p{font-size:13px;color:#788d7b;margin:0}
+.ffm-tour-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(250px,.8fr);align-items:start;gap:16px}
+.ffm-tour-builder{display:grid;gap:14px}
+.ffm-tour-panel{border:1px solid #dfe8de;border-radius:15px;background:#fff;padding:21px 23px}
+.ffm-tour-panel h2{font:400 29px/1.2 'Instrument Serif',Georgia,serif;margin:0 0 17px}
+.ffm-tour-panel-title{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.ffm-tour-panel-title button{display:inline-flex;align-items:center;gap:5px;background:#eef4ed;border:0;border-radius:8px;padding:8px 10px;font-size:11px;color:#406d4b;font-weight:800}
+.ffm-tour-label{display:grid;gap:7px;color:#5b7662;font-size:12px;font-weight:750;margin-bottom:18px}
+.ffm-tour-label input{width:100%;border:1px solid #dae5da;border-radius:10px;padding:13px 14px;color:#274934;background:#fbfcfa;font-size:15px}
+.ffm-tour-mini-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}
+.ffm-tour-mini-head strong{font-size:13px}
+.ffm-tour-mini-head span{font-size:11px;color:#7b9580}
+.ffm-tour-stops{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.ffm-tour-stops>li{display:flex;align-items:center;gap:9px;border:1px solid #e7eee5;background:#fafcf8;border-radius:10px;padding:11px 10px;min-width:0}
+.ffm-tour-step{display:grid;place-items:center;flex:none;height:29px;width:29px;border-radius:50%;background:#e3eee4;color:#38654b;font-size:12px;font-weight:850}
+.ffm-tour-stop-text{display:grid;gap:2px;min-width:0;flex:1}
+.ffm-tour-stop-text strong{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ffm-tour-stop-text small{color:#819184;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ffm-tour-order{display:flex;flex-direction:column;gap:2px}
+.ffm-tour-order button,.ffm-tour-remove{border:0;background:transparent;color:#75967b;display:grid;place-items:center;min-height:23px;min-width:27px}
+.ffm-tour-order button:disabled{opacity:.25}
+.ffm-tour-remove{color:#bc8970}
+.ffm-tour-time{display:flex;align-items:center;gap:4px;color:#769177}
+.ffm-tour-time input{font-size:11px;border:1px solid #e0e8de;border-radius:6px;max-width:99px;padding:5px 2px;background:white;color:#41674c}
+.ffm-tour-empty{padding:20px;border:1px dashed #cedfcf;background:#f4f8f2;color:#738d79;border-radius:11px;font-size:12px;line-height:1.6}
+.ffm-tour-empty button{background:#284e39;border:0;color:white;border-radius:9px;padding:11px 17px;font-size:12px;font-weight:800}
+.ffm-tour-primary{margin:16px 0 0;min-height:46px;display:flex;gap:8px;align-items:center;justify-content:center;width:100%;border:0;border-radius:10px;background:#284c38;color:white;font-size:13px;font-weight:850}
+.ffm-tour-primary:disabled{opacity:.45;cursor:not-allowed}
+.ffm-tour-share{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.ffm-tour-share button{border:1px solid #dce7dc;background:#f7faf5;border-radius:8px;padding:10px;display:flex;align-items:center;gap:7px;color:#4c7456;font-size:11px;font-weight:800}
+.ffm-tour-route{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:15px 0 2px;border-top:1px solid #e7ede5;padding:16px 0 0}
+.ffm-tour-route label{display:flex;gap:8px;align-items:center;font-size:12px;color:#667e6a}
+.ffm-tour-route select{border:1px solid #dce7dd;padding:8px;border-radius:8px;background:white;font-size:12px;color:#31573e}
+.ffm-tour-route a{display:flex;align-items:center;gap:6px;border:0;background:#e7efe5;color:#29543a;text-decoration:none;border-radius:8px;padding:11px 13px;font-size:12px;font-weight:850}
+.ffm-tour-route>span{display:flex;align-items:center;gap:6px;color:#899887;font-size:11px}
+.ffm-tour-pick{display:grid;gap:7px}
+.ffm-tour-pick h2{margin-bottom:10px}
+.ffm-tour-pick>button{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;border:1px solid #e7ece2;border-radius:10px;background:#fbfcfa;padding:12px 13px;color:#356341}
+.ffm-tour-pick>button>span{display:grid;gap:3px;min-width:0}
+.ffm-tour-pick>button strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ffm-tour-pick>button small{font-size:10px;color:#91a196}
+.ffm-tour-pick>button:disabled{opacity:.4}
+.ffm-tour-list{position:sticky;top:80px}
+.ffm-tour-row{display:flex;align-items:center;gap:6px;border-top:1px solid #edf1ea;padding:11px 0}
+.ffm-tour-row>span{display:grid;gap:4px;flex:1;min-width:0}
+.ffm-tour-row strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ffm-tour-row small,.ffm-tour-muted{color:#8fa193;font-size:11px}
+.ffm-tour-row button{border:0;background:#f1f5ed;color:#5c7a63;border-radius:9px;display:grid;place-items:center;height:32px;width:32px;flex:none}
+@media(max-width:800px){
+ .ffm-tour-page{padding:32px 18px 105px}
+ .ffm-tour-layout{grid-template-columns:1fr}
+ .ffm-tour-list{position:static}
+}
+@media(max-width:500px){
+ .ffm-tour-page{padding:25px 13px 110px}
+ .ffm-tour-head h1{font-size:48px}
+ .ffm-tour-panel{padding:16px 14px}
+ .ffm-tour-panel h2{font-size:27px}
+ .ffm-tour-stops>li{padding:9px 6px;gap:5px}
+ .ffm-tour-step{height:25px;width:25px;font-size:11px}
+ .ffm-tour-stop-text strong{font-size:11px}
+ .ffm-tour-stop-text small{font-size:9px}
+ .ffm-tour-time{gap:2px}
+ .ffm-tour-time svg{display:none}
+ .ffm-tour-time input{font-size:10px;max-width:77px;padding:4px 0}
+ .ffm-tour-remove{min-width:19px}
+ .ffm-tour-order button{min-width:19px}
+}
+@media(prefers-reduced-motion:reduce){.ffm-tour-page *{transition:none}}
