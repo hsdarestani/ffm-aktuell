@@ -340,6 +340,31 @@ CREATE TABLE IF NOT EXISTS deals (
 CREATE INDEX IF NOT EXISTS deals_status_idx ON deals(status);
 -- Pilot coupons are free of charge and never count as payment, ticket or proof
 -- of visiting a venue. Codes are 144-bit random and redeemable only once.
+-- Commercial entitlements are catalogue definitions only. No subscription is
+-- activated or billed without an approved payment provider and store policy.
+CREATE TABLE IF NOT EXISTS subscription_plans (
+ code text PRIMARY KEY CHECK(code IN ('user_premium','business_premium_1','business_premium_2')),
+ audience text NOT NULL CHECK(audience IN ('user','business')),
+ title_de text NOT NULL CHECK(char_length(title_de) BETWEEN 2 AND 100),
+ title_en text NOT NULL CHECK(char_length(title_en) BETWEEN 2 AND 100),
+ features text[] NOT NULL DEFAULT '{}',
+ monthly_price_cents integer CHECK(monthly_price_cents>0),
+ annual_price_cents integer CHECK(annual_price_cents>0),
+ trial_days integer NOT NULL DEFAULT 0 CHECK(trial_days BETWEEN 0 AND 30),
+ status text NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','approved_for_display')),
+ legal_terms_url text,
+ approval_note text,
+ approved_by uuid REFERENCES users(id) ON DELETE SET NULL,
+ approved_at timestamptz,
+ updated_at timestamptz NOT NULL DEFAULT now(),
+ CHECK((status='draft') OR (monthly_price_cents IS NOT NULL AND legal_terms_url IS NOT NULL AND approval_note IS NOT NULL AND approved_at IS NOT NULL))
+);
+INSERT INTO subscription_plans(code,audience,title_de,title_en,trial_days) VALUES
+ ('user_premium','user','Premium für Privatpersonen','Personal Premium',7),
+ ('business_premium_1','business','Business Premium 1','Business Premium 1',0),
+ ('business_premium_2','business','Business Premium 2','Business Premium 2',0)
+ON CONFLICT(code) DO NOTHING;
+
 -- Advertising proposal lifecycle. Until official pricing and an authorized
 -- payment flow are configured, campaigns NEVER enter a public/live state.
 CREATE TABLE IF NOT EXISTS ad_campaigns (
