@@ -52,9 +52,7 @@ CREATE TABLE IF NOT EXISTS admin_invites (
  used_at timestamptz,
  created_at timestamptz NOT NULL DEFAULT now()
 );
-INSERT INTO admin_invites(token_hash,expires_at)
-VALUES('849c629b5c494299a28d26beabef49e3261c71707887fbcccff8152d00156a5e','2026-10-19T23:00:00Z')
-ON CONFLICT(token_hash) DO NOTHING;
+-- Generate one-time administrative invitations out of band only; never seed fixed tokens.
 CREATE TABLE IF NOT EXISTS businesses (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  name text NOT NULL, registry_reference text,
