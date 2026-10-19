@@ -122,3 +122,23 @@ Name/trademark, prices & trial rules, billing/tax/PSP, operator verification, ve
 ## Cross-cutting release gate
 - All current draft-PR code requires merge, DB migration, safe publication and real mobile/browser acceptance. CI passing is not proof of STRATO production readiness.
 - OAuth client keys, ClamAV scanner and owner/copyright policies remain external prerequisites; Apple/Google app store clients are not included.
+
+## Phase 4d: Verifiable company staffing and restricted delegated edit (2026-10-19)
+- `business_team_members` and hashed seven-day `business_team_invites`, scoped by business. Unverified email/password accounts cannot redeem a third-party invite. Sign-in with Google/Apple marks email verified only when cryptographically validated; optional transactional email verification is otherwise needed.
+- Business owner may invite, revoke, promote/demote and remove staff, but only when the business is approved, staff seats were explicitly allocated by admin, and an independent trusted sender can deliver the invitation. Default capacity is zero.
+- Admin seat changes require recorded reason and explicit terms approval; cannot reduce below existing active + unexpired reserved seats. Staff viewers can read company listings and aggregated metrics, staff editors can submit scoped venue corrections, never self-approve or publish.
+- **Open:** full commercial staff entitlements/tariff integration, multiple independent team owners/admin organizational roles, proof of registration/ownership documents, and a configured live email sender.
+
+## Phase 4e: Honest merchant analytics (2026-10-19)
+- Real Postgres aggregations for published places, active deal records, last-30-day coupon claims/redemptions, moderated posts and ad proposals. No per-user identities in analytics, follower count withheld under five.
+- There are **no fabricated impression, click, revenue or verified-visit counts**. Actual ad delivery is not active.
+
+## Phase 4f: Premium tariff configuration without subscription activation (2026-10-19)
+- Draft, bilingual, auditable pricing/feature catalogue for personal and two business Premium plans. No real price values are seeded or approved. The user's brief identifies seven-day personal trial but full terms remain subject to approval.
+- Admin can store proposed pricing/features and explicitly sign off a price for *display* only, with approval note and HTTPS terms link; withdraw immediately. Every change logs an audit record. Checkout stays disabled.
+- **Open:** app-store-approved user IAP, card and SEPA PSP onboarding, entitlement checks, subscription ledgers, tax/legal invoicing, cancellation, refunds, failed payment handling, receipt verification and real trials.
+
+## Phase 5a: Account data rights and safe deletion (2026-10-19)
+- User JSON export now covers staff and email status, social providers, uploads, Stories, rights grants and coupons, in addition to original preferences, posts, tours and bookmarks, without exporting secret token hashes.
+- Social-only accounts created with random internal passwords can request self-deletion with exact confirmation after a fresh OAuth session; stale sessions cannot delete. Admin and verified-business transfer gates remain. 
+- **Open:** comprehensive DSA/GDPR review, immutable legal retention, object/DB backup erasure procedures and real OAuth account deletion device tests.
