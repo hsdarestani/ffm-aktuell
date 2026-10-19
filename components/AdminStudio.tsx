@@ -225,12 +225,22 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
    endpoint='admin/events';
    const at=new Date(value('starts_at'));
    if(!Number.isFinite(at.getTime())){setNotice({kind:'error',text:'Bitte Datum und Uhrzeit angeben.'});return}
-   body={title:value('title'),venue:value('venue'),description_de:value('description_de'),starts_at:at.toISOString(),ticket_url:value('ticket_url')};
+   const end=value('ends_at')?new Date(value('ends_at')):null;
+   const price=value('price_eur')===''?null:Number(value('price_eur'));
+   if(end&&!Number.isFinite(end.getTime())){setNotice({kind:'error',text:'Bitte gültiges Enddatum angeben.'});return}
+   if(price!==null&&(!Number.isFinite(price)||price<0||!value('price_source_url'))){setNotice({kind:'error',text:'Ein Preis benötigt einen belegbaren Quellenlink.'});return}
+   body={title:value('title'),venue:value('venue'),description_de:value('description_de'),starts_at:at.toISOString(),
+    ends_at:end?.toISOString()||null,category:value('category'),organizer:value('organizer'),
+    price_cents:price===null?null:Math.round(price*100),price_source_url:value('price_source_url'),
+    source_url:value('source_url'),ticket_url:value('ticket_url')};
   }else{
-   endpoint='admin/news';body={title:value('title'),body_de:value('body_de'),source_url:value('source_url')};
+   endpoint='admin/news';const at=value('published_at')?new Date(value('published_at')):null;
+   if(at&&!Number.isFinite(at.getTime())){setNotice({kind:'error',text:'Bitte ein gültiges Veröffentlichungsdatum angeben.'});return}
+   body={title:value('title'),body_de:value('body_de'),category:value('category'),source_url:value('source_url'),published_at:at?.toISOString()||null};
   }
-  if(!window.confirm('Diesen Inhalt jetzt öffentlich veröffentlichen?'))return;
-  const ok=await action(endpoint,body,'Veröffentlicht. Dein Frankfurt wächst.');
+  const planned=publishMode==='news'&&typeof body.published_at==='string'&&Date.parse(body.published_at)>Date.now();
+  if(!window.confirm(planned?'Beitrag für das angegebene Datum zur Veröffentlichung vormerken?':'Diesen Inhalt jetzt öffentlich veröffentlichen?'))return;
+  const ok=await action(endpoint,body,planned?'Beitrag zur Veröffentlichung eingeplant.':'Veröffentlicht. Dein Frankfurt wächst.');
   if(ok){form.reset();setNewPlaceId(String(Date.now()))}
  }
  const actual=reviewMode==='existing'?due:[]; const totalPages=Math.max(1,Math.ceil(total/25));
@@ -428,17 +438,27 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
        </>:publishMode==='news'?<>
         <Field label="Titel"><input name="title" required maxLength={150} placeholder="Was ist passiert?"/></Field>
         <Field label="Dein Stadtbeitrag"><textarea name="body_de" rows={7} maxLength={10000} placeholder="Erzähle deine Geschichte aus Frankfurt ..."/></Field>
+        <Field label="Rubrik"><select name="category"><option value="Stadtleben">Stadtleben</option><option value="Kultur">Kultur</option><option value="Verkehr">Verkehr</option><option value="Sport">Sport</option><option value="Freizeit">Freizeit</option></select></Field>
+        <Field label="Veröffentlichung planen (optional)"><input type="datetime-local" name="published_at"/><small>Ohne Datum wird der Beitrag sofort veröffentlicht. Zukunftstermine bleiben bis dahin unsichtbar.</small></Field>
         <details className="ffm-simple-more-fields"><summary><Plus size={17}/> Quellenlink ergänzen</summary><div className="ffm-simple-more-content"><Field label="Quelle"><input type="url" name="source_url" placeholder="https://..."/></Field></div></details>
        </>:<>
         <Field label="Titel der Veranstaltung"><input name="title" required maxLength={150} placeholder="Name der Veranstaltung"/></Field>
         <Field label="Veranstaltungsort"><input name="venue" required maxLength={150} placeholder="Wo findet es statt?"/></Field>
         <Field label="Datum und Uhrzeit"><input name="starts_at" type="datetime-local" required/></Field>
+        <Field label="Kategorie"><select name="category"><option value="Weitere">Weitere</option><option value="Kultur">Kultur</option><option value="Musik">Musik</option><option value="Sport">Sport</option><option value="Familie">Familie</option><option value="Kostenlos">Kostenlos</option></select></Field>
+        <Field label="Veranstalter"><input name="organizer" maxLength={150} placeholder="Offizieller Veranstalter"/></Field>
+        <details className="ffm-simple-more-fields"><summary><Plus size={17}/> Zeitpunkt und Preis</summary><div className="ffm-simple-more-content">
+         <Field label="Ende (optional)"><input name="ends_at" type="datetime-local"/></Field>
+         <Field label="Belegter Preis in EUR (leer = unbekannt)"><input name="price_eur" type="number" min="0" step="0.01"/></Field>
+         <Field label="Offizielle Preisquelle"><input name="price_source_url" type="url" placeholder="https://..."/></Field>
+         <Field label="Quelle des Events"><input name="source_url" type="url" placeholder="https://..."/></Field>
+        </div></details>
         <details className="ffm-simple-more-fields"><summary><Plus size={17}/> Beschreibung & Link</summary><div className="ffm-simple-more-content">
         <Field label="Beschreibung"><textarea name="description_de" rows={4} maxLength={3000} placeholder="Für wen ist dieses Event und was erwartet die Gäste?"/></Field>
         <Field label="Ticket oder Infoseite"><input type="url" name="ticket_url" placeholder="https://..."/></Field>
         </div></details>
        </>}
-       <div className="ffm-studio-publish-confirm"><ShieldCheck size={18}/><span>Direkt öffentlich. Angaben vorher prüfen.</span></div>
+       <div className="ffm-studio-publish-confirm"><ShieldCheck size={18}/><span>Quellen vor Veröffentlichung prüfen. Geplante Beiträge erscheinen erst zum festgelegten Zeitpunkt.</span></div>
        <button className="ffm-studio-primary" disabled={busy}>{busy?'Wird veröffentlicht …':'Jetzt veröffentlichen'} <ArrowRight size={18}/></button>
       </form>
      </CityPanel></div>
