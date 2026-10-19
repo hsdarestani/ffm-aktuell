@@ -5,6 +5,7 @@ import {pool,query} from '@/lib/db';
 import {beginSession,endSession,hashPassword,verifyPassword,sessionUser,trustedOrigin,isRecentlyAuthenticated,User} from '@/lib/auth';
 import {validLocationId,osmId} from '@/lib/location-actions';
 import {resolveBusinessEditor} from '@/lib/business-team';
+import {remove as removeMediaFile} from '@/lib/media-storage';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 type Ctx={params:Promise<{path?:string[]}>};
@@ -189,10 +190,20 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     const passwordValid=Boolean(b.password&&saved.rowCount&&verifyPassword(b.password,saved.rows[0].password_hash));
     const socialRecent=Boolean((linked.rowCount||0)>0&&recent);
     if(!passwordValid&&!socialRecent)return bad('Password required, or please sign in again with Google/Apple within 5 minutes',403);
-    // Foreign-key cascades remove private subscriptions, bookmarks, posts, tours,
-    // comments, follows, sessions and owned business records. Existing editorial
-    // audit entries retain anonymous action history with actor_id NULL.
-    await query('DELETE FROM users WHERE id=$1',[u.id]);
+    // Database deletion and invitation recipient erasure must be atomic.
+    // Orphaned private media files are deleted immediately after commit.
+    const transaction=await pool.connect();let mediaFiles:string[]=[];
+    try{
+      await transaction.query('BEGIN');
+      const stored=await transaction.query('SELECT storage_key FROM user_media WHERE owner_id=$1',[u.id]);
+      mediaFiles=stored.rows.map(r=>r.storage_key);
+      await transaction.query('DELETE FROM business_team_invites WHERE lower(invite_email)=lower($1)',[u.email]);
+      await transaction.query('DELETE FROM users WHERE id=$1',[u.id]);
+      await transaction.query('COMMIT');
+    }catch(e){await transaction.query('ROLLBACK');throw e}finally{transaction.release()}
+    // Public-media access is immediately revoked by cascading DB deletion.
+    // Local files are separately unlinked, while backup erasure follows retention policy.
+    await Promise.all(mediaFiles.map(removeMediaFile));
     const response=ok({success:true});
     response.cookies.set('ffm_session','',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:0});
     return response;
