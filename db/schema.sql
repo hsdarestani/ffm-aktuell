@@ -7,6 +7,17 @@ CREATE TABLE IF NOT EXISTS users (
  language text NOT NULL DEFAULT 'de' CHECK(language IN ('de','en')),
  created_at timestamptz NOT NULL DEFAULT now()
 );
+-- Only the owner can read or update onboarding/personalization preferences.
+CREATE TABLE IF NOT EXISTS user_preferences (
+ user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+ interests text[] NOT NULL DEFAULT '{}',
+ districts text[] NOT NULL DEFAULT '{}',
+ share_activity boolean NOT NULL DEFAULT false,
+ notify_events boolean NOT NULL DEFAULT false,
+ notify_news boolean NOT NULL DEFAULT false,
+ notify_offers boolean NOT NULL DEFAULT false,
+ updated_at timestamptz NOT NULL DEFAULT now()
+);
 CREATE TABLE IF NOT EXISTS sessions (
  token_hash text PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  expires_at timestamptz NOT NULL
@@ -92,6 +103,16 @@ CREATE TABLE IF NOT EXISTS events (
  created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS events_date_idx ON events(status,starts_at);
+-- User event bookmarks and calendar reminder preferences are private.
+-- Calendar reminders are delivered only via explicit .ics export, no silent push.
+CREATE TABLE IF NOT EXISTS event_favorites (
+ user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ event_id uuid NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(user_id,event_id)
+);
+CREATE INDEX IF NOT EXISTS event_favorites_event_idx ON event_favorites(event_id);
+
 CREATE TABLE IF NOT EXISTS news (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL,
  body_de text NOT NULL DEFAULT '', body_en text NOT NULL DEFAULT '',
