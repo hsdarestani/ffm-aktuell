@@ -1,0 +1,24 @@
+/* The voucher is a private single-use code, not a paid ticket or loyalty point. */
+.ffm-coupon-action{margin-top:13px;border-top:1px solid #e4e9e0;padding-top:12px}
+.ffm-coupon-action>button,.ffm-coupon-business form button{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#2e553e;color:#fff;border:0;border-radius:9px;padding:11px 13px;min-height:39px;font-size:11px;font-weight:800}
+.ffm-coupon-action>small{display:block;color:#89978a;font-size:10px;margin-top:7px;line-height:1.4}
+.ffm-coupon-code{background:#eff5ed;border-radius:9px;border:1px dashed #cbdccb;padding:10px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.ffm-coupon-code>span{font-size:10px;color:#6b8c74}
+.ffm-coupon-code>strong{font:800 12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.4px;overflow-wrap:anywhere}
+.ffm-coupon-code>button,.ffm-coupon-wallet-row button{display:inline-flex;align-items:center;gap:5px;border:0;color:#316044;background:transparent;font-size:10px;font-weight:800}
+.ffm-coupon-wallet,.ffm-coupon-business{background:#fff;border:1px solid #e4eae3;border-radius:14px;padding:21px;margin:17px 0;color:#294936}
+.ffm-coupon-heading{display:flex;gap:9px;align-items:center;margin-bottom:15px}
+.ffm-coupon-heading h2{font:400 28px/1.1 'Instrument Serif',Georgia,serif;margin:0}
+.ffm-coupon-wallet>p,.ffm-coupon-business>p{color:#849789;font-size:11px;line-height:1.5}
+.ffm-coupon-wallet-row{display:flex;gap:9px;align-items:center;border-top:1px solid #edf0ea;padding:12px 0}
+.ffm-coupon-wallet-row>div{display:grid;gap:4px;flex:1;min-width:0}
+.ffm-coupon-wallet-row strong{font-size:12px;font-weight:750}
+.ffm-coupon-wallet-row small{font-size:10px;color:#8f9b8f}
+.ffm-coupon-wallet-row code{font-size:11px;color:#446951;word-break:break-all;background:#f2f7f2;border-radius:6px;padding:5px}
+.ffm-coupon-business{max-width:1100px;margin:14px auto}
+.ffm-coupon-business form{display:flex;align-items:end;flex-wrap:wrap;gap:9px}
+.ffm-coupon-business form label{display:grid;gap:5px;font-size:11px;font-weight:750;color:#53705b;flex:1;min-width:180px}
+.ffm-coupon-business form input{border:1px solid #d7e4d7;border-radius:9px;padding:12px;color:#2e553d;font-size:13px;background:#fafcfa}
+.ffm-coupon-business button:disabled{opacity:.48;cursor:not-allowed}
+.ffm-coupon-success{display:flex;align-items:center;gap:7px;color:#3c8051!important;background:#edf8ed;padding:9px;border-radius:8px}
+@media(max-width:600px){.ffm-coupon-wallet,.ffm-coupon-business{margin:12px 13px;padding:15px}.ffm-coupon-wallet-row{align-items:flex-start;flex-wrap:wrap}.ffm-coupon-wallet-row code{max-width:calc(100% - 50px)}.ffm-coupon-business form button{width:100%}}
