@@ -2,7 +2,7 @@ import {NextRequest,NextResponse} from 'next/server';
 import {createHash,randomBytes} from 'node:crypto';
 import {z} from 'zod';
 import {pool,query} from '@/lib/db';
-import {beginSession,endSession,hashPassword,verifyPassword,sessionUser,trustedOrigin,User} from '@/lib/auth';
+import {beginSession,endSession,hashPassword,verifyPassword,sessionUser,trustedOrigin,isRecentlyAuthenticated,User} from '@/lib/auth';
 import {validLocationId,osmId} from '@/lib/location-actions';
 import {resolveBusinessEditor} from '@/lib/business-team';
 export const runtime='nodejs';
@@ -154,14 +154,30 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     response.headers.set('Cache-Control','no-store, private');
     return response;
   }
+  if(method==='GET'&&path==='me/account-security'){
+    const u=need(user);
+    const [linked,verified,fresh]=await Promise.all([
+      query('SELECT provider FROM social_identities WHERE user_id=$1',[u.id]),
+      query('SELECT email_verified_at FROM users WHERE id=$1',[u.id]),
+      isRecentlyAuthenticated(req,u.id)
+    ]);
+    return ok({social_providers:linked.rows.map(r=>r.provider),verified_email:Boolean(verified.rows[0]?.email_verified_at),
+      social_deletion_available:linked.rowCount>0&&fresh,requires_password:linked.rowCount===0});
+  }
   if(method==='POST'&&path==='me/delete'){
     rate(req,'account-delete');const u=need(user);
     if(u.role==='admin')return bad('Administrators need an editorial handover before deleting their account',403);
     const owned=await query("SELECT id FROM businesses WHERE owner_id=$1 AND status IN ('approved','suspended') LIMIT 1",[u.id]);
     if(owned.rowCount)return bad('Transfer or close your verified business with support before deleting your account',409);
-    const b=parse(z.object({password:z.string().min(1),confirmation:z.literal('KONTO LÖSCHEN')}),await payload(req));
-    const saved=await query('SELECT password_hash FROM users WHERE id=$1',[u.id]);
-    if(!saved.rowCount||!verifyPassword(b.password,saved.rows[0].password_hash))return bad('Invalid credentials',403);
+    const b=parse(z.object({password:z.string().optional().default(''),confirmation:z.literal('KONTO LÖSCHEN')}),await payload(req));
+    const [saved,linked,recent]=await Promise.all([
+      query('SELECT password_hash FROM users WHERE id=$1',[u.id]),
+      query('SELECT 1 FROM social_identities WHERE user_id=$1 LIMIT 1',[u.id]),
+      isRecentlyAuthenticated(req,u.id)
+    ]);
+    const passwordValid=Boolean(b.password&&saved.rowCount&&verifyPassword(b.password,saved.rows[0].password_hash));
+    const socialRecent=Boolean(linked.rowCount&&recent);
+    if(!passwordValid&&!socialRecent)return bad('Password required, or please sign in again with Google/Apple within 5 minutes',403);
     // Foreign-key cascades remove private subscriptions, bookmarks, posts, tours,
     // comments, follows, sessions and owned business records. Existing editorial
     // audit entries retain anonymous action history with actor_id NULL.
