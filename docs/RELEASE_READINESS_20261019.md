@@ -17,3 +17,10 @@ Login provider configuration is independent: set the Google/Apple redirect clien
 Map QA: ensure actual vector or raster tiles appear on mobile and desktop. A passing GitHub CI cannot prove a remote tile CDN works. The map now attempts automatic raster fallback and offers an external OpenStreetMap escape hatch.
 
 Editorial verification: the four credible source leads are in the admin review panel. They require individual operator/status confirmation, not automatic bulk marking as verified.
+
+## Identity and staffing launch gates (additional)
+1. Verify a transactional sender domain and configure `RESEND_API_KEY`/`FFM_EMAIL_FROM` on the actual private server. Do not expose the API key to clients, Git, console logs or screenshots. Without sender, signup/password email verification and employee invites intentionally return an unavailable status; Google/Apple verified-email accounts can still count as verified when live OAuth is configured.
+2. Have the business terms and staff seats approved by the actual contract owner before setting a nonzero capacity in admin. No automatic premium purchases exist. Test seven-day invite, matching verified recipient, viewer/editor scope, revocation and membership removal on staging.
+3. Treat `subscription_plans` as a *draft catalog*, not a billing ledger. All three plans have no approved default price and no active checkout. Any public pricing requires documented explicit approval and a valid HTTPS contract. Real payment/entitlement logic and Apple/Google app-store billing review are still unimplemented.
+4. Mobile account deletion should be tested using genuine OAuth sessions with a five-minute freshness rule; provider-only accounts must not require a password that never existed. Admin and approved business owners are prevented from deleting until obligations are transferred.
+5. Verify privacy-preserving merchant analytics: aggregates only, follower numbers withheld below five, no invented Ad Impression/Conversion or sales revenue.
