@@ -182,7 +182,7 @@ try{
  await pool.query("INSERT INTO email_verification_tokens(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '15 minutes')",
   [createHash('sha256').update(proofToken).digest('hex'),readerIdentity.id]);
  const confirmed=await post('me/verify-email/confirm',reader,{token:proofToken});
- if(confirmed.status!==200||!confirmed.body.verified)throw Error('Reader email proof failed: HTTP '+confirmed.status+' '+JSON.stringify(confirmed.body));
+ if(confirmed.status!==200||!confirmed.body.verified)throw Error('Reader email proof failed: HTTP '+confirmed.status+' '+JSON.stringify(confirmed.body)+' server='+output.replaceAll(password,'[redacted]').slice(-1800));
  const replayEmail=await post('me/verify-email/confirm',reader,{token:proofToken});
  if(replayEmail.status!==409)throw Error('Email verification proof could be replayed');
  const deniedSeats=await post('admin/business-seats',reader,{business_id:createdBusiness.body.id,seats:2,terms_approved:true,reason:'Not authorized to approve these seats'});
