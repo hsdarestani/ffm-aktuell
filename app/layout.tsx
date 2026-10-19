@@ -11,6 +11,7 @@ import './post-engagement.css';
 import './following.css';
 import './saved-places.css';
 import './tour-planner.css';
+import './account-events.css';
 import './quick-home.css';
 import './find-fast.css';
 import './stadtstudio.css';
