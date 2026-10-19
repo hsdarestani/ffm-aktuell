@@ -35,7 +35,7 @@ export async function POST(req:NextRequest){
  const tx=await pool.connect();
  try{
   await tx.query('BEGIN');
-  const r=await tx.query("SELECT c.id,c.status,c.start_date,b.status AS business_status,p.status AS place_status FROM ad_campaigns c JOIN businesses b ON b.id=c.business_id JOIN places p ON p.id=c.place_id WHERE c.id=$1 AND b.owner_id=$2 FOR UPDATE OF c",[data.id,u.id]);
+  const r=await tx.query("SELECT c.id,c.status,c.start_date::text AS start_date,b.status AS business_status,p.status AS place_status FROM ad_campaigns c JOIN businesses b ON b.id=c.business_id JOIN places p ON p.id=c.place_id WHERE c.id=$1 AND b.owner_id=$2 FOR UPDATE OF c",[data.id,u.id]);
   if(!r.rowCount){await tx.query('ROLLBACK');return fail('Kampagne nicht gefunden',404)}
   const old=r.rows[0];
   if(old.status!=='draft'&&data.action==='submit'){await tx.query('ROLLBACK');return fail('Nur Entwürfe können eingereicht werden',409)}
