@@ -18,3 +18,6 @@
 .ffm-saved-empty p{color:#718675;font-size:12px;margin:0}
 .ffm-saved-empty button{background:#25513a;color:white;border:0;border-radius:10px;padding:12px 17px;font-size:12px;font-weight:800;display:flex;align-items:center;gap:8px;margin-top:5px}
 @media(max-width:540px){.ffm-saved-page{width:calc(100% - 28px);padding:30px 0 88px}.ffm-saved-heading h1{font-size:45px}.ffm-saved-item{padding:12px;gap:10px}.ffm-saved-pin{width:40px;height:40px}.ffm-saved-name>strong{font-size:14px}.ffm-saved-name>small{font-size:11px}}
+
+.ffm-saved-tour-link{display:inline-flex;align-items:center;gap:8px;margin-top:14px;background:#254b37;border:0;border-radius:10px;padding:12px 15px;color:#fff;font-size:12px;font-weight:800}
+.ffm-saved-tour-link:hover{background:#356448}
