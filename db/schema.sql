@@ -7,6 +7,16 @@ CREATE TABLE IF NOT EXISTS users (
  language text NOT NULL DEFAULT 'de' CHECK(language IN ('de','en')),
  created_at timestamptz NOT NULL DEFAULT now()
 );
+-- Email/password registrations remain unverified until an out-of-band proof.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at timestamptz;
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+ token_hash text PRIMARY KEY,
+ user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ expires_at timestamptz NOT NULL,
+ redeemed_at timestamptz,
+ created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS email_verification_user_idx ON email_verification_tokens(user_id,created_at DESC);
 -- Only the owner can read or update onboarding/personalization preferences.
 CREATE TABLE IF NOT EXISTS user_preferences (
  user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
