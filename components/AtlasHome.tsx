@@ -9,7 +9,7 @@ import {ortsbild} from '@/lib/vorschau';
 type RichAtlasPlace=AtlasPlace&{image_url?:string|null;demo?:boolean;verification_status?:'verified'|'unverified'|'disputed';activity_status?:'operating'|'unknown'|'temporarily_closed'|'permanently_closed';verified_at?:string|null};
 type Event={id:string;title:string;venue:string;starts_at:string;demo?:boolean;image_url?:string};
 type News={id:string;title:string;published_at:string;demo?:boolean;image_url?:string;body_de?:string};
-type Props={lang:'de'|'en';places:RichAtlasPlace[];events:Event[];news:News[];onDiscover:()=>void;onMap:()=>void;onEvents:()=>void;onCommunity:()=>void;onBusiness:()=>void;onPlace:(id:string)=>void;onCategory:(category:string)=>void;onSearch:(query:string)=>void};
+type Props={lang:'de'|'en';places:RichAtlasPlace[];events:Event[];news:News[];onDiscover:()=>void;onMap:()=>void;onEvents:()=>void;onCommunity:()=>void;onBusiness:()=>void;onPlace:(id:string)=>void;onCategory:(category:string)=>void;onSearch:(query:string)=>void;onTours:()=>void};
 
 const needs=[
  {id:'Cafés',label:'Café trinken',icon:Coffee,color:'cream'},
@@ -20,7 +20,7 @@ const needs=[
  {id:'Apotheken',label:'Apotheke finden',icon:Pill,color:'sage'}
 ] as const;
 function germanDate(value:string){const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'});}
-export default function AtlasHome({places,events,news,onDiscover,onMap,onEvents,onCommunity,onBusiness,onPlace,onCategory,onSearch}:Props){
+export default function AtlasHome({places,events,news,onDiscover,onMap,onEvents,onCommunity,onBusiness,onPlace,onCategory,onSearch,onTours}:Props){
  const [query,setQuery]=useState('');
  const confirmed=places.filter(p=>frischBestaetigt(p));
  const upcoming=events.filter(ev=>!ev.demo&&new Date(ev.starts_at).getTime()>Date.now()).sort((a,b)=>Date.parse(a.starts_at)-Date.parse(b.starts_at));
@@ -59,6 +59,7 @@ export default function AtlasHome({places,events,news,onDiscover,onMap,onEvents,
     <button type="button" onClick={onDiscover}>Alle Kategorien ansehen <ChevronRight size={16}/></button>
     <button type="button" onClick={onMap}><MapIcon size={17}/> Auf der Karte suchen</button>
     <button type="button" onClick={onEvents}><CalendarDays size={17}/> Veranstaltungen</button>
+    <button type="button" onClick={onTours}>Touren entdecken <ChevronRight size={16}/></button>
    </div>
   </section>
 

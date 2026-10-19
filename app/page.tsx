@@ -12,10 +12,13 @@ import PostEngagement from '@/components/PostEngagement';
 import {DealActions,BusinessCouponRedeem} from '@/components/CouponPilot';
 import FollowButton from '@/components/FollowButton';
 import {validLocationId} from '@/lib/location-actions';
+import './assistant-discovery.css';
 import {KATEGORIEN,passendeRubrik,frischBestaetigt,statusLabel} from '@/lib/ortskategorien';
 import {VORSCHAU_HINWEIS,ortsbild,vorschauOrte,vorschauVeranstaltungen,vorschauBeitraege,vorschauPosts,vorschauAngebote,vorschauGruppen} from '@/lib/vorschau';
 const Atlas3D=dynamic(()=>import('@/components/Atlas3D'),{ssr:false});
 const TourPlanner=dynamic(()=>import('@/components/TourPlanner'),{ssr:false});
+const CuratedTours=dynamic(()=>import('@/components/CuratedTours'),{ssr:false});
+const SmartDiscover=dynamic(()=>import('@/components/SmartDiscover'),{ssr:false});
 const ProfileSettings=dynamic(()=>import('@/components/ProfileSettings'),{ssr:false});
 const EventActions=dynamic(()=>import('@/components/EventActions'),{ssr:false});
 const BusinessBranchEditor=dynamic(()=>import('@/components/BusinessBranchEditor'),{ssr:false});
@@ -36,11 +39,13 @@ function nutzerfehler(message:string){const msg=(message||'').toLowerCase();if(m
 async function api(path:string,body?:unknown){const r=await fetch('/api/'+path,{method:body===undefined?'GET':'POST',headers:body===undefined?undefined:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),credentials:'same-origin'});const d=await r.json();if(!r.ok)throw Error(nutzerfehler(d.error));return d;}
 const date=(s:string,l:string)=>new Date(s).toLocaleDateString(l==='de'?'de-DE':'en-GB',{day:'2-digit',month:'short',year:'numeric'});
 export default function Home(){
- const lang:'de'='de';const t=words.de;
+ const [lang,setLang]=useState<'de'|'en'>('de');const t=words[lang];
  const [page,setPage]=useState<Page>('home'),[places,setPlaces]=useState<Place[]>([]),[events,setEvents]=useState<Event[]>([]),[news,setNews]=useState<News[]>([]),[posts,setPosts]=useState<Post[]>([]),[deals,setDeals]=useState<Deal[]>([]);
  const [user,setUser]=useState<User|null>(null),[favorites,setFavorites]=useState<string[]>([]),[savedPlaces,setSavedPlaces]=useState<Place[]>([]),[savedLoading,setSavedLoading]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [query,setQuery]=useState(''),[category,setCategory]=useState('Alle'),[district,setDistrict]=useState(''),[selected,setSelected]=useState<Place|null>(null),[nurGepruefte,setNurGepruefte]=useState(false);
  const [followingOnly,setFollowingOnly]=useState(false);
+ const [nearby,setNearby]=useState<{lat:number;lon:number}|null>(null);
+ const [findingNearby,setFindingNearby]=useState(false);
  const [eventFavorites,setEventFavorites]=useState<string[]>([]);
  const [auth,setAuth]=useState(false),[register,setRegister]=useState(false),[menu,setMenu]=useState(false),[toast,setToast]=useState(''),[refresh,setRefresh]=useState(0);
  const [candidates,setCandidates]=useState<Place[]>([]),[candidateTotal,setCandidateTotal]=useState(0),[candidateLoading,setCandidateLoading]=useState(false);
@@ -72,16 +77,18 @@ export default function Home(){
   const q=new URLSearchParams({limit:'18',offset:'0'});
   if(category!=='Alle')q.set('category',category==='Apotheken Notdienst'?'Apotheken':category);
   if(query.trim())q.set('q',query.trim());
+  if(nearby){q.set('lat',String(nearby.lat));q.set('lon',String(nearby.lon));q.set('radius','3');}
   fetch('/api/discovery?'+q,{signal:controller.signal,cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('Fehler');return r.json()})
    .then(data=>{if(!disposed){setCandidates(data.items||[]);setCandidateTotal(data.total||0);}})
    .catch(()=>{if(!disposed){setCandidates([]);setCandidateTotal(0);}})
    .finally(()=>{if(!disposed)setCandidateLoading(false)});
   },240);return()=>{disposed=true;window.clearTimeout(timer);controller.abort()};
- },[page,category,query,refresh]);
+ },[page,category,query,nearby,refresh]);
  const mehrLaden=async()=>{if(candidateLoading||candidates.length>=candidateTotal)return;
   setCandidateLoading(true);try{const q=new URLSearchParams({limit:'18',offset:String(candidates.length)});
    if(category!=='Alle')q.set('category',category==='Apotheken Notdienst'?'Apotheken':category);
    if(query.trim())q.set('q',query.trim());
+   if(nearby){q.set('lat',String(nearby.lat));q.set('lon',String(nearby.lon));q.set('radius','3');}
    const r=await fetch('/api/discovery?'+q);if(!r.ok)throw Error('Fehler');const d=await r.json();
    setCandidates(prev=>[...prev,...d.items.filter((p:Place)=>!prev.some(o=>o.id===p.id))]);
   }catch{flash('Weitere Orte konnten nicht geladen werden.')}finally{setCandidateLoading(false)}
@@ -108,7 +115,9 @@ export default function Home(){
  const sichtbareBeitraege=useMemo(()=>[...news,...vorschauBeitraege],[news]);
  const sichtbarePosts=useMemo(()=>followingOnly?posts:[...posts,...vorschauPosts],[posts,followingOnly]);
  const sichtbareAngebote=useMemo(()=>[...deals,...vorschauAngebote],[deals]);
- const filtered=useMemo(()=>sichtbareOrte.filter(p=>passendeRubrik(p,category)&&(!nurGepruefte||frischBestaetigt(p))&&(!district||p.district===district)&&[p.name,p.category,p.district,p.description_de,p.description_en].join(' ').toLocaleLowerCase().includes(query.toLocaleLowerCase())),[sichtbareOrte,category,district,query,nurGepruefte]);
+ const distanceKm=(p:Place)=>!nearby?0:(!Number.isFinite(p.latitude)||!Number.isFinite(p.longitude)?Infinity:6371*2*Math.asin(Math.sqrt(Math.sin(((p.latitude as number)-nearby.lat)*Math.PI/360)**2+Math.cos(nearby.lat*Math.PI/180)*Math.cos((p.latitude as number)*Math.PI/180)*Math.sin(((p.longitude as number)-nearby.lon)*Math.PI/360)**2)));
+ const filtered=useMemo(()=>sichtbareOrte.filter(p=>(!nearby||distanceKm(p)<=3)&&passendeRubrik(p,category)&&(!nurGepruefte||frischBestaetigt(p))&&(!district||p.district===district)&&[p.name,p.category,p.district,p.description_de,p.description_en].join(' ').toLocaleLowerCase().includes(query.toLocaleLowerCase())),[sichtbareOrte,category,district,query,nurGepruefte,nearby]);
+ const toggleNearby=()=>{if(nearby){setNearby(null);return;}if(!navigator.geolocation){flash('Standortzugriff nicht verfügbar. Bitte normal suchen.');return;}setFindingNearby(true);navigator.geolocation.getCurrentPosition(pos=>{setFindingNearby(false);const {latitude:lat,longitude:lon}=pos.coords;if(lat<49.7||lat>50.4||lon<8.2||lon>9.1){flash('Der Standort liegt außerhalb des Frankfurter Suchbereichs.');return;}setNearby({lat,lon});},()=>{setFindingNearby(false);flash('Standort nicht freigegeben. Suche ohne Standort bleibt möglich.');},{enableHighAccuracy:false,timeout:10000,maximumAge:60000});};
  const navigate=(p:Page)=>{if(new URLSearchParams(window.location.search).has('tour'))window.history.replaceState(null,'',window.location.pathname);setPage(p);setMenu(false);window.scrollTo({top:0,behavior:'smooth'})};
  const selectPlace=useCallback((id:string)=>{
   const cached=[...sichtbareOrte,...candidates].find(p=>p.id===id);
@@ -132,11 +141,11 @@ export default function Home(){
  const formField=(label:string,name:string,required=false,type='text')=><label className="form-label">{label}<input name={name} type={type} required={required}/></label>;
  const reviewSection=(type:string,items:any[])=><div className="review-section" key={type}><h3>{{businesses:'Unternehmen',claims:'Inhaberschaft',places:'Orte',deals:'Angebote',posts:'Beiträge'}[type]||'Einträge'} <span>{items.length}</span></h3>{items.map(a=><div className="review-row" key={a.id}><span>{a.name||a.title||a.body||a.business_name+' / '+a.place_name}</span><div><button title={t.approve} onClick={()=>submit('admin/review',{type:type==='businesses'?'business':type==='claims'?'claim':type==='places'?'place':type==='deals'?'deal':'post',id:a.id,approve:true},t.approve)}><Check size={18}/></button><button title={t.reject} onClick={()=>submit('admin/review',{type:type==='businesses'?'business':type==='claims'?'claim':type==='places'?'place':type==='deals'?'deal':'post',id:a.id,approve:false},t.reject)}><X size={18}/></button></div></div>)}{items.length===0&&<p className="subdued">—</p>}</div>;
  return <div className={'site v3-site'+(page==='admin'?' ffm-studio-active':'')}>
-  <header className="header"><div className="header-inner"><button className="logo" onClick={()=>navigate('home')} aria-label="FFM Aktuell Startseite"><span className="ml-brand-mark" aria-hidden="true"><svg viewBox="0 0 60 44" fill="none" role="presentation"><path d="M2 29C15 5 23 7 34 22C43 33 51 37 58 16" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round"/><circle cx="34" cy="22" r="2.7" fill="currentColor"/></svg></span><span className="ml-brand-word">ffm<b>aktuell</b><small>FRANKFURT VON INNEN</small></span></button><nav className="desktop-nav">{nav.map(([p,,txt])=><button key={p} className={page===p?'active':''} onClick={()=>navigate(p)}>{txt}</button>)}</nav><div className="header-end"><button className="business-nav" onClick={()=>navigate('business')}>{t.business}<span className="ui-dot" aria-hidden="true"/></button><button className="user-button" title={user?'Meine Orte':t.sign} aria-label={user?'Meine Orte':t.sign} onClick={()=>user?navigate(user.role==='admin'?'admin':'profile'):setAuth(true)}><UserRound size={20}/></button><button className="menu-button" onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div></div>{menu&&<div className="mobile-menu"><button onClick={()=>navigate('business')}>{t.business}</button><button onClick={()=>user?navigate('saved'):setAuth(true)}>{user?'Meine Orte':t.login}</button>{user&&<button onClick={()=>navigate('profile')}>Mein Profil</button>}{user&&<button onClick={()=>navigate('tours')}>Meine Touren</button>}{user?.role==='admin'&&<button onClick={()=>navigate('admin')}>Verwaltung</button>}</div>}</header>
+  <header className="header"><div className="header-inner"><button className="logo" onClick={()=>navigate('home')} aria-label="FFM Aktuell Startseite"><span className="ml-brand-mark" aria-hidden="true"><svg viewBox="0 0 60 44" fill="none" role="presentation"><path d="M2 29C15 5 23 7 34 22C43 33 51 37 58 16" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round"/><circle cx="34" cy="22" r="2.7" fill="currentColor"/></svg></span><span className="ml-brand-word">ffm<b>aktuell</b><small>FRANKFURT VON INNEN</small></span></button><nav className="desktop-nav">{nav.map(([p,,txt])=><button key={p} className={page===p?'active':''} onClick={()=>navigate(p)}>{txt}</button>)}</nav><div className="header-end"><button type="button" onClick={()=>setLang(l=>l==='de'?'en':'de')} aria-label={lang==='de'?'Switch to English':'Auf Deutsch wechseln'} title={lang==='de'?'English':'Deutsch'} className="ffm-language-toggle">{lang==='de'?'EN':'DE'}</button><button className="business-nav" onClick={()=>navigate('business')}>{t.business}<span className="ui-dot" aria-hidden="true"/></button><button className="user-button" title={user?'Meine Orte':t.sign} aria-label={user?'Meine Orte':t.sign} onClick={()=>user?navigate(user.role==='admin'?'admin':'profile'):setAuth(true)}><UserRound size={20}/></button><button className="menu-button" onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div></div>{menu&&<div className="mobile-menu"><button onClick={()=>navigate('business')}>{t.business}</button><button onClick={()=>user?navigate('saved'):setAuth(true)}>{user?'Meine Orte':t.login}</button>{user&&<button onClick={()=>navigate('profile')}>Mein Profil</button>}{user&&<button onClick={()=>navigate('tours')}>Meine Touren</button>}{user?.role==='admin'&&<button onClick={()=>navigate('admin')}>Verwaltung</button>}</div>}</header>
   {(page==='events'||page==='community')&&<div className="v3-preview-strip" role="status"><span className="v3-preview-spark"/><strong>VORSCHAU</strong><span>{VORSCHAU_HINWEIS}</span></div>}
    {toast&&<div className="toast" role="status"><Check size={16}/>{toast}<button onClick={()=>setToast('')}><X size={16}/></button></div>}
   {error&&<div className="error">{error}<button onClick={()=>setRefresh(x=>x+1)}>{lang==='de'?'Erneut laden':'Retry'}</button></div>}
-  {page==='home'&&<AtlasHome lang={lang} places={sichtbareOrte} events={sichtbareVeranstaltungen} news={sichtbareBeitraege} onDiscover={()=>navigate('discover')} onMap={()=>navigate('map')} onEvents={()=>navigate('events')} onCommunity={()=>navigate('community')} onBusiness={()=>navigate('business')} onPlace={selectPlace} onCategory={cat=>{setCategory(cat);navigate('discover')}} onSearch={value=>{setQuery(value);setCategory('Alle');setDistrict('');navigate('discover')}} />}
+  {page==='home'&&<><AtlasHome lang={lang} places={sichtbareOrte} events={sichtbareVeranstaltungen} news={sichtbareBeitraege} onDiscover={()=>navigate('discover')} onMap={()=>navigate('map')} onEvents={()=>navigate('events')} onCommunity={()=>navigate('community')} onBusiness={()=>navigate('business')} onPlace={selectPlace} onCategory={cat=>{setCategory(cat);navigate('discover')}} onSearch={value=>{setQuery(value);setCategory('Alle');setDistrict('');navigate('discover')}} onTours={()=>navigate('tours')} /><SmartDiscover onPlace={selectPlace} onDiscover={()=>navigate('discover')} lang={lang}/></>}
   {page==='discover'&&<main className="ffm-find-page ffm-find-visual" id="entdecken">
  <section className="ffm-find-head">
   <h1>Entdecken<span>.</span></h1>
@@ -167,6 +176,7 @@ export default function Home(){
   <details className="ffm-find-more">
    <summary><Plus size={16}/> Mehr {category!=='Alle'&&!['Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(category)?'· '+(catBezeichnungen[category]||category):''}</summary>
    <div className="ffm-find-extra">
+    <button type="button" aria-pressed={Boolean(nearby)} disabled={findingNearby} onClick={toggleNearby}>{nearby?'✓ In meiner Nähe (3 km)':findingNearby?'Standort wird gesucht …':'Standort verwenden (3 km)'}</button>
     <div className="ffm-find-extra-cats">{categories.filter(cat=>!['Alle','Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(cat)).map(cat=><button type="button" key={cat} className={category===cat?'active':''} onClick={()=>setCategory(cat)}>{catBezeichnungen[cat]||cat}</button>)}</div>
     <label className="ffm-find-verified"><input type="checkbox" checked={nurGepruefte} onChange={e=>setNurGepruefte(e.target.checked)}/> Nur aktuell geprüfte Betriebe</label>
    </div>
@@ -217,7 +227,7 @@ export default function Home(){
     <button className="ffm-saved-remove" title="Aus Merkliste entfernen" aria-label={p.name+' entfernen'} onClick={()=>void favorite(p.id)}><Heart size={20} fill="currentColor"/></button>
    </article>)}</div>}
   </main>}
- {page==='tours'&&<TourPlanner loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>}
+ {page==='tours'&&<><CuratedTours/><TourPlanner loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/></>}
  {page==='profile'&&<ProfileSettings user={user} onLogin={()=>setAuth(true)} onNotice={flash}
   onSavedPlaces={()=>navigate('saved')} onTours={()=>navigate('tours')}
   onDeleted={()=>{setUser(null);setFavorites([]);setSelected(null);navigate('home');flash('Dein Konto wurde gelöscht.')}}/>}
