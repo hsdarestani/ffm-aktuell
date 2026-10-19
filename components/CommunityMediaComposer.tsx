@@ -1,13 +1,16 @@
 'use client';
-import {useState,type FormEvent} from 'react';
+import {useEffect,useState,type FormEvent} from 'react';
 type Notice=(text:string)=>void;
 export default function CommunityMediaComposer({loggedIn,onLogin,onNotice,onChanged}:{loggedIn:boolean;onLogin:()=>void;onNotice:Notice;onChanged:()=>void}){
  const [text,setText]=useState(''),[file,setFile]=useState<File|null>(null),[consent,setConsent]=useState(false),[busy,setBusy]=useState(false);
  const [kind,setKind]=useState<'post'|'story'>('post');
+ const [mediaReady,setMediaReady]=useState<boolean|null>(null);
+ useEffect(()=>{let active=true;fetch('/api/media/status',{cache:'no-store'}).then(r=>r.json()).then(d=>{if(active)setMediaReady(Boolean(d.upload_enabled))}).catch(()=>{if(active)setMediaReady(false)});return()=>{active=false}},[]);
  async function submit(e:FormEvent){
   e.preventDefault();if(!loggedIn){onLogin();return;}
   if(kind==='post'&&!text.trim())return;
   if(kind==='story'&&!file){onNotice('Für eine Story bitte ein Bild oder Video auswählen.');return;}
+  if(file&&!mediaReady){onNotice('Medien Upload ist noch nicht aktiviert. Du kannst einen Textbeitrag schreiben.');return;}
   if(file&&!consent){onNotice('Bitte die Nutzungsrechte bestätigen.');return;}
   setBusy(true);
   try{
@@ -36,7 +39,8 @@ export default function CommunityMediaComposer({loggedIn,onLogin,onNotice,onChan
   <label className="ffm-media-label" htmlFor="ffm-community-text">{kind==='post'?'Was hast du entdeckt?':'Kurze Story Beschreibung'}</label>
   <textarea id="ffm-community-text" value={text} onChange={e=>setText(e.target.value)} required={kind==='post'} maxLength={kind==='post'?1000:280} placeholder="Dein Frankfurt Moment …"/>
   <label className="ffm-media-label" htmlFor="ffm-community-file">Foto oder kurzes Video {kind==='story'?'(erforderlich)':'(optional)'}</label>
-  <input id="ffm-community-file" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" onChange={e=>setFile(e.currentTarget.files?.[0]||null)}/>
+  <input id="ffm-community-file" type="file" disabled={!mediaReady} accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" onChange={e=>setFile(e.currentTarget.files?.[0]||null)}/>
+  {mediaReady===false&&<small role="status">Foto und Video Upload sind bis zur Aktivierung der Sicherheitsprüfung deaktiviert. Textbeiträge funktionieren weiterhin.</small>}
   {file&&<small>{file.name} · maximal 24 MB · Sicherheitsprüfung und Freigabe</small>}
   {file&&<label className="ffm-media-consent"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} required/> Ich besitze die erforderlichen Rechte und stimme der Veröffentlichung nach Prüfung zu.</label>}
   {loggedIn?<button className="primary-btn small" disabled={busy}>{busy?'Wird verarbeitet …':'Zur Prüfung senden'}</button>:
