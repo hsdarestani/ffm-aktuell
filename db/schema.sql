@@ -308,4 +308,57 @@ CREATE TABLE IF NOT EXISTS audit_log (
  id bigserial PRIMARY KEY, actor_id uuid REFERENCES users(id) ON DELETE SET NULL,
  action text NOT NULL, target_type text NOT NULL, target_id text NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
 );
+-- Uploaded media: quarantined on disk until anti-malware scanning and editorial review.
+CREATE TABLE IF NOT EXISTS user_media (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ owner_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ media_type text NOT NULL CHECK(media_type IN ('image/jpeg','image/png','image/webp','video/mp4','video/webm')),
+ size_bytes integer NOT NULL CHECK(size_bytes > 0 AND size_bytes <= 25165824),
+ storage_key text NOT NULL UNIQUE,
+ sha256 text NOT NULL,
+ license_confirmed boolean NOT NULL DEFAULT false,
+ status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ reviewed_by uuid REFERENCES users(id) ON DELETE SET NULL,
+ reviewed_at timestamptz
+);
+CREATE INDEX IF NOT EXISTS user_media_review_idx ON user_media(status,created_at);
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS media_id uuid REFERENCES user_media(id) ON DELETE SET NULL;
+-- Stories disappear automatically after 24h even if housekeeping has not run.
+CREATE TABLE IF NOT EXISTS stories (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ owner_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ media_id uuid NOT NULL REFERENCES user_media(id) ON DELETE CASCADE,
+ caption text NOT NULL DEFAULT '',
+ status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','published','rejected','removed')),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ expires_at timestamptz NOT NULL DEFAULT (now()+interval '24 hours'),
+ reviewed_by uuid REFERENCES users(id) ON DELETE SET NULL,
+ reviewed_at timestamptz,
+ CHECK(expires_at <= created_at+interval '24 hours')
+);
+CREATE INDEX IF NOT EXISTS stories_visible_idx ON stories(status,expires_at);
+-- Explicit, revocable, time-bounded grants; a business can never reuse media without consent.
+CREATE TABLE IF NOT EXISTS media_right_grants (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ owner_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+ media_id uuid NOT NULL REFERENCES user_media(id) ON DELETE CASCADE,
+ expires_at timestamptz NOT NULL,
+ revoked_at timestamptz,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(owner_id,business_id,media_id),
+ CHECK(expires_at>created_at)
+);
+CREATE TABLE IF NOT EXISTS business_highlights (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+ grant_id uuid NOT NULL REFERENCES media_right_grants(id) ON DELETE CASCADE,
+ status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','published','rejected','removed')),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ reviewed_by uuid REFERENCES users(id) ON DELETE SET NULL,
+ reviewed_at timestamptz,
+ UNIQUE(business_id,grant_id)
+);
+CREATE INDEX IF NOT EXISTS highlights_visible_idx ON business_highlights(status,created_at);
 COMMIT;
