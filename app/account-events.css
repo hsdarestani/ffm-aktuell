@@ -1,0 +1,35 @@
+/* Small event actions and private profile. Mobile first, no permanent extra navigation tabs. */
+.ffm-event-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:15px}
+.ffm-event-actions button,.ffm-event-actions a{border:1px solid #dce5dc;background:#f9faf5;color:#315742;border-radius:9px;min-height:37px;padding:9px 11px;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;cursor:pointer}
+.ffm-event-actions button[aria-pressed=true]{background:#e0efe2;border-color:#cde1d0}
+.ffm-event-actions button:focus-visible,.ffm-profile-page button:focus-visible{outline:3px solid #80ab8e;outline-offset:3px}
+.ffm-profile-page{max-width:800px;margin:auto;padding:43px 18px 100px;color:#2c4836}
+.ffm-profile-head>span{font-size:10px;font-weight:800;letter-spacing:1.6px;color:#998d7c}
+.ffm-profile-head h1{font:400 clamp(45px,6vw,69px)/1.04 'Instrument Serif',Georgia,serif;margin:7px 0}
+.ffm-profile-head h1 span{color:#b47b61}
+.ffm-profile-head p{color:#8ba092;font-size:12px;overflow-wrap:anywhere}
+.ffm-profile-shortcuts{display:flex;gap:10px;margin:27px 0 15px;flex-wrap:wrap}
+.ffm-profile-shortcuts button{border:1px solid #d7e4d8;background:#f7faf6;padding:13px 18px;border-radius:11px;color:#345b40;display:flex;align-items:center;gap:9px;font-size:12px;font-weight:800}
+.ffm-profile-panel{background:#fff;border:1px solid #e4e9e0;border-radius:15px;padding:25px;margin:12px 0 18px}
+.ffm-profile-panel h2{font:400 28px/1.1 'Instrument Serif',Georgia,serif;margin:0 0 16px}
+.ffm-profile-panel h2:not(:first-child){margin-top:28px}
+.ffm-profile-chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:22px}
+.ffm-profile-chips button{padding:10px 13px;border-radius:30px;border:1px solid #dce5dd;color:#5b7462;background:#fbfcf9;font-size:12px}
+.ffm-profile-chips button.selected{background:#2c513c;color:white;border-color:#2c513c}
+.ffm-profile-field{display:grid;gap:5px;font-size:13px;font-weight:800;color:#486d52}
+.ffm-profile-field small{font-size:10px;color:#9aab9d;font-weight:500}
+.ffm-profile-field input,.ffm-profile-danger input{width:100%;border:1px solid #dce7dd;border-radius:9px;padding:12px 13px;background:#fbfcfa;color:#314d38;font-size:13px}
+.ffm-profile-check{display:flex;gap:11px;align-items:start;padding:11px 1px;font-size:12px;color:#456a4f;cursor:pointer}
+.ffm-profile-check>input{accent-color:#315b40;width:17px;height:17px;flex:none;margin-top:2px}
+.ffm-profile-check span{display:grid;gap:3px}
+.ffm-profile-check small,.ffm-profile-tip{font-size:11px;color:#83988a;line-height:1.55}
+.ffm-profile-primary,.ffm-profile-outline{border:0;border-radius:10px;background:#2c533b;color:#fff;min-height:43px;display:inline-flex;align-items:center;gap:8px;justify-content:center;padding:12px 20px;font-size:12px;font-weight:850;margin-top:14px}
+.ffm-profile-outline{border:1px solid #d7e7d7;color:#365e42;background:#f5faf4}
+.ffm-profile-danger{margin-top:21px;border-top:1px solid #e9e9e5;padding-top:15px}
+.ffm-profile-danger>button{border:0;background:transparent;color:#a8665e;display:flex;gap:8px;align-items:center;font-size:11px;font-weight:800;padding:9px 0}
+.ffm-profile-danger form{margin-top:10px;padding:14px;border-radius:11px;background:#fff8f6;border:1px solid #f0ded7}
+.ffm-profile-danger p{font-size:11px;line-height:1.6;color:#936e67}
+.ffm-profile-danger label{display:grid;gap:6px;font-size:11px;color:#8a625b;margin:12px 0}
+.ffm-profile-danger form button{display:inline-flex;gap:8px;align-items:center;background:#a54e48;border:0;color:#fff;border-radius:9px;padding:11px 13px;font-size:11px}
+.ffm-profile-danger form button:disabled{opacity:.45}
+@media(max-width:600px){.ffm-profile-page{padding:31px 13px 110px}.ffm-profile-panel{padding:19px 16px}.ffm-profile-head h1{font-size:51px}.ffm-event-actions{gap:5px}.ffm-event-actions button,.ffm-event-actions a{padding:8px 9px}}
