@@ -20,3 +20,7 @@
 .ffm-evidence-leads article small{color:#687a6e}
 .ffm-evidence-leads article p{font-size:13px;line-height:1.5;margin:6px 0;flex:1}
 .ffm-evidence-leads article a{display:flex;align-items:center;gap:6px;text-decoration:underline;font-size:13px;color:#1d5137}
+
+.ffm-intent-optin{display:flex;align-items:center;gap:9px;font-size:13px;margin:10px 0;color:#415d4b}
+.ffm-intent-optin input{accent-color:#235d3f}
+.ffm-assistant-results em{font-size:12px;font-weight:700;font-style:normal;color:#ad593d}
