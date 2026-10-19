@@ -51,6 +51,7 @@ export default function Home(){
  const [nearby,setNearby]=useState<{lat:number;lon:number}|null>(null);
  const [findingNearby,setFindingNearby]=useState(false);
  const [eventFavorites,setEventFavorites]=useState<string[]>([]);
+ const [oauthReady,setOauthReady]=useState({google:false,apple:false});
  const [auth,setAuth]=useState(false),[register,setRegister]=useState(false),[menu,setMenu]=useState(false),[toast,setToast]=useState(''),[refresh,setRefresh]=useState(0);
  const [candidates,setCandidates]=useState<Place[]>([]),[candidateTotal,setCandidateTotal]=useState(0),[candidateLoading,setCandidateLoading]=useState(false);
  const [business,setBusiness]=useState<any>(null),[businessDetail,setBusinessDetail]=useState<any>(null),[queue,setQueue]=useState<Record<string,any[]>|null>(null);
@@ -61,6 +62,11 @@ export default function Home(){
  },[refresh]);
  useEffect(()=>{void load()},[load]);
  useEffect(()=>{document.documentElement.lang=lang},[lang]);
+ useEffect(()=>{if(!auth)return;let current=true;fetch('/api/auth/oauth/status',{cache:'no-store'}).then(r=>r.json()).then(d=>{if(current)setOauthReady({google:Boolean(d.google),apple:Boolean(d.apple)})}).catch(()=>{});return()=>{current=false}},[auth]);
+ useEffect(()=>{const problem=new URLSearchParams(window.location.search).get('login_error');
+  if(problem){flash(problem==='existing_account'?'Dieses E-Mail-Konto besteht bereits. Bitte zuerst mit E-Mail und Passwort anmelden.':'Social Login ist derzeit nicht verfügbar. Bitte E-Mail Anmeldung nutzen.');
+   const url=new URL(window.location.href);url.searchParams.delete('login_error');window.history.replaceState(null,'',url.pathname+url.search);}
+ },[]);
  useEffect(()=>{if(new URLSearchParams(window.location.search).has('tour'))setPage('tours')},[]);
  // Deep links resolve directly to the actual place record, even when that
  // raw OSM candidate isn't in the first search page. Never invent demo venues.
@@ -281,6 +287,8 @@ export default function Home(){
   <span>Dieses Unternehmen</span>
   <FollowButton key={selected.business_id} targetType="business" targetId={selected.business_id} initialFollowing={Boolean(selected.following_business)} own={false} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>
  </div>}<VenueReviews key={selected.id} placeId={selected.id} demo={Boolean(selected.demo)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>{selected.candidate&&<p className="v5-candidate-alert">Betrieb und Öffnungszeiten nicht geprüft. Bitte beim Anbieter nachsehen.</p>}{selected.verification_source&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.verification_source}>Quelle der Betriebsprüfung</a>}{selected.source_url&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.source_url}>{t.source}<span className="ui-dot" aria-hidden="true"/></a>}<p className="fineprint">{t.notice}</p></div><PlaceLocationMap key={selected.id} name={selected.name} address={selected.address} latitude={selected.latitude} longitude={selected.longitude}/></div></div>}
-  {auth&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setAuth(false)}}><div className="auth-dialog" role="dialog" aria-modal="true"><button className="dialog-close" onClick={()=>setAuth(false)}><X/></button><span className="auth-mark">F✳</span><small>DEIN ZUGANG ZU FFM AKTUELL</small><h2>{register?t.register:t.welcome}</h2><form onSubmit={onAuth}>{register&&formField(t.name,'display_name',true)}{formField(t.email,'email',true,'email')}{formField(t.password,'password',true,'password')}<button className="primary-btn">{register?t.register:t.login}<span className="ui-dot" aria-hidden="true"/></button></form><button className="switch-auth" onClick={()=>setRegister(!register)}>{register?t.login:t.register}<span className="ui-dot" aria-hidden="true"/></button></div></div>}
+  {auth&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setAuth(false)}}><div className="auth-dialog" role="dialog" aria-modal="true"><button className="dialog-close" onClick={()=>setAuth(false)}><X/></button><span className="auth-mark">F✳</span><small>DEIN ZUGANG ZU FFM AKTUELL</small><h2>{register?t.register:t.welcome}</h2><form onSubmit={onAuth}>{register&&formField(t.name,'display_name',true)}{formField(t.email,'email',true,'email')}{formField(t.password,'password',true,'password')}<button className="primary-btn">{register?t.register:t.login}<span className="ui-dot" aria-hidden="true"/></button></form>
+ {(oauthReady.google||oauthReady.apple)&&<div className="ffm-oauth-actions">{oauthReady.google&&<a href="/api/auth/oauth/google/start">Mit Google anmelden</a>}{oauthReady.apple&&<a href="/api/auth/oauth/apple/start">Mit Apple anmelden</a>}</div>}
+ <button className="switch-auth" onClick={()=>setRegister(!register)}>{register?t.login:t.register}<span className="ui-dot" aria-hidden="true"/></button></div></div>}
  </div>;
 }
