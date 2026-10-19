@@ -101,3 +101,24 @@ Global point earning/rewards, in-app restaurant bookings, direct ticket checkout
 
 ## Decisions the team must obtain
 Name/trademark, prices & trial rules, billing/tax/PSP, operator verification, verified-visit methods, license/consent terms for photos/OSM, moderation policy and appeal process, default language, public privacy and release signoff.
+
+## Phase 3c: Admin-managed taxonomy, real multi-category assignment (2026-10-19)
+- A new `catalog_categories` table provides German and English labels, optional one-level parent category, active state and audit records.
+- Existing standard categories are seeded but never silently overwritten during schema reruns.
+- A real `place_categories` relationship gives each published place up to eight categories while preserving its canonical category.
+- `GET /api/places` and `GET /api/location` expose the assigned tags; publication filters match secondary categories.
+- Admin `Kategorien` screen manages labels, subcategories, activation and multi-tag assignment; all writes require an admin session.
+- Public discovery combines the installed static catalog and dynamic active categories, and falls back cleanly if the API is unavailable.
+- **Open:** OSM data importer still emits source-native primary tags and does not infer custom editorial subcategories, public result comparisons and multi-filter UI not yet complete.
+
+## Phase 4c: Non-publishing advertisement proposals and editorial approvals (2026-10-19)
+- Approved business owners can create structured ad proposal drafts for search, homepage, feed, Stories, events, districts or categories, selecting a real owned published branch and requested dates.
+- Submission is explicit and rate-limited; only the business owner sees their records.
+- Admin reviews proposals, with reasons on rejection and audit records.
+- Approval advances to `awaiting_commercial_setup`, **never** `live`, billable or public. No arbitrary tariffs, discount prices, or fake payments.
+- Actual ad placement, approved price lists, SEPA/cards, subscription entitlements, impressions/click data, invoicing and customer-facing publication remain pending the documented commercial decisions.
+- End-to-end tests exercise the real disposable PostgreSQL database, read/write permission gates, approval transition, no-checkout contract and cancellation.
+
+## Cross-cutting release gate
+- All current draft-PR code requires merge, DB migration, safe publication and real mobile/browser acceptance. CI passing is not proof of STRATO production readiness.
+- OAuth client keys, ClamAV scanner and owner/copyright policies remain external prerequisites; Apple/Google app store clients are not included.
