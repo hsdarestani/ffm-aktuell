@@ -9,8 +9,10 @@ import {
 import {KATEGORIEN} from '@/lib/ortskategorien';
 import {EDITORIAL_SOURCE_LEADS} from '@/lib/editorial-source-leads';
 import MediaEditorial from '@/components/MediaEditorial';
+import CatalogStudio from '@/components/CatalogStudio';
+import '@/app/catalog-studio.css';
 
-type View='overview'|'review'|'moderation'|'publish';
+type View='overview'|'review'|'moderation'|'publish'|'catalog';
 type PublishMode='place'|'news'|'event';
 type ReviewMode='unverified'|'needs_review'|'existing';
 type Candidate={osm_id:string;name:string;category:string;address:string|null;website:string|null;phone:string|null;opening_hours:string|null;last_osm_check:string|null;osm_url:string;latitude:number;longitude:number};
@@ -26,7 +28,8 @@ const NAV:{view:View;label:string;small:string;icon:IconComponent;index:string}[
  {view:'overview',label:'Heute',small:'Heute',icon:LayoutDashboard,index:'01'},
  {view:'review',label:'Orte prüfen',small:'Prüfen',icon:MapPinned,index:'02'},
  {view:'moderation',label:'Freigaben',small:'Freigaben',icon:ShieldCheck,index:'03'},
- {view:'publish',label:'Erstellen',small:'Erstellen',icon:SquarePen,index:'04'}
+ {view:'publish',label:'Erstellen',small:'Erstellen',icon:SquarePen,index:'04'},
+ {view:'catalog',label:'Kategorien',small:'Rubriken',icon:Filter,index:'05'}
 ];
 const queueNames:{key:keyof Queue;title:string;singular:string}[]=[
  {key:'businesses',title:'Unternehmen',singular:'business'},
@@ -304,6 +307,7 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
    <div className="ffm-studio-mobile-tabs">{NAV.map(n=><button type="button" key={n.view} onClick={()=>navigate(n.view)} aria-current={view===n.view?'page':undefined} className={view===n.view?'active':''}><n.icon size={17}/>{n.small}</button>)}</div>
 
    <div className="ffm-studio-content">
+    {view==='catalog'&&<CatalogStudio onNotice={(msg,success)=>setNotice({kind:success?'success':'error',text:msg})}/>}
     {notice&&<div role={notice.kind==='error'?'alert':'status'} className={'ffm-studio-notice '+notice.kind}><span>{notice.kind==='success'?<Check size={18}/>:<ShieldAlert size={18}/>}</span>{notice.text}<button type="button" onClick={()=>setNotice(null)} aria-label="Meldung schließen"><X size={16}/></button></div>}
 
     {view==='overview'&&<>
