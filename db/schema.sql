@@ -51,6 +51,32 @@ CREATE TABLE IF NOT EXISTS businesses (
  created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS businesses_owner_idx ON businesses(owner_id);
+-- Business team access is gated by explicit administrative seat allocation.
+-- The default is ZERO; unapproved subscription/staff tiers cannot grant seats.
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS team_seat_limit integer NOT NULL DEFAULT 0 CHECK(team_seat_limit BETWEEN 0 AND 50);
+CREATE TABLE IF NOT EXISTS business_team_members (
+ business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+ user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ role text NOT NULL CHECK(role IN ('viewer','editor')),
+ joined_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(business_id,user_id)
+);
+CREATE INDEX IF NOT EXISTS business_team_members_user_idx ON business_team_members(user_id);
+CREATE TABLE IF NOT EXISTS business_team_invites (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+ inviter_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ invite_email text NOT NULL,
+ role text NOT NULL CHECK(role IN ('viewer','editor')),
+ token_hash text NOT NULL UNIQUE,
+ expires_at timestamptz NOT NULL,
+ redeemed_at timestamptz,
+ revoked_at timestamptz,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ CHECK(expires_at>created_at)
+);
+CREATE INDEX IF NOT EXISTS business_team_invites_by_business ON business_team_invites(business_id,created_at DESC);
+
 CREATE TABLE IF NOT EXISTS places (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), business_id uuid REFERENCES businesses(id) ON DELETE SET NULL,
  name text NOT NULL, category text NOT NULL DEFAULT 'Entdecken', district text NOT NULL DEFAULT '',
