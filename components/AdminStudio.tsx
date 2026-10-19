@@ -7,6 +7,7 @@ import {
  Sparkles,SquarePen,UsersRound,X,CalendarDays,CheckCheck,EyeOff,Globe2
 } from 'lucide-react';
 import {KATEGORIEN} from '@/lib/ortskategorien';
+import MediaEditorial from '@/components/MediaEditorial';
 
 type View='overview'|'review'|'moderation'|'publish';
 type PublishMode='place'|'news'|'event';
@@ -386,6 +387,7 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
         }
        }}>Bewertung entfernen</button>}</div></div></article>):<div className="ffm-studio-mod-empty"><div><CheckCheck size={32}/></div><h3>Alles erledigt.</h3></div>}
      </CityPanel></div>
+     <MediaEditorial/>
     </>}
 
     {view==='publish'&&<>
