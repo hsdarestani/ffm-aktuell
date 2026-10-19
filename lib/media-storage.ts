@@ -15,6 +15,19 @@ export function validSignature(t:string,b:Buffer){
  if(t==='video/webm')return b.subarray(0,4).equals(Buffer.from([26,69,223,163]));
  return false;
 }
+export async function scannerReady():Promise<boolean>{
+ const host=process.env.CLAMD_HOST;if(!host)return false;
+ return new Promise(resolve=>{
+  const socket=connect({host,port:Number(process.env.CLAMD_PORT||3310)});
+  let done=false;
+  const finish=(ok:boolean)=>{if(done)return;done=true;socket.destroy();resolve(ok)};
+  socket.setTimeout(2500,()=>finish(false));
+  socket.once('error',()=>finish(false));
+  socket.once('connect',()=>socket.write(Buffer.from('zPING\\0')));
+  socket.on('data',chunk=>finish(chunk.toString('utf8').includes('PONG')));
+  socket.once('close',()=>finish(false));
+ });
+}
 export function scan(bytes:Buffer):Promise<void>{
  const host=process.env.CLAMD_HOST;if(!host)return Promise.reject(Error('Virenscanner nicht eingerichtet'));
  return new Promise((resolve,reject)=>{
