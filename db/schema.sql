@@ -295,6 +295,30 @@ CREATE TABLE IF NOT EXISTS deals (
 CREATE INDEX IF NOT EXISTS deals_status_idx ON deals(status);
 -- Pilot coupons are free of charge and never count as payment, ticket or proof
 -- of visiting a venue. Codes are 144-bit random and redeemable only once.
+-- Advertising proposal lifecycle. Until official pricing and an authorized
+-- payment flow are configured, campaigns NEVER enter a public/live state.
+CREATE TABLE IF NOT EXISTS ad_campaigns (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+ created_by uuid REFERENCES users(id) ON DELETE SET NULL,
+ place_id uuid NOT NULL REFERENCES places(id) ON DELETE CASCADE,
+ title text NOT NULL CHECK(char_length(title) BETWEEN 4 AND 150),
+ copy_de text NOT NULL CHECK(char_length(copy_de) BETWEEN 10 AND 1500),
+ placement text NOT NULL CHECK(placement IN ('search','home','feed','stories','events','district','category')),
+ start_date date NOT NULL,
+ end_date date NOT NULL,
+ status text NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','pending_review','rejected','awaiting_commercial_setup','cancelled')),
+ quoted_price_cents integer CHECK(quoted_price_cents>0),
+ payment_status text NOT NULL DEFAULT 'not_configured' CHECK(payment_status IN ('not_configured','unpaid','paid','refunded')),
+ reviewed_by uuid REFERENCES users(id) ON DELETE SET NULL,
+ reviewed_at timestamptz,
+ rejection_note text,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ updated_at timestamptz NOT NULL DEFAULT now(),
+ CHECK(end_date>=start_date AND end_date-start_date<=90)
+);
+CREATE INDEX IF NOT EXISTS ad_campaigns_owner_status ON ad_campaigns(business_id,status,created_at DESC);
+CREATE INDEX IF NOT EXISTS ad_campaigns_review_idx ON ad_campaigns(status,created_at) WHERE status='pending_review';
 CREATE TABLE IF NOT EXISTS coupon_claims (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  deal_id uuid NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
