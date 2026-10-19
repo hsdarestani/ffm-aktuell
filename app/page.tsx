@@ -13,12 +13,16 @@ import {DealActions,BusinessCouponRedeem} from '@/components/CouponPilot';
 import FollowButton from '@/components/FollowButton';
 import {validLocationId} from '@/lib/location-actions';
 import './assistant-discovery.css';
+import './community-media.css';
 import {KATEGORIEN,passendeRubrik,frischBestaetigt,statusLabel} from '@/lib/ortskategorien';
 import {VORSCHAU_HINWEIS,ortsbild,vorschauOrte,vorschauVeranstaltungen,vorschauBeitraege,vorschauPosts,vorschauAngebote,vorschauGruppen} from '@/lib/vorschau';
 const Atlas3D=dynamic(()=>import('@/components/Atlas3D'),{ssr:false});
 const TourPlanner=dynamic(()=>import('@/components/TourPlanner'),{ssr:false});
 const CuratedTours=dynamic(()=>import('@/components/CuratedTours'),{ssr:false});
 const SmartDiscover=dynamic(()=>import('@/components/SmartDiscover'),{ssr:false});
+const CommunityMediaComposer=dynamic(()=>import('@/components/CommunityMediaComposer'),{ssr:false});
+const StoriesStrip=dynamic(()=>import('@/components/StoriesStrip'),{ssr:false});
+const MediaRightsPanel=dynamic(()=>import('@/components/MediaRightsPanel'),{ssr:false});
 const ProfileSettings=dynamic(()=>import('@/components/ProfileSettings'),{ssr:false});
 const EventActions=dynamic(()=>import('@/components/EventActions'),{ssr:false});
 const BusinessBranchEditor=dynamic(()=>import('@/components/BusinessBranchEditor'),{ssr:false});
@@ -26,7 +30,7 @@ type Place=MapPlace & {district:string,address:string,description_de:string,desc
 type User={id:string,email:string,display_name:string,role:string};
 type Event={id:string,title:string,venue:string,starts_at:string,description_de:string,description_en:string,ticket_url:string|null,image_url?:string,demo?:true};
 type News={id:string,title:string,body_de:string,body_en:string,source_url:string|null,published_at:string,image_url?:string,demo?:true};
-type Post={id:string,body:string,created_at:string,display_name:string,place_name:string|null,image_url?:string,demo?:true,likes_count?:number,comments_count?:number,liked?:boolean,author_id?:string,following_author?:boolean,own_post?:boolean};
+type Post={id:string,body:string,created_at:string,display_name:string,place_name:string|null,image_url?:string,media_id?:string,media_type?:string,demo?:true,likes_count?:number,comments_count?:number,liked?:boolean,author_id?:string,following_author?:boolean,own_post?:boolean};
 type Deal={id:string,title:string,details:string,business_name:string,image_url?:string,demo?:true};
 type Page='home'|'discover'|'map'|'saved'|'tours'|'profile'|'events'|'community'|'business'|'admin';
 const categories=KATEGORIEN.map(x=>x.id);
@@ -228,9 +232,9 @@ export default function Home(){
    </article>)}</div>}
   </main>}
  {page==='tours'&&<><CuratedTours/><TourPlanner loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/></>}
- {page==='profile'&&<ProfileSettings user={user} onLogin={()=>setAuth(true)} onNotice={flash}
+ {page==='profile'&&<><ProfileSettings user={user} onLogin={()=>setAuth(true)} onNotice={flash}
   onSavedPlaces={()=>navigate('saved')} onTours={()=>navigate('tours')}
-  onDeleted={()=>{setUser(null);setFavorites([]);setSelected(null);navigate('home');flash('Dein Konto wurde gelöscht.')}}/>}
+  onDeleted={()=>{setUser(null);setFavorites([]);setSelected(null);navigate('home');flash('Dein Konto wurde gelöscht.')}}/>{user&&<MediaRightsPanel onNotice={flash}/>}</>}
  {page==='map'&&<main className="atlas-app-map"><Atlas3D places={places} lang={lang} variant="full" onSelect={selectPlace}/><div className="atlas-app-map-note">{t.notice} · © OpenStreetMap contributors, OpenMapTiles, OpenFreeMap</div></main>}
   {page==='events'&&<main className="inner-page v3-editorial-page">
  <div className="page-title v3-page-head"><small>03 / STADTJOURNAL</small><h1>Die Stadt lebt<em>.</em></h1><p>Ideen, Begegnungen und neue Perspektiven auf Frankfurt.</p></div>
@@ -248,21 +252,21 @@ export default function Home(){
  </section>
 </main>}
 {page==='community'&&<main className="inner-page v3-community-page">
- <div className="page-title v3-page-head"><small>04 / MENSCHEN DER STADT</small><h1>Frankfurt verbindet<em>.</em></h1><p>Lieblingsorte, kleine Geschichten und ein Blick auf die Stadt durch andere Augen.</p></div>
+ <div className="page-title v3-page-head"><small>04 / MENSCHEN DER STADT</small><h1>Frankfurt verbindet<em>.</em></h1><p>Lieblingsorte, kleine Geschichten und ein Blick auf die Stadt durch andere Augen.</p></div><StoriesStrip reload={refresh}/>
  <section className="v4-groups-preview"><span className="v3-eyebrow">GEMEINSAM AKTIV</span><h2 className="v4-group-heading">Laufen. Spazieren. Lesen.</h2><p className="v4-group-sub">Entdecke, wie Frankfurter Gruppen künftig eigene Treffen präsentieren können. Die folgenden Profile sind Ideen für die Vorschau, keine bestätigten Anbieter.</p><div className="v4-group-grid">{vorschauGruppen.map(g=><article key={g.id} className="v4-group"><small>{g.typ} · MUSTERGRUPPE</small><h3>{g.name}</h3><p>{g.beschreibung}</p></article>)}</div></section><div className="v3-community-layout"><section className="v3-community-posts"><div className="v3-section-head"><div><span className="v3-eyebrow">STIMMEN AUS FRANKFURT</span><h2>Unsere Geschichten.</h2></div></div><div className="ffm-follow-filter" role="group" aria-label="Community-Feed">
     <button type="button" className={!followingOnly?'active':''} aria-pressed={!followingOnly} onClick={()=>setFollowingOnly(false)}>Alle Beiträge</button>
     <button type="button" className={followingOnly?'active':''} aria-pressed={followingOnly} onClick={()=>{if(!user){setAuth(true);return;}setFollowingOnly(true)}}>Folge ich</button>
    </div>
    {followingOnly&&posts.length===0&&<p className="ffm-follow-empty">Noch keine Beiträge von Personen oder Unternehmen, denen du folgst.</p>}
    <div className="v3-post-grid">{sichtbarePosts.map(p=><article className="v3-post-card" key={p.id}>
-  <div className="v3-post-image"><img src={ortsbild('',p.image_url)} alt="Stimmungsbild zum Beitrag" loading="lazy"/><span className="v3-image-note">Stimmungsbild</span></div>
+  <div className="v3-post-image">{!p.demo&&p.media_id&&p.media_type?.startsWith('video/')?<video controls preload="none" playsInline src={p.image_url} aria-label="Video aus der Community"/>:<img src={!p.demo&&p.media_id?p.image_url:ortsbild('',p.image_url)} alt={!p.demo&&p.media_id?'Geteiltes Foto':'Stimmungsbild zum Beitrag'} loading="lazy"/>}<span className="v3-image-note">{!p.demo&&p.media_id?'Community Datei':'Stimmungsbild'}</span></div>
   <div className="v3-post-content"><div className="v3-post-person"><span className="v3-avatar">{p.display_name.charAt(0).toUpperCase()}</span><div><strong>{p.display_name}</strong><small>{p.place_name||'Frankfurt'} · {date(p.created_at,lang)}</small></div>
    {!p.demo&&p.author_id&&<FollowButton key={p.author_id} targetType="user" targetId={p.author_id} initialFollowing={Boolean(p.following_author)} own={Boolean(p.own_post)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash} onChanged={()=>{if(followingOnly)setRefresh(v=>v+1)}}/>}
    </div><p>{p.body}</p>
    {p.demo?<span className="v3-demo-label">Musterbeitrag · erfundenes Profil</span>:
     <PostEngagement postId={p.id} likes={p.likes_count||0} comments={p.comments_count||0} liked={Boolean(p.liked)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>} </div>
  </article>)}</div></section>
-  <aside className="panel v3-community-compose"><span className="v3-eyebrow">MITMACHEN</span><h2>Und deine Geschichte?</h2><p>Zeig uns Frankfurt aus deiner Perspektive. Neue Beiträge werden vor der Veröffentlichung geprüft.</p>{user?<form onSubmit={e=>handle(e,'posts')}><textarea name="body" maxLength={1000} required placeholder={t.postPlaceholder}/><button className="primary-btn small">{t.post}<Plus size={16}/></button></form>:<button className="primary-btn small" onClick={()=>setAuth(true)}>{t.sign}<Plus size={16}/></button>}</aside>
+  <aside className="panel v3-community-compose"><span className="v3-eyebrow">MITMACHEN</span><h2>Und deine Geschichte?</h2><p>Teile deinen Moment. Jede Veröffentlichung wird geprüft.</p><CommunityMediaComposer loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash} onChanged={()=>setRefresh(n=>n+1)}/></aside>
  </div>
 </main>}
 {page==='business'&&<main className="inner-page"><div className="page-title"><small>LOKALE UNTERNEHMEN</small><h1>{t.businessTitle}</h1><p>{t.businessIntro}</p></div>{!user?<div className="panel standalone"><Building2 size={36}/><h2>{t.businessRegister}</h2><p>{t.sign}</p><button className="primary-btn" onClick={()=>setAuth(true)}>{t.sign}<span className="ui-dot" aria-hidden="true"/></button></div>:!business?<div className="panel standalone"><h2>{t.businessRegister}</h2><form onSubmit={e=>handle(e,'businesses')}>{formField(t.company,'name',true)}{formField(t.registry,'registry_reference')}<button className="primary-btn">{t.send}<span className="ui-dot" aria-hidden="true"/></button></form></div>:<><div className="business-status"><div><small>UNTERNEHMENSBEREICH</small><h2>{business.name}</h2><p>{business.status==='approved'?'✓ BESTÄTIGT':'◌ '+t.pending}</p></div><Building2 size={44}/></div><div className="dashboard-grid"><div className="panel"><h2>{t.claim}</h2><form onSubmit={e=>handle(e,'claims')}><label className="form-label">{t.discover}<select name="place_id" required><option value="">—</option>{places.map(p=><option value={p.id} key={p.id}>{p.name}</option>)}</select></label><label className="form-label">{t.claimNote}<textarea name="note" maxLength={500}/></label><button className="primary-btn small">{t.send}<span className="ui-dot" aria-hidden="true"/></button></form></div><div className="panel"><h2>{t.offer}</h2><p>{t.pending}</p><form onSubmit={e=>handle(e,'deals')}><label className="form-label">{t.title}<input name="title" required/></label><label className="form-label">{t.offerText}<textarea name="details"/></label><button className="primary-btn small" disabled={business.status!=='approved'}>{t.send}<span className="ui-dot" aria-hidden="true"/></button></form></div></div>{businessDetail&&<BusinessBranchEditor places={businessDetail.places||[]} changes={businessDetail.changes||[]} businessStatus={business.status} onNotice={flash} onChanged={()=>setRefresh(v=>v+1)}/>}<BusinessCouponRedeem status={business.status} onNotice={flash}/>{businessDetail&&<p className="subdued">{businessDetail.claims.length} Anfragen · {businessDetail.deals.length} Angebote</p>}</>}<section className="v3-business-preview"><div className="v3-section-head"><div><span className="v3-eyebrow">SO KÖNNTE DEIN ANGEBOT AUSSEHEN</span><h2>Mehr Sichtbarkeit vor Ort.</h2></div></div><div className="v3-offer-grid">{vorschauAngebote.map(a=><article className="v3-offer-card" key={a.id}><div className="v3-offer-image"><img src={ortsbild('',a.image_url)} loading="lazy" alt="Stimmungsbild zum Musterangebot"/><span className="v3-image-note">Stimmungsbild</span></div><div className="v3-offer-copy"><span className="v3-eyebrow">MUSTERANGEBOT · NICHT EINLÖSBAR</span><h3>{a.title}</h3><p>{a.details}</p><small>{a.business_name}</small></div></article>)}</div></section></main>}
