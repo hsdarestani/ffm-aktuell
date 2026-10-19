@@ -260,7 +260,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     const tourId=qs.get('id')||'';if(!id.safeParse(tourId).success)return bad('Invalid tour ID');
     const r=await query("SELECT id,title,share_token,created_at FROM user_tours WHERE id=$1 AND owner_id=$2",[tourId,u.id]);
     if(!r.rowCount)return bad('Tour not found',404);
-    const stops=await query(\`SELECT COALESCE(s.osm_id,p.id::text) AS id,coalesce(p.name,c.name) AS name,
+    const stops=await query(`SELECT COALESCE(s.osm_id,p.id::text) AS id,coalesce(p.name,c.name) AS name,
       coalesce(p.address,c.address) AS address,coalesce(p.category,c.category) AS category,
       coalesce(p.latitude,c.latitude) AS latitude,coalesce(p.longitude,c.longitude) AS longitude,
       CASE WHEN c.osm_id IS NOT NULL THEN 'unverified' ELSE p.verification_status END AS verification_status,
@@ -269,7 +269,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       LEFT JOIN discovery_candidates c ON c.osm_id=s.osm_id
       WHERE s.tour_id=$1 AND (p.status='published' AND p.activity_status!='permanently_closed'
         OR c.reviewed_status='unverified')
-      ORDER BY s.position\`,[tourId]);
+      ORDER BY s.position`,[tourId]);
     return ok({tour:r.rows[0],stops:stops.rows});
   }
   if(method==='GET'&&path==='tours/shared'){
@@ -277,14 +277,14 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     if(!/^[A-Za-z0-9_-]{43}$/.test(token))return bad('Invalid tour link',404);
     const r=await query("SELECT id,title FROM user_tours WHERE share_token=$1 AND shared_at IS NOT NULL",[token]);
     if(!r.rowCount)return bad('Tour link not found',404);
-    const stops=await query(\`SELECT COALESCE(s.osm_id,p.id::text) AS id,coalesce(p.name,c.name) AS name,
+    const stops=await query(`SELECT COALESCE(s.osm_id,p.id::text) AS id,coalesce(p.name,c.name) AS name,
       coalesce(p.address,c.address) AS address,coalesce(p.category,c.category) AS category,
       coalesce(p.latitude,c.latitude) AS latitude,coalesce(p.longitude,c.longitude) AS longitude,
       CASE WHEN c.osm_id IS NOT NULL THEN 'unverified' ELSE p.verification_status END AS verification_status,
       s.planned_time FROM tour_stops s LEFT JOIN places p ON p.id=s.place_id
       LEFT JOIN discovery_candidates c ON c.osm_id=s.osm_id
       WHERE s.tour_id=$1 AND (p.status='published' AND p.activity_status!='permanently_closed'
-        OR c.reviewed_status='unverified') ORDER BY s.position\`,[r.rows[0].id]);
+        OR c.reviewed_status='unverified') ORDER BY s.position`,[r.rows[0].id]);
     return ok({tour:{title:r.rows[0].title},stops:stops.rows,shared:true});
   }
   if(method==='POST'&&path==='tours'){
