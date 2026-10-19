@@ -4,6 +4,7 @@ import {z} from 'zod';
 import {pool,query} from '@/lib/db';
 import {beginSession,endSession,hashPassword,verifyPassword,sessionUser,trustedOrigin,User} from '@/lib/auth';
 import {validLocationId,osmId} from '@/lib/location-actions';
+import {resolveBusinessEditor} from '@/lib/business-team';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 type Ctx={params:Promise<{path?:string[]}>};
@@ -628,11 +629,12 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   }
   if(method==='POST'&&path==='business/places/change'){
     rate(req,'business-place-change');
-    const u=need(user),business=await ownBusiness(u);
-    if(business.status!=='approved')return bad('Business verification pending',403);
+    const u=need(user);
     const b=parse(z.object({place_id:id,name:text(150),address:optionalText(200),
       website:z.string().trim().max(1000).optional().default(''),phone:z.string().trim().max(40).optional().default(''),
       opening_hours_text:z.string().trim().max(300).optional().default('')}),await payload(req));
+    const business=await resolveBusinessEditor(u,b.place_id);
+    if(!business||business.status!=='approved')return bad('Keine Berechtigung für diesen Standort',403);
     if(b.phone&&!/^\+?[0-9\s().\-/]{4,40}$/.test(b.phone))return bad('Invalid phone');
     const website=allowedUrl(b.website);if(b.website&&!website)return bad('Invalid website');
     const owned=await query("SELECT id FROM places WHERE id=$1 AND business_id=$2 AND status='published'",[b.place_id,business.id]);
