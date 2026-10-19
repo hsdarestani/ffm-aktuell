@@ -173,7 +173,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     const category=trim(qs.get('category'));const district=trim(qs.get('district'));const search=trim(qs.get('q'));
     const mode=trim(qs.get('mode'));
     if(mode&&mode!=='verified'&&mode!=='top')return bad('Unbekannter Ansichtsmodus');
-    const r=await query("SELECT id,name,category,district,description_de,description_en,address,latitude,longitude,website,image_url,source_url,verification_status,activity_status,verified_at,verification_source,editorial_rank,opening_hours_text, CASE WHEN business_id IN (SELECT id FROM businesses WHERE status='approved') THEN business_id ELSE NULL END AS business_id, EXISTS(SELECT 1 FROM business_follows bf WHERE bf.follower_id=$5 AND bf.business_id=places.business_id) AS following_business FROM places WHERE status='published' AND activity_status!='permanently_closed' AND ($1='' OR category=$1) AND ($2='' OR district=$2) AND ($3='' OR (name||' '||description_de||' '||district) ILIKE '%'||$3||'%') AND ($4='' OR (verification_status='verified' AND activity_status='operating' AND verified_at BETWEEN now()-interval '30 days' AND now() AND ($4!='top' OR editorial_rank>0))) ORDER BY CASE WHEN verification_status='verified' AND activity_status='operating' AND verified_at > now()-interval '30 days' THEN 0 ELSE 1 END, editorial_rank DESC, name LIMIT 80",[category,district,search.slice(0,100),mode,user?.id||null]);
+    const r=await query("SELECT id,name,category,district,description_de,description_en,address,latitude,longitude,website,image_url,source_url,verification_status,activity_status,verified_at,verification_source,editorial_rank,opening_hours_text,phone, CASE WHEN business_id IN (SELECT id FROM businesses WHERE status='approved') THEN business_id ELSE NULL END AS business_id, EXISTS(SELECT 1 FROM business_follows bf WHERE bf.follower_id=$5 AND bf.business_id=places.business_id) AS following_business FROM places WHERE status='published' AND activity_status!='permanently_closed' AND ($1='' OR category=$1) AND ($2='' OR district=$2) AND ($3='' OR (name||' '||description_de||' '||district) ILIKE '%'||$3||'%') AND ($4='' OR (verification_status='verified' AND activity_status='operating' AND verified_at BETWEEN now()-interval '30 days' AND now() AND ($4!='top' OR editorial_rank>0))) ORDER BY CASE WHEN verification_status='verified' AND activity_status='operating' AND verified_at > now()-interval '30 days' THEN 0 ELSE 1 END, editorial_rank DESC, name LIMIT 80",[category,district,search.slice(0,100),mode,user?.id||null]);
     return ok({items:r.rows});
   }
   if(method==='GET'&&path==='discovery'){
@@ -320,7 +320,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       if(!r.rowCount)return bad('Place not found',404);
       return ok({place:r.rows[0]});
     }
-    const r=await query("SELECT id,name,category,district,description_de,description_en,address,latitude,longitude,website,image_url,source_url,verification_status,activity_status,verified_at,verification_source,editorial_rank,opening_hours_text, CASE WHEN business_id IN (SELECT id FROM businesses WHERE status='approved') THEN business_id ELSE NULL END AS business_id, EXISTS(SELECT 1 FROM business_follows bf WHERE bf.follower_id=$2 AND bf.business_id=places.business_id) AS following_business FROM places WHERE id=$1 AND status='published' AND activity_status!='permanently_closed'",[place_id,user?.id||null]);
+    const r=await query("SELECT id,name,category,district,description_de,description_en,address,latitude,longitude,website,image_url,source_url,verification_status,activity_status,verified_at,verification_source,editorial_rank,opening_hours_text,phone, CASE WHEN business_id IN (SELECT id FROM businesses WHERE status='approved') THEN business_id ELSE NULL END AS business_id, EXISTS(SELECT 1 FROM business_follows bf WHERE bf.follower_id=$2 AND bf.business_id=places.business_id) AS following_business FROM places WHERE id=$1 AND status='published' AND activity_status!='permanently_closed'",[place_id,user?.id||null]);
     if(!r.rowCount)return bad('Place not found',404);
     return ok({place:r.rows[0]});
   }
@@ -534,8 +534,24 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   }
   if(method==='GET'&&path==='business/overview'){
     const u=need(user),b=await ownBusiness(u);
-    const [p,d,c]=await Promise.all([query('SELECT * FROM places WHERE business_id=$1',[b.id]),query('SELECT * FROM deals WHERE business_id=$1 ORDER BY created_at DESC',[b.id]),query('SELECT * FROM claims WHERE business_id=$1 ORDER BY created_at DESC',[b.id])]);
-    return ok({business:b,places:p.rows,deals:d.rows,claims:c.rows});
+    const [p,d,c,changes]=await Promise.all([query('SELECT * FROM places WHERE business_id=$1',[b.id]),query('SELECT * FROM deals WHERE business_id=$1 ORDER BY created_at DESC',[b.id]),query('SELECT * FROM claims WHERE business_id=$1 ORDER BY created_at DESC',[b.id]),query("SELECT id,place_id,name,address,phone,website,opening_hours_text,status,submitted_at,editor_note FROM place_change_requests WHERE business_id=$1 ORDER BY submitted_at DESC LIMIT 40",[b.id])]);
+    return ok({business:b,places:p.rows,deals:d.rows,claims:c.rows,changes:changes.rows});
+  }
+  if(method==='POST'&&path==='business/places/change'){
+    rate(req,'business-place-change');
+    const u=need(user),business=await ownBusiness(u);
+    if(business.status!=='approved')return bad('Business verification pending',403);
+    const b=parse(z.object({place_id:id,name:text(150),address:optionalText(200),
+      website:z.string().trim().max(1000).optional().default(''),phone:z.string().trim().max(40).optional().default(''),
+      opening_hours_text:z.string().trim().max(300).optional().default('')}),await payload(req));
+    if(b.phone&&!/^\+?[0-9\s().\-/]{4,40}$/.test(b.phone))return bad('Invalid phone');
+    const website=allowedUrl(b.website);if(b.website&&!website)return bad('Invalid website');
+    const owned=await query("SELECT id FROM places WHERE id=$1 AND business_id=$2 AND status='published'",[b.place_id,business.id]);
+    if(!owned.rowCount)return bad('Place not owned',403);
+    const r=await query("INSERT INTO place_change_requests(place_id,business_id,submitted_by,name,address,website,phone,opening_hours_text) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(place_id) WHERE status='pending' DO UPDATE SET submitted_by=excluded.submitted_by,name=excluded.name,address=excluded.address,website=excluded.website,phone=excluded.phone,opening_hours_text=excluded.opening_hours_text,submitted_at=now() RETURNING id,status",
+      [b.place_id,business.id,u.id,b.name,b.address,website,b.phone||null,b.opening_hours_text||null]);
+    await audit(u,'business:branch-change-requested','place_change',r.rows[0].id);
+    return ok(r.rows[0],201);
   }
   if(method==='POST'&&path==='deals'){
     const u=need(user),business=await ownBusiness(u);
@@ -614,7 +630,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     }catch(e){await tx.query('ROLLBACK');throw e}finally{tx.release()}
   }
   if(method==='GET'&&path==='admin/queue'){
-    admin(user);const [b,c,p,d,posts,reports,reviews,reviewReports,comments]=await Promise.all([
+    admin(user);const [b,c,p,d,posts,reports,reviews,reviewReports,comments,branchChanges]=await Promise.all([
       query("SELECT id,name,status,created_at FROM businesses WHERE status='pending' ORDER BY created_at"),
       query("SELECT c.id,c.status,c.note,b.name AS business_name,p.name AS place_name FROM claims c JOIN businesses b ON b.id=c.business_id JOIN places p ON p.id=c.place_id WHERE c.status='pending'"),
       query("SELECT id,name,category FROM places WHERE status='pending'"),
@@ -623,8 +639,27 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       query("SELECT r.id,r.reason,r.message AS note,COALESCE(p.name,dc.name) AS place_name FROM place_reports r LEFT JOIN places p ON p.id=r.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=r.osm_id WHERE r.status='pending' ORDER BY r.created_at LIMIT 60"),
       query("SELECT r.id,r.rating,r.body,COALESCE(p.name,dc.name) AS place_name FROM venue_reviews r LEFT JOIN places p ON p.id=r.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=r.osm_id WHERE r.status='pending' ORDER BY r.created_at LIMIT 80"),
       query("SELECT rr.id,rr.review_id,rr.reason,rr.message AS note,vr.body,COALESCE(p.name,dc.name) AS place_name FROM venue_review_reports rr JOIN venue_reviews vr ON vr.id=rr.review_id LEFT JOIN places p ON p.id=vr.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=vr.osm_id WHERE rr.status='pending' ORDER BY rr.created_at LIMIT 60"),
-      query("SELECT c.id,c.body,LEFT(p.body,80) AS title FROM post_comments c JOIN posts p ON p.id=c.post_id WHERE c.status='pending' ORDER BY c.created_at LIMIT 80")
-    ]);return ok({businesses:b.rows,claims:c.rows,places:p.rows,deals:d.rows,posts:posts.rows,reports:reports.rows,reviews:reviews.rows,reviewReports:reviewReports.rows,comments:comments.rows});
+      query("SELECT c.id,c.body,LEFT(p.body,80) AS title FROM post_comments c JOIN posts p ON p.id=c.post_id WHERE c.status='pending' ORDER BY c.created_at LIMIT 80"),
+      query("SELECT cr.id,cr.name,cr.address,cr.website,cr.phone,cr.opening_hours_text,cr.submitted_at,p.name AS place_name,b.name AS business_name FROM place_change_requests cr JOIN places p ON p.id=cr.place_id JOIN businesses b ON b.id=cr.business_id WHERE cr.status='pending' ORDER BY cr.submitted_at ASC LIMIT 80")
+    ]);return ok({businesses:b.rows,claims:c.rows,places:p.rows,deals:d.rows,posts:posts.rows,reports:reports.rows,reviews:reviews.rows,reviewReports:reviewReports.rows,comments:comments.rows,branchChanges:branchChanges.rows});
+  }
+  if(method==='POST'&&path==='admin/review-place-change'){
+    const u=admin(user);
+    const b=parse(z.object({id,approve:z.boolean(),note:z.string().trim().max(500).optional().default('')}),await payload(req));
+    const tx=await pool.connect();
+    try{
+      await tx.query('BEGIN');
+      const request=await tx.query("SELECT * FROM place_change_requests WHERE id=$1 AND status='pending' FOR UPDATE",[b.id]);
+      const change=request.rows[0];if(!change){await tx.query('ROLLBACK');return bad('Request not found',404)}
+      if(b.approve){
+        const updated=await tx.query("UPDATE places SET name=$2,address=$3,website=$4,phone=$5,opening_hours_text=$6,verification_status='unverified',activity_status='unknown',verified_at=NULL,verification_source=NULL,verification_method=NULL,verification_note=NULL,verified_by=NULL,editorial_rank=0,updated_at=now() WHERE id=$1 AND business_id=$7 AND status='published' AND EXISTS(SELECT 1 FROM businesses b WHERE b.id=$7 AND b.status='approved') RETURNING id",
+          [change.place_id,change.name,change.address,change.website,change.phone,change.opening_hours_text,change.business_id]);
+        if(!updated.rowCount){await tx.query('ROLLBACK');return bad('Business or location no longer authorized',409)}
+      }
+      await tx.query("UPDATE place_change_requests SET status=$2,reviewed_by=$3,reviewed_at=now(),editor_note=$4 WHERE id=$1",[b.id,b.approve?'approved':'rejected',u.id,b.note]);
+      await tx.query("INSERT INTO audit_log(actor_id,action,target_type,target_id) VALUES($1,$2,'place_change',$3)",[u.id,b.approve?'editor:branch-change-approved':'editor:branch-change-rejected',b.id]);
+      await tx.query('COMMIT');return ok({success:true,status:b.approve?'approved':'rejected'});
+    }catch(e){await tx.query('ROLLBACK');throw e}finally{tx.release()}
   }
   if(method==='POST'&&path==='admin/moderate-review'){
     const u=admin(user);const b=parse(z.object({id,approve:z.boolean()}),await payload(req));
