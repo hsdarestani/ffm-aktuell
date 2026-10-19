@@ -17,6 +17,20 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
  }
  try{
   const bytes=await load(m.storage_key);
-  return new NextResponse(new Uint8Array(bytes),{headers:{'Content-Type':m.media_type,'Content-Length':String(bytes.length),'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
+  const common={'Content-Type':m.media_type,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Accept-Ranges':m.media_type.startsWith('video/')?'bytes':'none'};
+  const range=req.headers.get('range');
+  if(m.media_type.startsWith('video/')&&range){
+   const matched=/^bytes=(\d*)-(\d*)$/.exec(range);
+   if(!matched)return new NextResponse(null,{status:416,headers:{'Content-Range':'bytes */'+bytes.length,...common}});
+   const start=matched[1]?Number(matched[1]):matched[2]?Math.max(0,bytes.length-Number(matched[2])):0;
+   const requestedEnd=matched[1]?(matched[2]?Number(matched[2]):bytes.length-1):bytes.length-1;
+   const end=Math.min(requestedEnd,bytes.length-1,start+1024*1024-1);
+   if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||start>=bytes.length||end<start){
+    return new NextResponse(null,{status:416,headers:{'Content-Range':'bytes */'+bytes.length,...common}});
+   }
+   const chunk=bytes.subarray(start,end+1);
+   return new NextResponse(new Uint8Array(chunk),{status:206,headers:{...common,'Content-Length':String(chunk.length),'Content-Range':'bytes '+start+'-'+end+'/'+bytes.length}});
+  }
+  return new NextResponse(new Uint8Array(bytes),{headers:{...common,'Content-Length':String(bytes.length)}});
  }catch{return new NextResponse(null,{status:404})}
 }
