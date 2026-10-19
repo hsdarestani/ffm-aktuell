@@ -228,7 +228,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
         const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),6500);
         try{
           const response=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',signal:ctl.signal,headers:{Authorization:'Bearer '+process.env.OPENAI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.OPENAI_RECOMMENDATION_MODEL||'gpt-4o-mini',response_format:{type:'json_object'},temperature:0,max_tokens:200,messages:[{role:'system',content:'Return JSON {"ids":[]} with up to 4 IDs from the candidates only. Never invent venues, prices, hours or availability.'},{role:'user',content:JSON.stringify({question:search,candidates:candidates.map(p=>({id:p.id,name:p.name,category:p.category,district:p.district,description:p.description_de}))})}]})});
-          if(response.ok){const x=await response.json();const ids=JSON.parse(x.choices?.[0]?.message?.content||'{}').ids;if(Array.isArray(ids)){const found=ids.map((id:unknown)=>candidates.find(p=>p.id===id)).filter((p:unknown)=>!!p).slice(0,4);if(found.length){candidates=found;mode='ai';}}}
+          if(response.ok){const x=await response.json();const ids=JSON.parse(x.choices?.[0]?.message?.content||'{}').ids;if(Array.isArray(ids)){const approvedIds=ids.filter((v:unknown):v is string=>typeof v==='string');const found=candidates.filter(p=>approvedIds.includes(p.id)).slice(0,4);if(found.length){candidates=found;mode='ai';}}}
         }finally{clearTimeout(tm);}
       }catch{/* deterministic verified-only fallback */}
     }
