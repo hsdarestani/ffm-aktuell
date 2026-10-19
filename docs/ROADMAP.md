@@ -41,3 +41,12 @@ This is a **feature-branch development ledger**, not production acceptance. Do n
 
 ## Non-mandatory in v1
 - General points and rewards engine, internal restaurant reservation/ticket checkout, private DMs, unsolicited merchant DMs, public personal profiles and publicly authored recommendation lists.
+
+## Further development increment — accounts, staff and real analytics (19 October 2026)
+- Business staff: per-business `viewer` and `editor` roles, hashed single-use 7-day emailed invites, independently verified recipient email, owner-controlled revocation and admin-approved seat caps. Default staff seats are zero. No auto-awarded premium entitlement.
+- Email identity: optional transactional email provider, hashed 20-minute proof, 3 requests/hour and no pretend delivery when unconfigured. Verified Google/Apple emails also get trusted status.
+- Staff editors may only submit branch corrections for their business; independent admin approval is still required. Viewers cannot change locations.
+- Genuine business aggregates: approved venues, current deals, 30-day coupon claims/redemptions/posts and minimum-five follower privacy threshold. Ad impressions, earnings and proven visits remain null until independently instrumented.
+- Premium catalogue: `user_premium`, `business_premium_1`, `business_premium_2`; all initially draft, monthly/annual prices empty and checkout disabled. Publishing an approved price requires documentary consent and HTTPS terms. Public display does **not** activate entitlement, trial, invoice, or payment.
+- Privacy: email provider + staff + consent/media/coupons now present in user data export; social-only users may delete after fresh authenticated login (within 5 minutes) rather than needing a password they were never given.
+- Remaining blockers: real verified sender domain, agreed team seat/trial/tariff terms and approved prices, mobile OAuth and live registration providers, functioning PSP, Apple/Google stores, staging deployment/device QA, privacy/legal operations and real local sources.
