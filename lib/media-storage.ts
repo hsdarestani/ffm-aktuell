@@ -23,7 +23,7 @@ export async function scannerReady():Promise<boolean>{
   const finish=(ok:boolean)=>{if(done)return;done=true;socket.destroy();resolve(ok)};
   socket.setTimeout(2500,()=>finish(false));
   socket.once('error',()=>finish(false));
-  socket.once('connect',()=>socket.write(Buffer.from('zPING\\0')));
+  socket.once('connect',()=>socket.write(Buffer.from('zPING\0')));
   socket.on('data',chunk=>finish(chunk.toString('utf8').includes('PONG')));
   socket.once('close',()=>finish(false));
  });
