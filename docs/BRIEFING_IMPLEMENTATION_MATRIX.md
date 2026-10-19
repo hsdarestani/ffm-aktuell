@@ -28,6 +28,16 @@ This is an implementation ledger, **not** a claim of complete product delivery. 
 - Minimal inline like/reply controls keep the public page easy to navigate
 - Real API + disposable PostgreSQL tests cover moderation and user-scoped likes
 
+## Phase 2c: Private follows and followed activity feed (2026-10-19)
+- Private user-to-author follow controls from approved posts; no public personal profile pages or public follower counters
+- Private follow of approved businesses only where a published, visible venue exists; no following pending claims or unverified OSM entities as business owners
+- Community filter 'Alle Beiträge / Folge ich' returns only already published posts from followed authors or publicly verified businesses associated with published venues
+- Guest users may read public posts but cannot follow, and cannot access anyone's followed list
+- Repeated follow/unfollow is idempotent; attempts to follow yourself or unapproved entities are rejected; accounts/relationships cascade on deletion
+- Data gates verified by disposable PostgreSQL + real API CI tests
+- **Still open:** uploading real photos/videos needs approved EU storage, malware/content scanning, licensing and erasure procedures. 24h stories/highlights, rights grants/expiry/revocation, and configurable activity privacy remain pending.
+- This milestone is not the complete phase 2, and does not imply native app release.
+
 ## Phase 2: User community, ratings, real media
 - Moderated photos/video upload with object storage and ownership / license checks, copyright consent, takedown workflow
 - Star reviews, brief tips, public replies, reporting, filtering, abuse control; verified visit proof rules require explicit approval

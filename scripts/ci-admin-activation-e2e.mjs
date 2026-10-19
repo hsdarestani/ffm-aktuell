@@ -135,6 +135,56 @@ try{
  if(likedRecord?.likes_count!==1||likedRecord?.comments_count!==1||likedRecord?.liked!==true)throw Error('Community aggregates or personal like state wrong');
  const unlike=await post('post-likes',reader,{post_id:pendingPost.body.id,active:false});
  if(unlike.status!==200||unlike.body.count!==0)throw Error('Unlike did not remove user vote');
+ // Phase 2c: following must be private, idempotent, authenticated and limited
+ // to public content from authors or verified public businesses.
+ const authorMe=await get('me',client);
+ const authorId=authorMe.body.user?.id;
+ if(!authorId)throw Error('Author ID missing');
+ const guestFollow=await post('follows','',{target_type:'user',target_id:authorId,active:true});
+ if(guestFollow.status!==401)throw Error('Guest user was permitted to follow');
+ const emptyFollowing=await get('posts?scope=following',reader);
+ if(emptyFollowing.status!==200||emptyFollowing.body.items.length!==0)throw Error('Following feed was not private and empty initially');
+ const ownFollow=await post('follows',client,{target_type:'user',target_id:authorId,active:true});
+ if(ownFollow.status!==400)throw Error('Self-follow should be refused');
+ const followAuthor=await post('follows',reader,{target_type:'user',target_id:authorId,active:true});
+ if(followAuthor.status!==200||!followAuthor.body.following)throw Error('Author follow failed');
+ const secondFollow=await post('follows',reader,{target_type:'user',target_id:authorId,active:true});
+ if(secondFollow.status!==200)throw Error('Follow was not idempotent');
+ const followedFeed=await get('posts?scope=following',reader);
+ if(!followedFeed.body.items.some(p=>p.id===pendingPost.body.id&&p.following_author))throw Error('Followed approved post missing');
+ const followedList=await get('follows',reader);
+ if(followedList.body.people?.length!==1)throw Error('Private follow list incorrect');
+ const loggedOutFollows=await get('follows');
+ if(loggedOutFollows.status!==401)throw Error('Follow identities leaked to guests');
+ const unfollow=await post('follows',reader,{target_type:'user',target_id:authorId,active:false});
+ if(unfollow.status!==200)throw Error('Unfollow failed');
+ const emptyAfterUnfollow=await get('posts?scope=following',reader);
+ if(emptyAfterUnfollow.body.items.length!==0)throw Error('Unfollow did not clear feed');
+
+ const createdBusiness=await post('businesses',client,{name:'CI FFM Venue'});
+ if(createdBusiness.status!==201)throw Error('Test business creation failed');
+ const deniedBusiness=await post('follows',reader,{target_type:'business',target_id:createdBusiness.body.id,active:true});
+ if(deniedBusiness.status!==404)throw Error('Pending business was followable');
+ await pool.query("UPDATE businesses SET status='approved' WHERE id=$1",[createdBusiness.body.id]);
+ const noPublicVenue=await post('follows',reader,{target_type:'business',target_id:createdBusiness.body.id,active:true});
+ if(noPublicVenue.status!==404)throw Error('Business without a public venue was followable');
+ const publicPlace=await pool.query("INSERT INTO places(business_id,name,category,address,status,activity_status) VALUES($1,'CI Follow Venue','Cafés','CI Main Street','published','operating') RETURNING id",[createdBusiness.body.id]);
+ const followBusiness=await post('follows',reader,{target_type:'business',target_id:createdBusiness.body.id,active:true});
+ if(followBusiness.status!==200)throw Error('Approved public business follow failed');
+ const businessPost=await post('posts',client,{body:'A public CI business venue post for the following feed.',place_id:publicPlace.rows[0].id});
+ if(businessPost.status!==201)throw Error('Business related post failed');
+ const beforeApproval=await get('posts?scope=following',reader);
+ if(beforeApproval.body.items.some(p=>p.id===businessPost.body.id))throw Error('Pending business post leaked');
+ const approveBusinessPost=await post('admin/review',cookie,{type:'post',id:businessPost.body.id,approve:true});
+ if(approveBusinessPost.status!==200)throw Error('Business post approval failed');
+ const afterApproval=await get('posts?scope=following',reader);
+ if(!afterApproval.body.items.some(p=>p.id===businessPost.body.id))throw Error('Business follow feed missing approved venue post');
+ const deniedOwnBusinessFollow=await post('follows',client,{target_type:'business',target_id:createdBusiness.body.id,active:true});
+ if(deniedOwnBusinessFollow.status!==404)throw Error('Own business follow should be refused');
+ const businessPlace=await get('location?id='+publicPlace.rows[0].id,reader);
+ if(businessPlace.body.place?.business_id!==createdBusiness.body.id||!businessPlace.body.place?.following_business)
+   throw Error('Published venue was not connected to its verified followed business');
+ console.log('PASS: private people/business follows, permissions, idempotency, following feed and editorial gating');
  console.log('PASS: moderated community posts, likes/unlikes, pending comment isolation and editorial approval');
  console.log('PASS: OSM bookmarks, hidden pending review, admin approval, public average, user report and explicit removal');
  console.log('PASS: admin created, audit logged, session working, invitation used exactly once');

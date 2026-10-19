@@ -9,15 +9,16 @@ import PlaceLocationMap from '@/components/PlaceLocationMap';
 import PlaceActions from '@/components/PlaceActions';
 import VenueReviews from '@/components/VenueReviews';
 import PostEngagement from '@/components/PostEngagement';
+import FollowButton from '@/components/FollowButton';
 import {validLocationId} from '@/lib/location-actions';
 import {KATEGORIEN,passendeRubrik,frischBestaetigt,statusLabel} from '@/lib/ortskategorien';
 import {VORSCHAU_HINWEIS,ortsbild,vorschauOrte,vorschauVeranstaltungen,vorschauBeitraege,vorschauPosts,vorschauAngebote,vorschauGruppen} from '@/lib/vorschau';
 const Atlas3D=dynamic(()=>import('@/components/Atlas3D'),{ssr:false});
-type Place=MapPlace & {district:string,address:string,description_de:string,description_en:string,website:string|null,source_url:string|null,image_url?:string|null,demo?:true,candidate?:boolean,osm_id?:string,phone?:string,verification_status?:'verified'|'unverified'|'disputed',activity_status?:'unknown'|'operating'|'temporarily_closed'|'permanently_closed',verified_at?:string|null,verification_source?:string|null,editorial_rank?:number|null,opening_hours_text?:string|null};
+type Place=MapPlace & {district:string,address:string,description_de:string,description_en:string,website:string|null,source_url:string|null,image_url?:string|null,demo?:true,candidate?:boolean,osm_id?:string,phone?:string,verification_status?:'verified'|'unverified'|'disputed',activity_status?:'unknown'|'operating'|'temporarily_closed'|'permanently_closed',verified_at?:string|null,verification_source?:string|null,editorial_rank?:number|null,opening_hours_text?:string|null,business_id?:string|null,following_business?:boolean};
 type User={id:string,email:string,display_name:string,role:string};
 type Event={id:string,title:string,venue:string,starts_at:string,description_de:string,description_en:string,ticket_url:string|null,image_url?:string,demo?:true};
 type News={id:string,title:string,body_de:string,body_en:string,source_url:string|null,published_at:string,image_url?:string,demo?:true};
-type Post={id:string,body:string,created_at:string,display_name:string,place_name:string|null,image_url?:string,demo?:true,likes_count?:number,comments_count?:number,liked?:boolean};
+type Post={id:string,body:string,created_at:string,display_name:string,place_name:string|null,image_url?:string,demo?:true,likes_count?:number,comments_count?:number,liked?:boolean,author_id?:string,following_author?:boolean,own_post?:boolean};
 type Deal={id:string,title:string,details:string,business_name:string,image_url?:string,demo?:true};
 type Page='home'|'discover'|'map'|'saved'|'events'|'community'|'business'|'admin';
 const categories=KATEGORIEN.map(x=>x.id);
@@ -34,6 +35,7 @@ export default function Home(){
  const [page,setPage]=useState<Page>('home'),[places,setPlaces]=useState<Place[]>([]),[events,setEvents]=useState<Event[]>([]),[news,setNews]=useState<News[]>([]),[posts,setPosts]=useState<Post[]>([]),[deals,setDeals]=useState<Deal[]>([]);
  const [user,setUser]=useState<User|null>(null),[favorites,setFavorites]=useState<string[]>([]),[savedPlaces,setSavedPlaces]=useState<Place[]>([]),[savedLoading,setSavedLoading]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [query,setQuery]=useState(''),[category,setCategory]=useState('Alle'),[district,setDistrict]=useState(''),[selected,setSelected]=useState<Place|null>(null),[nurGepruefte,setNurGepruefte]=useState(false);
+ const [followingOnly,setFollowingOnly]=useState(false);
  const [auth,setAuth]=useState(false),[register,setRegister]=useState(false),[menu,setMenu]=useState(false),[toast,setToast]=useState(''),[refresh,setRefresh]=useState(0);
  const [candidates,setCandidates]=useState<Place[]>([]),[candidateTotal,setCandidateTotal]=useState(0),[candidateLoading,setCandidateLoading]=useState(false);
  const [business,setBusiness]=useState<any>(null),[businessDetail,setBusinessDetail]=useState<any>(null),[queue,setQueue]=useState<Record<string,any[]>|null>(null);
@@ -79,7 +81,7 @@ export default function Home(){
  };
 
  useEffect(()=>{if(page==='business'&&user){api('businesses').then(b=>{setBusiness(b.items[0]||null);if(b.items[0])api('business/overview').then(setBusinessDetail).catch(()=>{})}).catch(()=>{})}if(page==='admin'&&user?.role==='admin')api('admin/queue').then(setQueue).catch(()=>{})},[page,user,refresh]);
- useEffect(()=>{if(page==='community')void api('posts').then(d=>setPosts(d.items||[])).catch(()=>{});if(page==='events')void api('deals').then(d=>setDeals(d.items||[])).catch(()=>{})},[page,refresh,user?.id]);
+ useEffect(()=>{if(page==='community')void api('posts?scope='+(followingOnly?'following':'all')).then(d=>setPosts(d.items||[])).catch(()=>setPosts([]));if(page==='events')void api('deals').then(d=>setDeals(d.items||[])).catch(()=>{})},[page,refresh,user?.id,followingOnly]);
 
  useEffect(()=>{
   if(page!=='saved'||!user)return;
@@ -96,7 +98,7 @@ export default function Home(){
  const sichtbareOrte=useMemo(()=>[...places,...vorschauOrte.filter(v=>!places.some(p=>p.name===v.name))],[places]);
  const sichtbareVeranstaltungen=useMemo(()=>[...events,...vorschauVeranstaltungen],[events]);
  const sichtbareBeitraege=useMemo(()=>[...news,...vorschauBeitraege],[news]);
- const sichtbarePosts=useMemo(()=>[...posts,...vorschauPosts],[posts]);
+ const sichtbarePosts=useMemo(()=>followingOnly?posts:[...posts,...vorschauPosts],[posts,followingOnly]);
  const sichtbareAngebote=useMemo(()=>[...deals,...vorschauAngebote],[deals]);
  const filtered=useMemo(()=>sichtbareOrte.filter(p=>passendeRubrik(p,category)&&(!nurGepruefte||frischBestaetigt(p))&&(!district||p.district===district)&&[p.name,p.category,p.district,p.description_de,p.description_en].join(' ').toLocaleLowerCase().includes(query.toLocaleLowerCase())),[sichtbareOrte,category,district,query,nurGepruefte]);
  const navigate=(p:Page)=>{setPage(p);setMenu(false);window.scrollTo({top:0,behavior:'smooth'})};
@@ -224,9 +226,16 @@ export default function Home(){
 </main>}
 {page==='community'&&<main className="inner-page v3-community-page">
  <div className="page-title v3-page-head"><small>04 / MENSCHEN DER STADT</small><h1>Frankfurt verbindet<em>.</em></h1><p>Lieblingsorte, kleine Geschichten und ein Blick auf die Stadt durch andere Augen.</p></div>
- <section className="v4-groups-preview"><span className="v3-eyebrow">GEMEINSAM AKTIV</span><h2 className="v4-group-heading">Laufen. Spazieren. Lesen.</h2><p className="v4-group-sub">Entdecke, wie Frankfurter Gruppen künftig eigene Treffen präsentieren können. Die folgenden Profile sind Ideen für die Vorschau, keine bestätigten Anbieter.</p><div className="v4-group-grid">{vorschauGruppen.map(g=><article key={g.id} className="v4-group"><small>{g.typ} · MUSTERGRUPPE</small><h3>{g.name}</h3><p>{g.beschreibung}</p></article>)}</div></section><div className="v3-community-layout"><section className="v3-community-posts"><div className="v3-section-head"><div><span className="v3-eyebrow">STIMMEN AUS FRANKFURT</span><h2>Unsere Geschichten.</h2></div></div><div className="v3-post-grid">{sichtbarePosts.map(p=><article className="v3-post-card" key={p.id}>
+ <section className="v4-groups-preview"><span className="v3-eyebrow">GEMEINSAM AKTIV</span><h2 className="v4-group-heading">Laufen. Spazieren. Lesen.</h2><p className="v4-group-sub">Entdecke, wie Frankfurter Gruppen künftig eigene Treffen präsentieren können. Die folgenden Profile sind Ideen für die Vorschau, keine bestätigten Anbieter.</p><div className="v4-group-grid">{vorschauGruppen.map(g=><article key={g.id} className="v4-group"><small>{g.typ} · MUSTERGRUPPE</small><h3>{g.name}</h3><p>{g.beschreibung}</p></article>)}</div></section><div className="v3-community-layout"><section className="v3-community-posts"><div className="v3-section-head"><div><span className="v3-eyebrow">STIMMEN AUS FRANKFURT</span><h2>Unsere Geschichten.</h2></div></div><div className="ffm-follow-filter" role="group" aria-label="Community-Feed">
+    <button type="button" className={!followingOnly?'active':''} aria-pressed={!followingOnly} onClick={()=>setFollowingOnly(false)}>Alle Beiträge</button>
+    <button type="button" className={followingOnly?'active':''} aria-pressed={followingOnly} onClick={()=>{if(!user){setAuth(true);return;}setFollowingOnly(true)}}>Folge ich</button>
+   </div>
+   {followingOnly&&posts.length===0&&<p className="ffm-follow-empty">Noch keine Beiträge von Personen oder Unternehmen, denen du folgst.</p>}
+   <div className="v3-post-grid">{sichtbarePosts.map(p=><article className="v3-post-card" key={p.id}>
   <div className="v3-post-image"><img src={ortsbild('',p.image_url)} alt="Stimmungsbild zum Beitrag" loading="lazy"/><span className="v3-image-note">Stimmungsbild</span></div>
-  <div className="v3-post-content"><div className="v3-post-person"><span className="v3-avatar">{p.display_name.charAt(0).toUpperCase()}</span><div><strong>{p.display_name}</strong><small>{p.place_name||'Frankfurt'} · {date(p.created_at,lang)}</small></div></div><p>{p.body}</p>
+  <div className="v3-post-content"><div className="v3-post-person"><span className="v3-avatar">{p.display_name.charAt(0).toUpperCase()}</span><div><strong>{p.display_name}</strong><small>{p.place_name||'Frankfurt'} · {date(p.created_at,lang)}</small></div>
+   {!p.demo&&p.author_id&&<FollowButton key={p.author_id} targetType="user" targetId={p.author_id} initialFollowing={Boolean(p.following_author)} own={Boolean(p.own_post)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash} onChanged={()=>{if(followingOnly)setRefresh(v=>v+1)}}/>}
+   </div><p>{p.body}</p>
    {p.demo?<span className="v3-demo-label">Musterbeitrag · erfundenes Profil</span>:
     <PostEngagement postId={p.id} likes={p.likes_count||0} comments={p.comments_count||0} liked={Boolean(p.liked)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>} </div>
  </article>)}</div></section>
@@ -241,7 +250,10 @@ export default function Home(){
  onSave={()=>favorite(selected.id)} onLogin={()=>setAuth(true)} onNotice={flash}
  onReport={(reason,message)=>submit('place-reports',{place_id:selected.id,reason,message},'Danke! Die Redaktion prüft deine Meldung.')}
  onPost={body=>submit('posts',{body,place_id:selected.id},'Dein Tipp wartet auf Freigabe.')}
-/><VenueReviews key={selected.id} placeId={selected.id} demo={Boolean(selected.demo)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>{selected.candidate&&<p className="v5-candidate-alert">Betrieb und Öffnungszeiten nicht geprüft. Bitte beim Anbieter nachsehen.</p>}{selected.verification_source&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.verification_source}>Quelle der Betriebsprüfung</a>}{selected.source_url&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.source_url}>{t.source}<span className="ui-dot" aria-hidden="true"/></a>}<p className="fineprint">{t.notice}</p></div><PlaceLocationMap key={selected.id} name={selected.name} address={selected.address} latitude={selected.latitude} longitude={selected.longitude}/></div></div>}
+/>{!selected.demo&&!selected.candidate&&selected.business_id&&<div className="ffm-venue-follow">
+  <span>Dieses Unternehmen</span>
+  <FollowButton key={selected.business_id} targetType="business" targetId={selected.business_id} initialFollowing={Boolean(selected.following_business)} own={false} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>
+ </div>}<VenueReviews key={selected.id} placeId={selected.id} demo={Boolean(selected.demo)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>{selected.candidate&&<p className="v5-candidate-alert">Betrieb und Öffnungszeiten nicht geprüft. Bitte beim Anbieter nachsehen.</p>}{selected.verification_source&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.verification_source}>Quelle der Betriebsprüfung</a>}{selected.source_url&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.source_url}>{t.source}<span className="ui-dot" aria-hidden="true"/></a>}<p className="fineprint">{t.notice}</p></div><PlaceLocationMap key={selected.id} name={selected.name} address={selected.address} latitude={selected.latitude} longitude={selected.longitude}/></div></div>}
   {auth&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setAuth(false)}}><div className="auth-dialog" role="dialog" aria-modal="true"><button className="dialog-close" onClick={()=>setAuth(false)}><X/></button><span className="auth-mark">F✳</span><small>DEIN ZUGANG ZU FFM AKTUELL</small><h2>{register?t.register:t.welcome}</h2><form onSubmit={onAuth}>{register&&formField(t.name,'display_name',true)}{formField(t.email,'email',true,'email')}{formField(t.password,'password',true,'password')}<button className="primary-btn">{register?t.register:t.login}<span className="ui-dot" aria-hidden="true"/></button></form><button className="switch-auth" onClick={()=>setRegister(!register)}>{register?t.login:t.register}<span className="ui-dot" aria-hidden="true"/></button></div></div>}
  </div>;
 }
