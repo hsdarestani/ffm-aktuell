@@ -64,5 +64,7 @@ test('publishing stays a three choice, short basic form with optional advanced f
  }
  assert.match(admin,/Weitere Angaben/);
  assert.match(admin,/Beschreibung & Link/);
- assert.match(admin,/Direkt öffentlich/);
+ assert.match(admin,/Geplante Beiträge erscheinen erst/);
+ assert.match(admin,/price_source_url/);
+ assert.match(admin,/published_at/);
 });
