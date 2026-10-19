@@ -14,7 +14,7 @@ export default function CatalogStudio({onNotice}:{onNotice:(message:string,succe
  const load=useCallback(async()=>{
   try{const d=await request('/api/categories?include_inactive=1');setCategories(d.items||[]);}
   catch(e){onNotice(e instanceof Error?e.message:'Kategorien nicht verfügbar',false)}finally{setLoading(false)}
- },[onNotice]);
+ },[]);
  useEffect(()=>{void load()},[load]);
  useEffect(()=>{let active=true;const timer=setTimeout(()=>{
   request('/api/categories/places?'+new URLSearchParams({q:search})).then(d=>{if(active)setPlaces(d.items||[])}).catch(()=>{if(active)setPlaces([])});
