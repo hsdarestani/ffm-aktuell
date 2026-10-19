@@ -171,6 +171,48 @@ try{
  const noPublicVenue=await post('follows',reader,{target_type:'business',target_id:createdBusiness.body.id,active:true});
  if(noPublicVenue.status!==404)throw Error('Business without a public venue was followable');
  const publicPlace=await pool.query("INSERT INTO places(business_id,name,category,address,status,activity_status) VALUES($1,'CI Follow Venue','Cafés','CI Main Street','published','operating') RETURNING id",[createdBusiness.body.id]);
+ // Administrators manage audited taxonomy and multiple categories per location.
+ const publicCats=await get('categories');
+ if(publicCats.status!==200||!publicCats.body.items.some(c=>c.slug==='Cafés'))throw Error('Public taxonomy missing existing category');
+ const unauthorizedCat=await post('categories',reader,{action:'save',slug:'CI Discover',label_de:'CI Entdecken',label_en:'CI Explore'});
+ if(unauthorizedCat.status!==403)throw Error('Unprivileged user edited taxonomy');
+ const createdCat=await post('categories',cookie,{action:'save',slug:'CI Stadtideen',label_de:'CI Stadtideen',label_en:'CI City ideas'});
+ if(createdCat.status!==200)throw Error('Admin category creation failed '+JSON.stringify(createdCat));
+ const subCat=await post('categories',cookie,{action:'save',slug:'CI Geheimtipp',label_de:'CI Geheimtipp',label_en:'CI Hidden gem',parent_slug:'CI Stadtideen'});
+ if(subCat.status!==200)throw Error('Subcategory creation failed '+JSON.stringify(subCat));
+ const deniedTags=await post('categories/places',reader,{place_id:publicPlace.rows[0].id,categories:['Cafés','CI Geheimtipp']});
+ if(deniedTags.status!==403)throw Error('Non-admin could edit location categories');
+ const tags=await post('categories/places',cookie,{place_id:publicPlace.rows[0].id,categories:['Cafés','CI Geheimtipp']});
+ if(tags.status!==200||!tags.body.success)throw Error('Multi-tag location assignment failed '+JSON.stringify(tags));
+ const tagList=await get('places?category='+encodeURIComponent('CI Geheimtipp'));
+ if(tagList.status!==200||!tagList.body.items.some(p=>p.id===publicPlace.rows[0].id&&p.categories.includes('CI Geheimtipp')))throw Error('Secondary category does not filter published location');
+ const tagUpdate=await post('categories',cookie,{action:'status',slug:'CI Stadtideen',active:false});
+ if(tagUpdate.status!==200)throw Error('Admin cannot deactivate a category');
+ const publicAfter=await get('categories');
+ if(publicAfter.body.items.some(c=>c.slug==='CI Stadtideen'))throw Error('Inactive category leaked to public catalog');
+ // Advertising requests stay drafts until approved, and editorial approval
+ // NEVER creates a paid or live campaign without commercial configuration.
+ const start=new Date(Date.now()+2*86400000).toISOString().slice(0,10);
+ const end=new Date(Date.now()+9*86400000).toISOString().slice(0,10);
+ const draft=await post('campaigns',client,{action:'create',title:'CI Frankfurt Autumn',copy_de:'A real example offer with plain unambiguous text.',placement:'home',place_id:publicPlace.rows[0].id,start_date:start,end_date:end});
+ if(draft.status!==201||draft.body.item?.status!=='draft')throw Error('Ad proposal draft failed: '+JSON.stringify(draft));
+ const guestCampaigns=await get('campaigns');
+ if(guestCampaigns.status!==401)throw Error('Ad proposal list leaked to guests');
+ const otherCampaigns=await get('campaigns',reader);
+ if(otherCampaigns.body.items?.some(v=>v.id===draft.body.item.id))throw Error('Ad draft leaked to unrelated account');
+ const submitted=await post('campaigns',client,{action:'submit',id:draft.body.item.id});
+ if(submitted.status!==200||submitted.body.status!=='pending_review')throw Error('Ad proposal not submitted for review');
+ const adQueue=await get('admin/campaigns',cookie);
+ if(!adQueue.body.items.some(v=>v.id===draft.body.item.id&&v.status==='pending_review'))throw Error('Ad review queue missing campaign');
+ if(adQueue.body.advertising_enabled||adQueue.body.payment_enabled)throw Error('Ad checkout incorrectly enabled');
+ const approvedAd=await post('admin/campaigns',cookie,{id:draft.body.item.id,approve:true});
+ if(approvedAd.status!==200||approvedAd.body.item?.status!=='awaiting_commercial_setup')throw Error('Ad review incorrectly published or charged ad');
+ const adRow=await pool.query('SELECT status,quoted_price_cents,payment_status FROM ad_campaigns WHERE id=$1',[draft.body.item.id]);
+ if(adRow.rows[0].status!=='awaiting_commercial_setup'||adRow.rows[0].quoted_price_cents!==null||adRow.rows[0].payment_status!=='not_configured')
+  throw Error('Unapproved advertising prices or payment leaked');
+ const stopped=await post('campaigns',client,{action:'cancel',id:draft.body.item.id});
+ if(stopped.status!==200||stopped.body.status!=='cancelled')throw Error('Owner could not cancel unbooked campaign');
+ console.log('PASS: dynamic category and subcategory administration, secondary place filtering, business advertising draft, review and non-billing gate');
  const followBusiness=await post('follows',reader,{target_type:'business',target_id:createdBusiness.body.id,active:true});
  if(followBusiness.status!==200)throw Error('Approved public business follow failed');
  const businessPost=await post('posts',client,{body:'A public CI business venue post for the following feed.',place_id:publicPlace.rows[0].id});
