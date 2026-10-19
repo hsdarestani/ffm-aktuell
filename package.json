@@ -18,7 +18,8 @@
     "zod": "^4.1.12",
     "lucide-react": "^0.468.0",
     "maplibre-gl": "^5.7.1",
-    "sharp": "^0.34.4"
+    "sharp": "^0.34.4",
+    "jose": "^6.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.18.8",
