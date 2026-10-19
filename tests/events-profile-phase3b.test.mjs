@@ -47,7 +47,9 @@ test('export excludes stored password hashes and deletions require exact confirm
 });
 test('event cards and profile are directly reachable without dense nav',()=>{
  assert.match(page,/<EventActions key=\{e.id\}/);
- assert.match(page,/page==='profile'&&<ProfileSettings/);
+ assert.match(page,/page==='profile'&&<>/);
+ assert.match(page,/<ProfileSettings user=/);
+ assert.match(page,/<MediaRightsPanel onNotice=/);
  assert.match(page,/Mein Profil/);
  assert.match(css,/@media\(max-width:600px\)/);
  assert.match(e2e,/Guest could read private event bookmarks/);
