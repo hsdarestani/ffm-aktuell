@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS sessions (
  token_hash text PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  expires_at timestamptz NOT NULL
 );
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS authenticated_at timestamptz NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS sessions_expire_idx ON sessions(expires_at);
 -- One-time admin activation. Only the SHA256 token hash is stored.
 CREATE TABLE IF NOT EXISTS admin_invites (
