@@ -112,6 +112,61 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   }
   const user=await sessionUser(req);
   if(method==='GET'&&path==='me')return ok({user});
+  if(method==='GET'&&path==='me/preferences'){
+    const u=need(user);
+    const r=await query("SELECT interests,districts,share_activity,notify_events,notify_news,notify_offers FROM user_preferences WHERE user_id=$1",[u.id]);
+    return ok({preferences:r.rows[0]||{interests:[],districts:[],share_activity:false,notify_events:false,notify_news:false,notify_offers:false}});
+  }
+  if(method==='POST'&&path==='me/preferences'){
+    rate(req,'user-preferences');const u=need(user);
+    const b=parse(z.object({
+      interests:z.array(z.string().trim().min(2).max(60)).max(12),
+      districts:z.array(z.string().trim().min(2).max(60)).max(12),
+      share_activity:z.boolean().default(false),
+      notify_events:z.boolean().default(false),
+      notify_news:z.boolean().default(false),
+      notify_offers:z.boolean().default(false)
+    }),await payload(req));
+    const clean=(v:string[])=>[...new Set(v)].slice(0,12);
+    const r=await query("INSERT INTO user_preferences(user_id,interests,districts,share_activity,notify_events,notify_news,notify_offers) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(user_id) DO UPDATE SET interests=excluded.interests,districts=excluded.districts,share_activity=excluded.share_activity,notify_events=excluded.notify_events,notify_news=excluded.notify_news,notify_offers=excluded.notify_offers,updated_at=now() RETURNING interests,districts,share_activity,notify_events,notify_news,notify_offers",
+      [u.id,clean(b.interests),clean(b.districts),b.share_activity,b.notify_events,b.notify_news,b.notify_offers]);
+    return ok({preferences:r.rows[0],notice:'Preferences saved. Push notifications are not enabled until a provider is configured.'});
+  }
+  if(method==='GET'&&path==='me/export'){
+    rate(req,'account-export');const u=need(user);
+    const [prefs,bookmarks,candidateBookmarks,eventMarks,posts,comments,reviews,tours,follows,businesses]=await Promise.all([
+      query('SELECT interests,districts,share_activity,notify_events,notify_news,notify_offers,updated_at FROM user_preferences WHERE user_id=$1',[u.id]),
+      query('SELECT place_id,created_at FROM favorites WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
+      query('SELECT osm_id,created_at FROM candidate_favorites WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
+      query('SELECT event_id,created_at FROM event_favorites WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
+      query('SELECT id,place_id,candidate_osm_id,body,media_url,status,created_at FROM posts WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
+      query('SELECT id,post_id,body,status,created_at FROM post_comments WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
+      query('SELECT id,place_id,osm_id,rating,body,status,created_at FROM venue_reviews WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
+      query('SELECT id,title,share_token,created_at FROM user_tours WHERE owner_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
+      query('SELECT followed_id,created_at FROM user_follows WHERE follower_id=$1',[u.id]),
+      query('SELECT id,name,status,created_at FROM businesses WHERE owner_id=$1',[u.id])
+    ]);
+    const response=ok({exported_at:new Date().toISOString(),account:{id:u.id,email:u.email,display_name:u.display_name,language:u.language},
+      preferences:prefs.rows[0]||null,favorites:bookmarks.rows,candidate_favorites:candidateBookmarks.rows,
+      event_favorites:eventMarks.rows,posts:posts.rows,comments:comments.rows,reviews:reviews.rows,
+      tours:tours.rows,followed_people:follows.rows,businesses:businesses.rows});
+    response.headers.set('Cache-Control','no-store, private');
+    return response;
+  }
+  if(method==='POST'&&path==='me/delete'){
+    rate(req,'account-delete');const u=need(user);
+    if(u.role==='admin')return bad('Administrators need an editorial handover before deleting their account',403);
+    const b=parse(z.object({password:z.string().min(1),confirmation:z.literal('KONTO LÖSCHEN')}),await payload(req));
+    const saved=await query('SELECT password_hash FROM users WHERE id=$1',[u.id]);
+    if(!saved.rowCount||!verifyPassword(b.password,saved.rows[0].password_hash))return bad('Invalid credentials',403);
+    // Foreign-key cascades remove private subscriptions, bookmarks, posts, tours,
+    // comments, follows, sessions and owned business records. Existing editorial
+    // audit entries retain anonymous action history with actor_id NULL.
+    await query('DELETE FROM users WHERE id=$1',[u.id]);
+    const response=ok({success:true});
+    response.cookies.set('ffm_session','',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:0});
+    return response;
+  }
   if(method==='GET'&&path==='places'){
     const category=trim(qs.get('category'));const district=trim(qs.get('district'));const search=trim(qs.get('q'));
     const mode=trim(qs.get('mode'));
@@ -153,6 +208,23 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     // External, official, dynamic duty rota. No guesses or caching duty data.
     return ok({url:'https://www.aponet.de/notdienstsuche/60320-Frankfurt',source:'aponet · Bundesapothekerkammer',
       notice:'Den aktuellen Apotheken-Notdienst bitte unmittelbar auf der offiziellen Seite prüfen. Kein Notdienst wurde hier als aktuell bestätigt.'});
+  }
+  if(method==='GET'&&path==='event-favorites'){
+    const u=need(user);
+    const r=await query("SELECT e.id,e.title,e.venue,e.starts_at,e.description_de,e.ticket_url FROM event_favorites f JOIN events e ON e.id=f.event_id WHERE f.user_id=$1 AND e.status='published' AND e.starts_at>=now()-interval '1 day' ORDER BY e.starts_at ASC LIMIT 100",[u.id]);
+    return ok({items:r.rows});
+  }
+  if(method==='POST'&&path==='event-favorites'){
+    rate(req,'event-favorite');const u=need(user);
+    const b=parse(z.object({event_id:id,active:z.boolean()}),await payload(req));
+    if(b.active){
+      const r=await query("INSERT INTO event_favorites(user_id,event_id) SELECT $1,e.id FROM events e WHERE e.id=$2 AND e.status='published' AND e.starts_at>=now()-interval '1 day' ON CONFLICT DO NOTHING RETURNING event_id",[u.id,b.event_id]);
+      if(!r.rowCount){
+        const existing=await query('SELECT event_id FROM event_favorites WHERE user_id=$1 AND event_id=$2',[u.id,b.event_id]);
+        if(!existing.rowCount)return bad('Event not available',404);
+      }
+    }else await query('DELETE FROM event_favorites WHERE user_id=$1 AND event_id=$2',[u.id,b.event_id]);
+    return ok({saved:b.active});
   }
   if(method==='GET'&&path==='events'){const r=await query("SELECT * FROM events WHERE status='published' AND starts_at>=now()-interval '1 day' ORDER BY starts_at LIMIT 40");return ok({items:r.rows});}
   if(method==='GET'&&path==='news'){const r=await query("SELECT * FROM news WHERE status='published' ORDER BY published_at DESC LIMIT 40");return ok({items:r.rows});}
