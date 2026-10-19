@@ -167,6 +167,13 @@ CREATE TABLE IF NOT EXISTS events (
  ticket_url text, status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','published','rejected')),
  created_at timestamptz NOT NULL DEFAULT now()
 );
+-- Event/source details and scheduled news; unknown prices stay NULL.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS category text NOT NULL DEFAULT 'Weitere';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS organizer text NOT NULL DEFAULT '';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS ends_at timestamptz;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS price_cents integer CHECK(price_cents>=0);
+ALTER TABLE events ADD COLUMN IF NOT EXISTS price_source_url text;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS source_url text;
 CREATE INDEX IF NOT EXISTS events_date_idx ON events(status,starts_at);
 -- User event bookmarks and calendar reminder preferences are private.
 -- Calendar reminders are delivered only via explicit .ics export, no silent push.
@@ -184,6 +191,8 @@ CREATE TABLE IF NOT EXISTS news (
  source_url text, status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','published','rejected')),
  published_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE news ADD COLUMN IF NOT EXISTS category text NOT NULL DEFAULT 'Stadtleben';
+CREATE INDEX IF NOT EXISTS news_release_date_idx ON news(status,published_at);
 CREATE TABLE IF NOT EXISTS posts (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  place_id uuid REFERENCES places(id) ON DELETE SET NULL, body text NOT NULL, media_url text,
