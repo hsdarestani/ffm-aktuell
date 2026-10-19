@@ -6,7 +6,7 @@ const uuid=/^[0-9a-f-]{36}$/;
 export async function GET(req:NextRequest){
  const u=await sessionUser(req);if(!u)return NextResponse.json({error:'Anmeldung erforderlich'},{status:401});
  const [media,businesses,grants]=await Promise.all([
-  query("SELECT id,media_type FROM user_media WHERE owner_id=$1 AND status='approved' ORDER BY created_at DESC LIMIT 100",[u.id]),
+  query("SELECT id,media_type,status,created_at FROM user_media WHERE owner_id=$1 ORDER BY created_at DESC LIMIT 100",[u.id]),
   query("SELECT b.id,b.name FROM businesses b WHERE b.status='approved' AND EXISTS(SELECT 1 FROM places p WHERE p.business_id=b.id AND p.status='published') ORDER BY b.name LIMIT 100"),
   query("SELECT g.id,g.media_id,g.business_id,b.name AS business_name,g.expires_at,g.revoked_at FROM media_right_grants g JOIN businesses b ON b.id=g.business_id WHERE g.owner_id=$1 ORDER BY g.created_at DESC LIMIT 100",[u.id])
  ]);
