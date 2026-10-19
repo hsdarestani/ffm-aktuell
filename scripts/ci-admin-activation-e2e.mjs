@@ -2,8 +2,8 @@
 // Uses a disposable local PostgreSQL database and a locally started Next.js server.
 // Never run this against production or use a real invite/password.
 import {spawn} from 'node:child_process';
-import {randomBytes,createHash} from 'node:crypto';
-import {readFile} from 'node:fs/promises';
+import {randomBytes,createHash,randomUUID} from 'node:crypto';
+import {readFile,mkdir,writeFile,rm} from 'node:fs/promises';
 import {setTimeout as delay} from 'node:timers/promises';
 import pg from 'pg';
 
@@ -19,12 +19,14 @@ const password='CI-Activation-'+randomBytes(18).toString('hex');
 const email='ci-activation-'+randomBytes(7).toString('hex')+'@example.com';
 const site='http://127.0.0.1:3101';
 let server=null,output='';
+const mediaDir='/tmp/ffm-ci-media-'+randomBytes(9).toString('hex');
 
 try{
+ await mkdir(mediaDir,{recursive:true,mode:0o700});
  await pool.query(await readFile('db/schema.sql','utf8'));
  await pool.query("INSERT INTO admin_invites(token_hash,expires_at) VALUES($1,now()+interval '30 minutes')",[digest]);
  server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','-p','3101'],{
-  env:{...process.env,DATABASE_URL:raw,NEXT_PUBLIC_SITE_URL:site,NODE_ENV:'production'},
+  env:{...process.env,DATABASE_URL:raw,NEXT_PUBLIC_SITE_URL:site,NODE_ENV:'production',FFM_MEDIA_DIR:mediaDir},
   stdio:['ignore','pipe','pipe']
  });
  server.stdout.on('data',s=>{output=(output+String(s)).slice(-2500)});
@@ -320,6 +322,54 @@ try{
  const claimedAgain=await post('coupons/claim',reader,{deal_id:proposed.body.id});
  if(claimedAgain.status!==200||claimedAgain.body.redeemed!==true||claimedAgain.body.code!==coupon.body.code)
    throw Error('Claim replay reset a redeemed code');
+ // Phase 5: proof of media privacy without accepting any unscanned file.
+ // Fake media bytes are inserted DIRECTLY into this disposable CI database only.
+ // This does not test or bypass the scanner on any production server.
+ const mediaService=await get('media/status');
+ if(mediaService.status!==200||typeof mediaService.body.upload_enabled!=='boolean')throw Error('Media scanner health endpoint not working');
+ const ownerId=(await get('me',reader)).body.user?.id;
+ if(!ownerId)throw Error('Media test owner is missing');
+ const bytes=Buffer.from('FAKE-CI-VIDEO-HEADER-0123456789-abcdefghijk');
+ const storedKey=randomUUID(),mediaId=randomUUID();
+ await writeFile(mediaDir+'/'+storedKey,bytes,{flag:'wx',mode:0o600});
+ await pool.query("INSERT INTO user_media(id,owner_id,media_type,size_bytes,storage_key,sha256,license_confirmed,status) VALUES($1,$2,'video/mp4',$3,$4,$5,true,'approved')",
+  [mediaId,ownerId,bytes.length,storedKey,createHash('sha256').update(bytes).digest('hex')]);
+ const invisible=await fetch(site+'/api/media/'+mediaId);
+ if(invisible.status!==404)throw Error('Unpublished media leaked to guest');
+ const createdStory=await post('stories',reader,{action:'create',media_id:mediaId,caption:'CI private story'});
+ if(createdStory.status!==201||createdStory.body.story?.status!=='pending')throw Error('Story was not pending');
+ const beforeStory=await get('stories');
+ if(beforeStory.body.items.some(item=>item.id===createdStory.body.story.id))throw Error('Unmoderated story leaked publicly');
+ const storyApproved=await post('media/moderation',cookie,{id:createdStory.body.story.id,type:'story',approve:true});
+ if(storyApproved.status!==200)throw Error('Admin story approval failed');
+ const afterStory=await get('stories');
+ if(!afterStory.body.items.some(item=>item.id===createdStory.body.story.id))throw Error('Approved live story missing');
+ const partial=await fetch(site+'/api/media/'+mediaId,{headers:{Range:'bytes=0-9'}});
+ if(partial.status!==206||partial.headers.get('content-range')!=='bytes 0-9/'+bytes.length||(await partial.arrayBuffer()).byteLength!==10)
+  throw Error('Video byte range failed');
+ const grant=await post('media/rights',reader,{action:'grant',media_id:mediaId,business_id:createdBusiness.body.id,expires_at:new Date(Date.now()+7*86400000).toISOString()});
+ if(grant.status!==201)throw Error('Owner-granted consent missing: '+JSON.stringify(grant));
+ const list=await get('highlights?business_id='+createdBusiness.body.id+'&scope=available',client);
+ if(!list.body.items.some(item=>item.grant_id===grant.body.id))throw Error('Consent was not available to business owner');
+ const pendingHighlight=await post('highlights',client,{grant_id:grant.body.id});
+ if(pendingHighlight.status!==201||pendingHighlight.body.highlight?.status!=='pending')throw Error('Highlights lack moderation gate');
+ const hiddenHighlight=await get('highlights?business_id='+createdBusiness.body.id);
+ if(hiddenHighlight.body.items.length!==0)throw Error('Pending highlight leaked to visitors');
+ const hlOk=await post('media/moderation',cookie,{id:pendingHighlight.body.highlight.id,type:'highlight',approve:true});
+ if(hlOk.status!==200)throw Error('Highlight approval blocked');
+ const publishedHighlight=await get('highlights?business_id='+createdBusiness.body.id);
+ if(!publishedHighlight.body.items.some(item=>item.id===pendingHighlight.body.highlight.id))throw Error('Approved highlight not visible');
+ const revoke=await post('media/rights',reader,{action:'revoke',id:grant.body.id});
+ if(revoke.status!==200||!revoke.body.revoked)throw Error('Media owner could not revoke consent');
+ const afterRevoke=await get('highlights?business_id='+createdBusiness.body.id);
+ if(afterRevoke.body.items.length!==0)throw Error('Revoked business media stayed public');
+ const removed=await fetch(site+'/api/media/manage',{method:'DELETE',headers:{'Content-Type':'application/json',Cookie:reader},body:JSON.stringify({id:mediaId})});
+ if(removed.status!==200||!(await removed.json()).deleted)throw Error('User could not delete owned media');
+ const afterMediaDelete=await fetch(site+'/api/media/'+mediaId);
+ if(afterMediaDelete.status!==404)throw Error('Deleted media remained accessible');
+ const afterStoryDelete=await get('stories');
+ if(afterStoryDelete.body.items.some(item=>item.id===createdStory.body.story.id))throw Error('Deleted media left a public story');
+ console.log('PASS: media isolation, moderated 24h Story, private consent, Highlight review, revocation, 206 playback and owner delete');
  console.log('PASS: moderated coupon issue, private wallet, issuer ownership, single-use redemption and replay prevention');
  console.log('PASS: ownership gates, private pending branch corrections, editorial approval, reject and verification reset');
  console.log('PASS: event bookmarking, private preferences, secure data export and confirmed account deletion');
@@ -334,4 +384,5 @@ try{
   await Promise.race([new Promise(resolve=>server.once('exit',resolve)),delay(3000)]);
  }
  await pool.end();
+ await rm(mediaDir,{recursive:true,force:true});
 }
