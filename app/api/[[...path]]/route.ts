@@ -156,6 +156,8 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   if(method==='POST'&&path==='me/delete'){
     rate(req,'account-delete');const u=need(user);
     if(u.role==='admin')return bad('Administrators need an editorial handover before deleting their account',403);
+    const owned=await query("SELECT id FROM businesses WHERE owner_id=$1 AND status IN ('approved','suspended') LIMIT 1",[u.id]);
+    if(owned.rowCount)return bad('Transfer or close your verified business with support before deleting your account',409);
     const b=parse(z.object({password:z.string().min(1),confirmation:z.literal('KONTO LÖSCHEN')}),await payload(req));
     const saved=await query('SELECT password_hash FROM users WHERE id=$1',[u.id]);
     if(!saved.rowCount||!verifyPassword(b.password,saved.rows[0].password_hash))return bad('Invalid credentials',403);
