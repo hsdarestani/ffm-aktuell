@@ -20,7 +20,7 @@ const needs=[
  {id:'Apotheken',label:'Apotheke finden',icon:Pill,color:'sage'}
 ] as const;
 function germanDate(value:string){const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'});}
-export default function AtlasHome({places,events,news,onDiscover,onMap,onEvents,onCommunity,onBusiness,onPlace,onCategory,onSearch,onTours}:Props){
+export default function AtlasHome({lang,places,events,news,onDiscover,onMap,onEvents,onCommunity,onBusiness,onPlace,onCategory,onSearch,onTours}:Props){
  const [query,setQuery]=useState('');
  const confirmed=places.filter(p=>frischBestaetigt(p));
  const upcoming=events.filter(ev=>!ev.demo&&new Date(ev.starts_at).getTime()>Date.now()).sort((a,b)=>Date.parse(a.starts_at)-Date.parse(b.starts_at));
@@ -28,16 +28,16 @@ export default function AtlasHome({places,events,news,onDiscover,onMap,onEvents,
  return <main className="ffm-quick-home">
   <section className="ffm-quick-hero" aria-labelledby="quick-home-title">
    <div className="ffm-quick-container">
-    <div className="ffm-quick-hero-top"><span className="ffm-quick-eyebrow"><span className="ffm-quick-spark"/> DEIN FRANKFURT. GANZ EINFACH.</span><span className="ffm-quick-geo">50°06′ N · 8°40′ O</span></div>
-    <h1 id="quick-home-title">Was hast du <em>heute</em> vor?</h1>
-    <p>Entdecke Cafés, Restaurants, Aktivitäten und Lieblingsorte in Frankfurt. Ohne langes Suchen.</p>
+    <div className="ffm-quick-hero-top"><span className="ffm-quick-eyebrow"><span className="ffm-quick-spark"/> {lang==='de'?'DEIN FRANKFURT. GANZ EINFACH.':'YOUR FRANKFURT. MADE EASY.'}</span><span className="ffm-quick-geo">50°06′ N · 8°40′ O</span></div>
+    <h1 id="quick-home-title">{lang==='de'?<>Was hast du <em>heute</em> vor?</>:<>What are you doing <em>today</em>?</>}</h1>
+    <p>{lang==='de'?'Entdecke Cafés, Restaurants, Aktivitäten und Lieblingsorte in Frankfurt. Ohne langes Suchen.':'Find cafés, restaurants, activities and favourite places in Frankfurt. Without endless searching.'}</p>
     <form onSubmit={search} role="search" className="ffm-quick-search">
      <Search size={22} strokeWidth={1.8} aria-hidden="true"/>
-     <label className="sr-only" htmlFor="atlas-home-search">Ort, Aktivität oder Stadtteil suchen</label>
-     <input id="atlas-home-search" autoComplete="off" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Wonach suchst du?" enterKeyHint="search"/>
-     <button type="submit">Finden <ChevronRight size={20}/></button>
+     <label className="sr-only" htmlFor="atlas-home-search">{lang==='de'?'Ort, Aktivität oder Stadtteil suchen':'Find a place, activity or district'}</label>
+     <input id="atlas-home-search" autoComplete="off" value={query} onChange={e=>setQuery(e.target.value)} placeholder={lang==='de'?'Wonach suchst du?':'What are you looking for?'} enterKeyHint="search"/>
+     <button type="submit">{lang==='de'?'Finden':'Find'} <ChevronRight size={20}/></button>
     </form>
-    <div className="ffm-quick-hero-note"><CheckCircle2 size={15}/> Ortsdaten transparent gekennzeichnet. Öffnungszeiten bitte beim Anbieter prüfen.</div>
+    <div className="ffm-quick-hero-note"><CheckCircle2 size={15}/> {lang==='de'?'Ortsdaten transparent gekennzeichnet. Öffnungszeiten bitte beim Anbieter prüfen.':'Every venue is marked with its verification status. Confirm opening hours with the venue.'}</div>
    </div>
    <div className="ffm-quick-horizon" aria-hidden="true">
     <svg viewBox="0 0 1400 200" preserveAspectRatio="xMidYMax slice">
@@ -49,43 +49,43 @@ export default function AtlasHome({places,events,news,onDiscover,onMap,onEvents,
   </section>
 
   <section className="ffm-quick-choices ffm-quick-container" aria-labelledby="ffm-quick-choose">
-   <div className="ffm-quick-section-heading"><div><span className="ffm-quick-eyebrow">DEIN NÄCHSTER SCHRITT</span><h2 id="ffm-quick-choose">Worauf hast du Lust?</h2></div><span className="ffm-quick-help">Einmal tippen. Direkt zu den Orten.</span></div>
+   <div className="ffm-quick-section-heading"><div><span className="ffm-quick-eyebrow">{lang==='de'?'DEIN NÄCHSTER SCHRITT':'YOUR NEXT STEP'}</span><h2 id="ffm-quick-choose">{lang==='de'?'Worauf hast du Lust?':'What sounds good?'}</h2></div><span className="ffm-quick-help">{lang==='de'?'Einmal tippen. Direkt zu den Orten.':'One tap. Straight to the places.'}</span></div>
    <div className="ffm-quick-grid">
     {needs.map(n=><button key={n.id} type="button" className={'ffm-quick-option '+n.color} onClick={()=>onCategory(n.id)} aria-label={n.label+' in Frankfurt suchen'}>
-     <span className="ffm-quick-option-icon"><n.icon size={24} strokeWidth={1.9}/></span><span>{n.label}</span><ChevronRight size={17} className="ffm-quick-option-go"/>
+     <span className="ffm-quick-option-icon"><n.icon size={24} strokeWidth={1.9}/></span><span>{lang==='de'?n.label:({Cafés:'Find a café',Restaurants:'Go out to eat',Bars:'Find a bar',Freizeit:'Things to do',Museen:'Explore culture',Apotheken:'Find a pharmacy'} as Record<string,string>)[n.id]}</span><ChevronRight size={17} className="ffm-quick-option-go"/>
     </button>)}
    </div>
    <div className="ffm-quick-secondary-actions">
-    <button type="button" onClick={onDiscover}>Alle Kategorien ansehen <ChevronRight size={16}/></button>
-    <button type="button" onClick={onMap}><MapIcon size={17}/> Auf der Karte suchen</button>
-    <button type="button" onClick={onEvents}><CalendarDays size={17}/> Veranstaltungen</button>
-    <button type="button" onClick={onTours}>Touren entdecken <ChevronRight size={16}/></button>
+    <button type="button" onClick={onDiscover}>{lang==='de'?'Alle Kategorien ansehen':'Explore all categories'} <ChevronRight size={16}/></button>
+    <button type="button" onClick={onMap}><MapIcon size={17}/> {lang==='de'?'Auf der Karte suchen':'Explore the map'}</button>
+    <button type="button" onClick={onEvents}><CalendarDays size={17}/> {lang==='de'?'Veranstaltungen':'Events'}</button>
+    <button type="button" onClick={onTours}>{lang==='de'?'Touren entdecken':'Explore walking tours'} <ChevronRight size={16}/></button>
    </div>
   </section>
 
   <section className="ffm-quick-next ffm-quick-container" aria-labelledby="ffm-quick-upcoming">
-   <div className="ffm-quick-section-heading"><div><span className="ffm-quick-eyebrow">AUS FRANKFURT</span><h2 id="ffm-quick-upcoming">Das könnte dich interessieren.</h2></div></div>
+   <div className="ffm-quick-section-heading"><div><span className="ffm-quick-eyebrow">{lang==='de'?'AUS FRANKFURT':'FROM FRANKFURT'}</span><h2 id="ffm-quick-upcoming">{lang==='de'?'Das könnte dich interessieren.':'You might enjoy these.'}</h2></div></div>
    <div className="ffm-quick-highlights">
     <div className="ffm-quick-feature-block">
-     <div className="ffm-quick-feature-heading"><MapPin size={18}/><h3>Geprüfte Orte</h3></div>
+     <div className="ffm-quick-feature-heading"><MapPin size={18}/><h3>{lang==='de'?'Geprüfte Orte':'Verified places'}</h3></div>
      {confirmed.length?
       <div className="ffm-quick-item-list">{confirmed.slice(0,3).map(p=><button key={p.id} onClick={()=>onPlace(p.id)} className="ffm-quick-list-item"><span><strong>{p.name}</strong><small>{p.category} · {p.district||'Frankfurt'}</small></span><ChevronRight size={18}/></button>)}</div>:
-      <div className="ffm-quick-empty"><p>Hier entstehen Empfehlungen mit geprüften Quellen.</p><button onClick={onDiscover}>Orte aus Frankfurt finden <ChevronRight size={16}/></button><small>Weitere Einträge sind derzeit noch nicht auf ihren Betriebsstatus geprüft.</small></div>
+      <div className="ffm-quick-empty"><p>{lang==='de'?'Hier entstehen Empfehlungen mit geprüften Quellen.':'Verified local recommendations are coming here.'}</p><button onClick={onDiscover}>{lang==='de'?'Orte aus Frankfurt finden':'Explore Frankfurt places'} <ChevronRight size={16}/></button><small>{lang==='de'?'Weitere Einträge sind derzeit noch nicht auf ihren Betriebsstatus geprüft.':'Other listings have not yet been checked for current operating status.'}</small></div>
      }
     </div>
     <div className="ffm-quick-feature-block">
-     <div className="ffm-quick-feature-heading"><CalendarDays size={18}/><h3>Veranstaltungen</h3></div>
+     <div className="ffm-quick-feature-heading"><CalendarDays size={18}/><h3>{lang==='de'?'Veranstaltungen':'Events'}</h3></div>
      {upcoming.length?<div className="ffm-quick-item-list">{upcoming.slice(0,3).map(ev=><button key={ev.id} type="button" onClick={onEvents} className="ffm-quick-list-item"><span><strong>{ev.title}</strong><small>{germanDate(ev.starts_at)} · {ev.venue}</small></span><ChevronRight size={18}/></button>)}</div>:
-      <div className="ffm-quick-empty"><p>Hier erscheinen bestätigte Veranstaltungen.</p><button onClick={onEvents}>Zu den Veranstaltungen <ChevronRight size={16}/></button><small>Beispieltermine sind keine buchbaren Events.</small></div>}
+      <div className="ffm-quick-empty"><p>{lang==='de'?'Hier erscheinen bestätigte Veranstaltungen.':'Confirmed events will appear here.'}</p><button onClick={onEvents}>{lang==='de'?'Zu den Veranstaltungen':'View events'} <ChevronRight size={16}/></button><small>{lang==='de'?'Beispieltermine sind keine buchbaren Events.':'Sample dates are not bookable events.'}</small></div>}
     </div>
    </div>
   </section>
 
   <section className="ffm-quick-quiet ffm-quick-container" aria-label="Mehr Frankfurt">
-   <div><Compass size={23}/><h2>Frankfurt hat noch mehr zu bieten.</h2><p>Entdecke die Stadt auf deine Weise – oder teile deine Lieblingsorte.</p></div>
-   <div className="ffm-quick-quiet-actions"><button onClick={onCommunity}>Miteinander entdecken <ChevronRight size={17}/></button><button onClick={onBusiness}>Für Unternehmen <ChevronRight size={17}/></button></div>
+   <div><Compass size={23}/><h2>{lang==='de'?'Frankfurt hat noch mehr zu bieten.':'There is more to Frankfurt.'}</h2><p>{lang==='de'?'Entdecke die Stadt auf deine Weise – oder teile deine Lieblingsorte.':'Explore the city your way, or share your favourite places.'}</p></div>
+   <div className="ffm-quick-quiet-actions"><button onClick={onCommunity}>{lang==='de'?'Miteinander entdecken':'Explore together'} <ChevronRight size={17}/></button><button onClick={onBusiness}>{lang==='de'?'Für Unternehmen':'For businesses'} <ChevronRight size={17}/></button></div>
   </section>
-  {news.length>0&&<details className="ffm-quick-extras ffm-quick-container"><summary>Stadtgeschichten ansehen <ChevronRight size={16}/></summary>
+  {news.length>0&&<details className="ffm-quick-extras ffm-quick-container"><summary>{lang==='de'?'Stadtgeschichten ansehen':'See stories from the city'} <ChevronRight size={16}/></summary>
    <div className="v3-home-news-grid" aria-label="03 / STADTJOURNAL">{news.slice(0,3).map(n=><article key={n.id} className="ffm-quick-news"><img src={ortsbild('',n.image_url)} loading="lazy" alt="Stimmungsbild aus Frankfurt"/><div><small>{n.demo?'MUSTERBEITRAG':'STADTGESCHICHTE'}</small><strong>{n.title}</strong></div></article>)}</div>
   </details>}
  </main>;
