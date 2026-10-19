@@ -60,6 +60,14 @@ This is an implementation ledger, **not** a claim of complete product delivery. 
 - Curated and private tours, ordered stops and shareable route plan
 - Personalization / optional natural-language assistant with source grounding and approval for weather/data sources
 
+## Phase 3b: Event bookmarking and private account controls (2026-10-19)
+- One click event bookmark for actual published future events, private and idempotent; never applies to fake preview events
+- Download a genuine ICS calendar entry with an optional 60-minute calendar alert, with calendar duration explicitly labelled as a placeholder because the source has no end time. No claim of configured FCM/APNs push delivery.
+- `Mein Profil` from the existing account button, covering editable interests and favorite neighborhoods, opt-in preference capture and consent-first activity visibility (default OFF; no public activity pages)
+- User-owned JSON data export and password + exact confirmation account deletion; prevent admin or owner of approved business from irreversible deletion before handover
+- Disposable PostgreSQL + actual API tests cover event ownership, preferences, export, deletion
+- **Still open:** native push-provider delivery and consent management, real event image licensing/category/prices, provider confirmed event end-times, Google/Apple/phone SSO and legal retention details
+
 ## Phase 4: Business & payments
 - Staff/subaccounts, editable multi-branch businesses and ownership verification documents
 - Tier entitlements, cancellation/invoices/SEPA/card provider choice, free and paid trials only after pricing approval
