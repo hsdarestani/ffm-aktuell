@@ -223,6 +223,26 @@ try{
  const afterFired=await post('business/places/change',reader,{place_id:publicPlace.rows[0].id,name:'Revoked editor proposal'});
  if(afterFired.status!==403)throw Error('Revoked staff editor retained permission');
  console.log('PASS: independent email verification, unreplayable team invites, admin-gated seats, viewer/editor scope and membership revocation');
+ // Premium tariff definitions can be reviewed but cannot bill or enable entitlements.
+ const nonePriced=await get('plans');
+ if(nonePriced.status!==200||nonePriced.body.checkout_available||nonePriced.body.items.length!==0)
+  throw Error('Draft prices became public or checkout falsely enabled');
+ const forbiddenPlan=await post('admin/plans',reader,{action:'withdraw',code:'user_premium'});
+ if(forbiddenPlan.status!==403)throw Error('Non-admin edited premium tariffs');
+ const priceDraft=await post('admin/plans',cookie,{action:'save',code:'user_premium',title_de:'CI Premium',title_en:'CI Premium',features:['saved_tours','personalized_discovery'],monthly_price_cents:1499,annual_price_cents:9999,trial_days:7,legal_terms_url:'https://example.org/terms'});
+ if(priceDraft.status!==200||priceDraft.body.status!=='draft')throw Error('Plan draft not persisted: '+JSON.stringify(priceDraft));
+ const afterDraft=await get('plans');
+ if(afterDraft.body.items.length!==0)throw Error('Draft price leaked to public list');
+ const noProofPlan=await post('admin/plans',cookie,{action:'approve',code:'user_premium',explicit_price_approval:false,approval_note:'This plan was not actually approved for test publishing'});
+ if(noProofPlan.status!==400)throw Error('Plan published without explicit authorization');
+ const approvedPlan=await post('admin/plans',cookie,{action:'approve',code:'user_premium',explicit_price_approval:true,approval_note:'Official approval simulated in isolated test database only'});
+ if(approvedPlan.status!==200||approvedPlan.body.checkout_available)throw Error('Plan approval accidentally enabled checkout');
+ const listing=await get('plans');
+ if(listing.body.items[0]?.code!=='user_premium'||listing.body.items[0]?.monthly_price_cents!==1499||listing.body.checkout_available!==false||listing.body.subscription_activation_available!==false)
+  throw Error('Displayed plan inaccurate or advertised billing');
+ const withdrawn=await post('admin/plans',cookie,{action:'withdraw',code:'user_premium'});
+ if(withdrawn.status!==200||(await get('plans')).body.items.length!==0)throw Error('Withdrawn tariff remained public');
+ console.log('PASS: protected tariff drafts, explicit price approval, public withdrawal and disabled payment/entitlements');
  // Administrators manage audited taxonomy and multiple categories per location.
  const publicCats=await get('categories');
  if(publicCats.status!==200||!publicCats.body.items.some(c=>c.slug==='Cafés'))throw Error('Public taxonomy missing existing category');
