@@ -545,7 +545,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     <button type="button" className="atlas-dim-button" aria-pressed={fallback||domFallback?false:is3D}
       onClick={()=>{if(domFallback||fallback){retry3D();return}if(luftbild){setLuftbild(false);set3D(true)}else set3D(x=>!x)}}
       title={domFallback||fallback?(lang==='de'?'3D erneut versuchen':'Retry 3D'):t.view}
-      aria-label={domFallback||fallback?'3D erneut versuchen':'2D oder 3D wechseln'}>{domFallback||fallback?'3D ↻':is3D?'3D':'2D'}</button>
+      aria-label={domFallback||fallback?'3D erneut versuchen':'2D oder 3D wechseln'}>{domFallback||fallback?'3D neu':is3D?'3D':'2D'}</button>
     <details className="atlas-map-more-views"><summary>Ansicht <Plus size={14}/></summary><div>
       <button type="button" className={'atlas-tone-button'+(mode==='golden'?' active':'')} onClick={()=>setMode(x=>x==='day'?'golden':'day')} title={mode==='day'?t.golden:t.day} aria-label={mode==='day'?t.golden:t.day}>{mode==='day'?<Sunset size={17}/>:<Sun size={17}/>}<span>{mode==='day'?t.golden:t.day}</span></button>
       <button type="button" className={'atlas-air-button'+(luftbild?' active':'')} aria-pressed={luftbild} onClick={()=>{setLuftbildFehler(false);if(!luftbild)set3D(false);else set3D(true);setLuftbild(v=>!v)}} title="Amtliche Luftbilder statt Kartenzeichnung">{luftbild?'Stadtplan':'Luftbild'}</button>
@@ -583,7 +583,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    </div>}
   </div>
   <div className="atlas-credits"><span>{luftbild?'Luftbild: © Land Hessen · DOP20 · Datenlizenz Deutschland Zero 2.0':t.credit}</span><span>{luftbild?'Amtliches Luftbild, keine Fototexturen auf Gebäuden':lod2Triangles>0?'Echte LoD2 Dach- und Wandflächen · Innenstadt-Ausschnitt · Powered by Lodapi':t.tip}</span></div>
-  {fallback&&!domFallback&&<div className="atlas-luftbild-warning" role="status">3D Kartendienst momentan nicht erreichbar. Über „3D ↻“ erneut versuchen.</div>}
+  {fallback&&!domFallback&&<div className="atlas-luftbild-warning" role="status">3D Kartendienst momentan nicht erreichbar. Über „3D neu“ erneut versuchen.</div>}
   {luftbildFehler&&<div className="atlas-luftbild-warning" role="status">Luftbild gerade nicht verfügbar. Stadtplan wird angezeigt.</div>}
   {!domFallback&&!ready&&!error&&<div className="atlas-map-loading" role="status"><div className="atlas-loading-mark"><span/></div><strong>FFM ATLAS</strong><small>{t.loading}</small></div>}
   {error&&!domFallback&&<div className="atlas-map-loading atlas-map-error" role="alert"><strong>{t.error}</strong><small>{lang==='de'?'Kartendaten konnten nicht geladen werden.':'Map tiles are unavailable.'}</small><button onClick={()=>window.location.reload()}>{t.retry}</button><a href="https://www.openstreetmap.org/#map=14/50.1114/8.6813" target="_blank" rel="noopener noreferrer">{lang==='de'?'Karte bei OpenStreetMap öffnen':'Open map on OpenStreetMap'}</a></div>}
