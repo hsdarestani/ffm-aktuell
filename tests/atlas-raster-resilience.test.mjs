@@ -10,7 +10,7 @@ test('Fallback does not require optional MapLibre tile coord, which varies acros
 test('Fallback map and real place pins are usable without third-party tile events',()=>{
  assert.match(source,/if\(triedRaster\)\{\s*revealed=true;\s*setReady\(true\)/);
  assert.match(source,/map\.jumpTo\(\{center:CENTER,zoom:14\.35,pitch:0,bearing:0\}\)/);
- assert.match(source,/else if\(!rasterTileSeen\)\{setReady\(true\);setError\(false\);\}/);
+ assert.match(source,/else if\(!rasterTileSeen\)\{setReady\(true\);setError\(false\);setDomFallback\(true\);\}/);
  assert.match(source,/addGeoPins\(map\)/);
  assert.match(source,/addCandidatePins\(map\)/);
  assert.match(source,/fetch\('\/api\/discovery-map\?/);
