@@ -617,12 +617,12 @@ try{
  }
  if(evidence.rows.find(r=>r.name==='Römerberg')?.opening_hours_text)
   throw Error('A public square was assigned arbitrary business opening hours');
- const before=await pool.query("SELECT count(*)::int AS n FROM places WHERE name IN ('Städel Museum','Palmengarten','MAIN TOWER','Römerberg')");
+ const sourcedBefore=await pool.query("SELECT count(*)::int AS n FROM places WHERE name IN ('Städel Museum','Palmengarten','MAIN TOWER','Römerberg')");
  await pool.query("UPDATE places SET opening_hours_text='Redaktionell korrigierte Zeiten' WHERE name='Städel Museum'");
  await pool.query(starterSQL);
- const after=await pool.query("SELECT count(*)::int AS n FROM places WHERE name IN ('Städel Museum','Palmengarten','MAIN TOWER','Römerberg')");
- const edited=await pool.query("SELECT opening_hours_text FROM places WHERE name='Städel Museum'");
- if(after.rows[0].n!==before.rows[0].n||edited.rows[0].opening_hours_text!=='Redaktionell korrigierte Zeiten')
+ const sourcedAfter=await pool.query("SELECT count(*)::int AS n FROM places WHERE name IN ('Städel Museum','Palmengarten','MAIN TOWER','Römerberg')");
+ const sourcedEdited=await pool.query("SELECT opening_hours_text FROM places WHERE name='Städel Museum'");
+ if(sourcedAfter.rows[0].n!==sourcedBefore.rows[0].n||sourcedEdited.rows[0].opening_hours_text!=='Redaktionell korrigierte Zeiten')
   throw Error('Redeploy duplicated starter venues or overwrote editorial amendments');
  console.log('PASS: official hours provenance, no invented certified/open status, no unlicensed imagery, idempotent seed');
  console.log('PASS: expanded personal data export, fresh social account deletion, stale session denial and cascade cleanup');
