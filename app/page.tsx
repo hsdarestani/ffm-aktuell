@@ -35,6 +35,7 @@ const VerifyEmailAndTeamInvite=dynamic(()=>import('@/components/VerifyEmailAndTe
 import './campaigns.css';
 import './team-management.css';
 import './business-insights.css';
+import './venue-hours.css';
 import './premium-preview.css';
 const ProfileSettings=dynamic(()=>import('@/components/ProfileSettings'),{ssr:false});
 const EventActions=dynamic(()=>import('@/components/EventActions'),{ssr:false});
