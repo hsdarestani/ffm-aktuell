@@ -14,7 +14,7 @@ test('3D starts by default and reuses existing vector source for buildings',()=>
 test('Never abandon 3D on failure of optional roof imagery or secondary sources',()=>{
  assert.match(atlas,/sourceId===baseVectorSource/);
  assert.match(atlas,/if\(!baseFailure&&!rasterFailure\)return/);
- assert.match(atlas,/triedRaster\?10000:18000/);
+ assert.match(atlas,/createMapLoadGuard/);
  assert.match(atlas,/setRetryKey\(v=>v\+1\)/);
  assert.match(atlas,/3D neu/);
 });
@@ -27,3 +27,4 @@ test('Curated hours are official, idempotent and do not pretend to prove current
  assert.doesNotMatch(seed,/verification_status\s*=\s*'verified'/);
  assert.match(page,/Keine Live-Öffnungsprüfung/);
 });
+

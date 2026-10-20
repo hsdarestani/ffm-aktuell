@@ -16,12 +16,13 @@ test('events are private and only published events may be bookmarked',()=>{
  assert.match(api,/const u=need\(user\)/);
 });
 test('calendar exporter uses real UTC time, labels unknown event end and explicit reminder',()=>{
- assert.match(actions,/BEGIN:VCALENDAR/);
- assert.match(actions,/DTSTART:/);
- assert.match(actions,/DTEND:/);
- assert.match(actions,/TRIGGER:-PT60M/);
- assert.match(actions,/Endzeit nicht bestätigt/);
- assert.match(actions,/new Date\(event.starts_at\)/);
+ const calendar=get('lib/event-calendar.ts');
+ assert.match(calendar,/BEGIN:VCALENDAR/);
+ assert.match(calendar,/DTSTART:/);
+ assert.match(calendar,/DTEND:/);
+ assert.match(calendar,/TRIGGER:-PT60M/);
+ assert.match(calendar,/Endzeit nicht bestätigt/);
+ assert.match(calendar,/new Date\(event.starts_at\)/);
  assert.match(actions,/event.demo/);
  assert.match(actions,/navigator.clipboard|URL.createObjectURL/);
 });
@@ -55,3 +56,4 @@ test('event cards and profile are directly reachable without dense nav',()=>{
  assert.match(e2e,/Guest could read private event bookmarks/);
  assert.match(e2e,/Account deletion accepted bad password/);
 });
+

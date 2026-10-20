@@ -313,7 +313,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   }
   if(method==='GET'&&path==='event-favorites'){
     const u=need(user);
-    const r=await query("SELECT e.id,e.title,e.venue,e.starts_at,e.description_de,e.ticket_url FROM event_favorites f JOIN events e ON e.id=f.event_id WHERE f.user_id=$1 AND e.status='published' AND e.starts_at>=now()-interval '1 day' ORDER BY e.starts_at ASC LIMIT 100",[u.id]);
+    const r=await query("SELECT e.id,e.title,e.venue,e.starts_at,e.ends_at,e.description_de,e.ticket_url FROM event_favorites f JOIN events e ON e.id=f.event_id WHERE f.user_id=$1 AND e.status='published' AND e.starts_at>=now()-interval '1 day' ORDER BY e.starts_at ASC LIMIT 100",[u.id]);
     return ok({items:r.rows});
   }
   if(method==='POST'&&path==='event-favorites'){
@@ -909,3 +909,4 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
 export const GET=(req:NextRequest,ctx:Ctx)=>handler(req,ctx,'GET');
 export const POST=(req:NextRequest,ctx:Ctx)=>handler(req,ctx,'POST');
 export const PATCH=(req:NextRequest,ctx:Ctx)=>handler(req,ctx,'PATCH');
+

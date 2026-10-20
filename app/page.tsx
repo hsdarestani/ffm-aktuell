@@ -1,5 +1,5 @@
 'use client';
-import {useState,useEffect,useMemo,useCallback,type FormEvent} from 'react';
+import {useState,useRef,useEffect,useMemo,useCallback,type FormEvent} from 'react';
 import dynamic from 'next/dynamic';
 import {Compass,MapPin,Map as MapIcon,Heart,CalendarDays,Users,UserRound,Search,Menu,X,Globe,Plus,Check,Building2,Newspaper,LockKeyhole,Coffee,UtensilsCrossed,Martini,Activity,Landmark,Pill,Info,ChevronRight,ShieldAlert} from 'lucide-react';
 import type {MapPlace} from '@/components/CityMap';
@@ -58,7 +58,7 @@ async function api(path:string,body?:unknown){const r=await fetch('/api/'+path,{
 const date=(s:string,l:string)=>new Date(s).toLocaleDateString(l==='de'?'de-DE':'en-GB',{day:'2-digit',month:'short',year:'numeric'});
 export default function Home(){
  const [lang,setLang]=useState<'de'|'en'>('de');const t=words[lang];
- const [page,setPage]=useState<Page>('home'),[places,setPlaces]=useState<Place[]>([]),[events,setEvents]=useState<Event[]>([]),[news,setNews]=useState<News[]>([]),[posts,setPosts]=useState<Post[]>([]),[deals,setDeals]=useState<Deal[]>([]);
+ const [page,setPage]=useState<Page>('map'),[places,setPlaces]=useState<Place[]>([]),[events,setEvents]=useState<Event[]>([]),[news,setNews]=useState<News[]>([]),[posts,setPosts]=useState<Post[]>([]),[deals,setDeals]=useState<Deal[]>([]);
  const [user,setUser]=useState<User|null>(null),[favorites,setFavorites]=useState<string[]>([]),[savedPlaces,setSavedPlaces]=useState<Place[]>([]),[savedLoading,setSavedLoading]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [query,setQuery]=useState(''),[category,setCategory]=useState('Alle'),[district,setDistrict]=useState(''),[selected,setSelected]=useState<Place|null>(null),[nurGepruefte,setNurGepruefte]=useState(false);
  const [selectedCategories,setSelectedCategories]=useState<string[]>([]);
@@ -66,6 +66,8 @@ export default function Home(){
  const [districtOptions,setDistrictOptions]=useState<string[]>([]);
  const [discoverPlaces,setDiscoverPlaces]=useState<Place[]>([]),[discoverPlacesTotal,setDiscoverPlacesTotal]=useState(0);
  const [discoverLoadError,setDiscoverLoadError]=useState(false);
+ const [moreLoading,setMoreLoading]=useState<'places'|'candidates'|null>(null);
+ const pageRequest=useRef<AbortController|null>(null);
  const [candidateDistrictUnsupported,setCandidateDistrictUnsupported]=useState(false);
  const [followingOnly,setFollowingOnly]=useState(false);
   const [comparePlaces,setComparePlaces]=useState<Place[]>([]);
@@ -111,8 +113,10 @@ export default function Home(){
    .then(d=>{if(alive)setDistrictOptions(Array.isArray(d.items)?d.items:[])}).catch(()=>{});
   return()=>{alive=false};
  },[page,refresh]);
- const exploreParams=(offset:number)=>{
-  const q=new URLSearchParams({offset:String(offset),radius:String(radiusKm),verified:nurGepruefte?'1':'0'});
+ const filterKey=JSON.stringify([page,selectedCategories,district,query,nurGepruefte,nearby,radiusKm,refresh]);
+ const latestFilter=useRef(filterKey);latestFilter.current=filterKey;
+ const exploreParams=(offset:number,placeOffset=0)=>{
+  const q=new URLSearchParams({offset:String(offset),place_offset:String(placeOffset),radius:String(radiusKm),verified:nurGepruefte?'1':'0'});
   for(const cat of selectedCategories)q.append('category',cat);
   if(query.trim())q.set('q',query.trim());
   if(district)q.set('district',district);
@@ -128,6 +132,7 @@ export default function Home(){
   setSelectedCategories(next);setCategory(next[0]||'Alle');
  };
  useEffect(()=>{
+  pageRequest.current?.abort();pageRequest.current=null;setMoreLoading(null);
   if(page!=='discover')return;
   let disposed=false;const controller=new AbortController();
   setCandidateLoading(true);setDiscoverLoadError(false);setCandidates([]);setCandidateTotal(0);setDiscoverPlaces([]);setDiscoverPlacesTotal(0);
@@ -140,18 +145,27 @@ export default function Home(){
     .catch(()=>{if(!disposed)setDiscoverLoadError(true)})
     .finally(()=>{if(!disposed)setCandidateLoading(false)});
   },240);
-  return()=>{disposed=true;window.clearTimeout(timer);controller.abort()};
+  return()=>{disposed=true;window.clearTimeout(timer);controller.abort();pageRequest.current?.abort();pageRequest.current=null};
  // API owns counts, filters and pagination rather than first-80 client list.
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[page,selectedCategories,district,query,nurGepruefte,nearby,radiusKm,refresh]);
- const mehrLaden=async()=>{
-  if(candidateLoading||candidates.length>=candidateTotal)return;
-  setCandidateLoading(true);
-  try{const r=await fetch('/api/explore?'+exploreParams(candidates.length),{cache:'no-store'});
+ const mehrLaden=async(source:'places'|'candidates'='candidates')=>{
+  const items=source==='places'?discoverPlaces:candidates;
+  const total=source==='places'?discoverPlacesTotal:candidateTotal;
+  if(candidateLoading||pageRequest.current||items.length>=total)return;
+  const controller=new AbortController(),requestedFilter=filterKey;
+  pageRequest.current=controller;setMoreLoading(source);
+  try{
+   const r=await fetch('/api/explore?'+exploreParams(candidates.length,discoverPlaces.length),{signal:controller.signal,cache:'no-store'});
    if(!r.ok)throw Error('Suche nicht erreichbar');const d=await r.json();
-   setCandidates(prev=>[...prev,...(d.candidates||[]).filter((p:Place)=>!prev.some(v=>v.id===p.id))]);
-  }catch{flash('Weitere Orte konnten nicht geladen werden.')}finally{setCandidateLoading(false)}
+   if(controller.signal.aborted||latestFilter.current!==requestedFilter)return;
+   const merge=(prev:Place[],next:Place[])=>[...prev,...next.filter(p=>!prev.some(v=>v.id===p.id))];
+   if(source==='places')setDiscoverPlaces(prev=>merge(prev,d.places||[]));
+   else setCandidates(prev=>merge(prev,d.candidates||[]));
+  }catch{if(!controller.signal.aborted&&latestFilter.current===requestedFilter)flash('Weitere Orte konnten nicht geladen werden.')}
+  finally{if(pageRequest.current===controller){pageRequest.current=null;setMoreLoading(null)}}
  };
+
 
  useEffect(()=>{if(page==='business'&&user){api('businesses').then(b=>{setBusiness(b.items[0]||null);if(b.items[0])api('business/overview').then(setBusinessDetail).catch(()=>{})}).catch(()=>{})}if(page==='admin'&&user?.role==='admin')api('admin/queue').then(setQueue).catch(()=>{})},[page,user,refresh]);
  useEffect(()=>{if(page==='community')void api('posts?scope='+(followingOnly?'following':'all')).then(d=>setPosts(d.items||[])).catch(()=>setPosts([]));if(page==='events')void api('deals').then(d=>setDeals(d.items||[])).catch(()=>{})},[page,refresh,user?.id,followingOnly]);
@@ -279,7 +293,7 @@ export default function Home(){
   </div>
 
   {discoverLoadError&&<div className="ffm-find-empty" role="alert">Die Suche ist gerade nicht erreichbar. <button type="button" onClick={()=>setRefresh(v=>v+1)}>Erneut versuchen</button></div>}
-   {!discoverLoadError&&filtered.some(p=>!p.demo)&&<div className="ffm-find-verified-results"><div className="ffm-find-subhead"><Check size={17}/><strong>Redaktionelle Orte</strong></div>{cards(filtered.filter(p=>!p.demo))}</div>}
+   {!discoverLoadError&&filtered.some(p=>!p.demo)&&<div className="ffm-find-verified-results"><div className="ffm-find-subhead"><Check size={17}/><strong>Redaktionelle Orte</strong></div>{cards(filtered.filter(p=>!p.demo))}{discoverPlacesTotal>discoverPlaces.length&&<button type="button" className="ffm-find-load" disabled={candidateLoading||moreLoading!==null} onClick={()=>void mehrLaden('places')}>{moreLoading==='places'?'Orte werden geladen …':'Weitere redaktionelle Orte'} <span>{discoverPlaces.length} / {discoverPlacesTotal}</span></button>}</div>}
 
   {!nurGepruefte&&!district&&!discoverLoadError&&<>
    <div className="ffm-find-source-line"><span className="ffm-find-source-dot"/><strong>Weitere Orte</strong><small>OSM · ungeprüft</small></div>
@@ -296,7 +310,7 @@ export default function Home(){
    </div>
    {candidateLoading&&<p className="ffm-find-empty" role="status">Orte werden geladen …</p>}
    {!candidateLoading&&candidates.length===0&&<div className="ffm-find-empty">Keine Treffer. Anderes Wort probieren.</div>}
-   {candidateTotal>candidates.length&&<button className="ffm-find-load" disabled={candidateLoading} onClick={mehrLaden}>Weitere Orte anzeigen <span>{candidates.length} / {candidateTotal}</span></button>}
+   {candidateTotal>candidates.length&&<button className="ffm-find-load" disabled={candidateLoading||moreLoading!==null} onClick={()=>void mehrLaden('candidates')}>{moreLoading==='candidates'?'Orte werden geladen …':'Weitere Orte anzeigen'} <span>{candidates.length} / {candidateTotal}</span></button>}
    <p className="ffm-find-source-credit">© OpenStreetMap-Mitwirkende (ODbL)</p>
   </>}
 
@@ -374,3 +388,4 @@ export default function Home(){
  <button className="switch-auth" onClick={()=>setRegister(!register)}>{register?t.login:t.register}<span className="ui-dot" aria-hidden="true"/></button></div></div>}
  </div>;
 }
+

@@ -50,3 +50,8 @@ This is a **feature-branch development ledger**, not production acceptance. Do n
 - Premium catalogue: `user_premium`, `business_premium_1`, `business_premium_2`; all initially draft, monthly/annual prices empty and checkout disabled. Publishing an approved price requires documentary consent and HTTPS terms. Public display does **not** activate entitlement, trial, invoice, or payment.
 - Privacy: email provider + staff + consent/media/coupons now present in user data export; social-only users may delete after fresh authenticated login (within 5 minutes) rather than needing a password they were never given.
 - Remaining blockers: real verified sender domain, agreed team seat/trial/tariff terms and approved prices, mobile OAuth and live registration providers, functioning PSP, Apple/Google stores, staging deployment/device QA, privacy/legal operations and real local sources.
+
+
+## 21 October 2026 increment
+
+Default 3D landing, bounded startup/recovery, complete editorial pagination and distance sorting, cancellation-safe load-more, private saved-event list and organizer-end-aware RFC 5545 export are implemented. See [increment and validation](INCREMENT_20261021.md). This does not complete media/OAuth/push/payment/native operational requirements.

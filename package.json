@@ -8,7 +8,8 @@
     "start": "next start -H 0.0.0.0",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.mjs",
-    "admin:create": "tsx scripts/create-admin.ts"
+    "admin:create": "tsx scripts/create-admin.ts",
+    "test:map-browser": "node scripts/map-startup-browser.mjs"
   },
   "dependencies": {
     "next": "^15.5.6",
@@ -27,6 +28,8 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "typescript": "^5.9.3",
-    "tsx": "^4.20.6"
+    "tsx": "^4.20.6",
+    "@electric-sql/pglite": "^0.5.10",
+    "playwright": "1.56.1"
   }
 }

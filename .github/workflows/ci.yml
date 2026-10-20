@@ -37,6 +37,17 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: "1"
         run: npm run build
+      - name: Install Chromium for map recovery checks
+        run: npx playwright install --with-deps chromium
+      - name: Mobile map startup and stalled-network recovery
+        run: npm run test:map-browser
+      - name: Map recovery screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: map-startup-browser
+          path: artifacts/map-startup
+          if-no-files-found: ignore
       - name: Admin activation end-to-end on temporary PostgreSQL
         env:
           ACTIVATION_CI_DATABASE_URL: postgres://ffm:ci-only@127.0.0.1:5432/ffm_activation_ci
@@ -45,3 +56,4 @@ jobs:
         run: |
           printf 'POSTGRES_PASSWORD=ci-only\nSESSION_SECRET=ci-only-long-session-key\n' > .env
           docker compose config -q
+

@@ -6,6 +6,7 @@ import type {Map as LibreMap,GeoJSONSource} from 'maplibre-gl';
 import {KATEGORIEN,passendeRubrik} from '@/lib/ortskategorien';
 import {addRealLod2Layer} from '@/lib/real-lod2-layer';
 import {addCitywideLod2Layer} from '@/lib/citywide-lod2-layer';
+import {createMapLoadGuard} from '@/lib/map-load-guard';
 import Atlas2DFallback from './Atlas2DFallback';
 import '@/app/atlas-dom-fallback.css';
 
@@ -284,6 +285,7 @@ function updateSelectedPin(map:LibreMap,selected:string|null){
 export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props){
  const t=UI[lang];
  const mapDiv=useRef<HTMLDivElement>(null),mapRef=useRef<LibreMap|null>(null);
+ const safeMapRef=useRef<()=>void>(()=>{});
  const latestCandidates=useRef<AtlasPlace[]>([]);
  const latestPlaces=useRef(places),activeSelect=useRef<(p:AtlasPlace)=>void>(()=>{});
  const selectionRef=useRef<string|null>(null);
@@ -333,6 +335,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   // Recovery is a new controlled MapLibre initialization. Do not force
   // users to refresh the whole app and lose their selected discovery state.
   setDomFallback(false);setFallback(false);setReady(false);setError(false);
+  state.current={mode:state.current.mode,is3D:true};
   set3D(true);setLuftbild(false);setRetryKey(v=>v+1);
  },[]);
  const zoom=useCallback((delta:number)=>{
@@ -345,12 +348,23 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   let cancelled=false,hasStyle=false,triedRaster=false,revealed=false;
   let baseTileErrors=0,vectorTileSeen=false,rasterTileSeen=false;
   let baseVectorSource='openmaptiles',lastFeatureProbe=0;
-  let revealTimer:number|undefined;
+  const showDOM=()=>{
+   if(cancelled)return;
+   cancelled=true;guard.dispose();
+   mapRef.current?.remove();mapRef.current=null;
+   setDomFallback(true);setReady(true);setError(false);
+  };
+  let recoverVector=showDOM;
+  const guard=createMapLoadGuard({onVectorTimeout:()=>recoverVector(),onRasterTimeout:showDOM});
   import('maplibre-gl').then(({default:maplibre})=>{
    if(cancelled||!mapDiv.current)return;
    const canvas=document.createElement('canvas');
-   let supported=false;try{supported=Boolean(canvas.getContext('webgl2')||canvas.getContext('webgl'));}catch{}
-   if(!supported){setDomFallback(true);setReady(true);setError(false);return;}
+   let supported=false;try{
+    const probe=canvas.getContext('webgl2')||canvas.getContext('webgl');
+    supported=Boolean(probe);
+    probe?.getExtension('WEBGL_lose_context')?.loseContext();
+   }catch{}
+   if(!supported){showDOM();return;}
    const map=new maplibre.Map({
     container:mapDiv.current,style:VECTOR_STYLE,center:INTRO_CENTER,zoom:14.1,pitch:CITY_PITCH,bearing:-14,
     maxZoom:19,minZoom:MIN_3D_ZOOM,maxPitch:75,attributionControl:false,
@@ -359,10 +373,12 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    mapRef.current=map;
    const switchToSafeMap=()=>{
     if(cancelled||triedRaster)return;
-    triedRaster=true;revealed=false;hasStyle=false;
+    triedRaster=true;revealed=false;hasStyle=false;guard.useRaster();
     setFallback(true);set3D(false);setLuftbild(false);setReady(false);
-    try{map.setStyle(fallbackRaster);}catch{setError(true);}
+    try{map.setStyle(fallbackRaster);}catch{showDOM();}
    };
+   recoverVector=switchToSafeMap;safeMapRef.current=switchToSafeMap;
+   map.on('webglcontextlost',showDOM);
    // Loading a style or an empty background is not proof of real tiles.
    map.on('sourcedata',event=>{
     if(cancelled)return;
@@ -373,14 +389,14 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     if(!['content','idle'].includes(e.sourceDataType||''))return;
     const finishedTile=Boolean(e.tile||e.coord||e.isSourceLoaded);
     if(!finishedTile)return;
-    if(triedRaster&&e.sourceId==='osm')rasterTileSeen=true;
+    if(triedRaster&&e.sourceId==='osm'){rasterTileSeen=true;guard.ready();}
     if(!triedRaster&&e.sourceId===baseVectorSource)vectorTileSeen=true;
    });
    const revealScene=()=>{
     if(cancelled||revealed)return;
     if(triedRaster?!rasterTileSeen:!vectorTileSeen)return;
     revealed=true;
-    if(revealTimer!==undefined)window.clearTimeout(revealTimer);
+    guard.ready();
     setReady(true);
     if(!triedRaster&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
      // The first camera shot plays only once actual street and building tiles
@@ -416,19 +432,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
       setReady(true);
       map.jumpTo({center:CENTER,zoom:14.35,pitch:0,bearing:0});
     }
-    if(revealTimer!==undefined)window.clearTimeout(revealTimer);
     map.once('idle',revealScene);
-    revealTimer=window.setTimeout(()=>{
-      if(cancelled)return;
-      if(!triedRaster&&!revealed){
-        try{vectorTileSeen=vectorTileSeen||map.queryRenderedFeatures().some(f=>f.source===baseVectorSource);}catch{}
-        if(vectorTileSeen)revealScene();
-        else switchToSafeMap();
-      }
-      // A 2D DOM map is the last resort if WebGL/raster tiles cannot paint.
-      // It uses real OSM tile IMG elements and real projected location pins.
-      else if(triedRaster&&!rasterTileSeen){setError(false);setDomFallback(true);setReady(true);}
-    },triedRaster?10000:18000);
    };
    map.on('style.load',onStyle);
    // Optional building requests can keep 'idle' from firing for a long time.
@@ -478,11 +482,11 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     if(++baseTileErrors<3)return;
     console.warn('FFM Atlas primary map source:',e.error);
     if(baseFailure&&!triedRaster&&!vectorTileSeen)switchToSafeMap();
-    else if(rasterFailure&&!rasterTileSeen){setReady(true);setError(false);setDomFallback(true);}
+    else if(rasterFailure&&!rasterTileSeen)showDOM();
    });
    map.addControl(new maplibre.AttributionControl({compact:true}),'bottom-right');
-  }).catch(()=>{if(!cancelled){setDomFallback(true);setReady(true);setError(false)}});
-  return()=>{cancelled=true;if(revealTimer!==undefined)window.clearTimeout(revealTimer);mapRef.current?.remove();mapRef.current=null;};
+  }).catch(showDOM);
+  return()=>{cancelled=true;guard.dispose();safeMapRef.current=()=>{};mapRef.current?.remove();mapRef.current=null;};
  },[retryKey]);
  useEffect(()=>{
   const map=mapRef.current;if(!ready||!map)return;
@@ -574,7 +578,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     <details className="atlas-map-more-views"><summary>Ansicht <Plus size={14}/></summary><div>
       <button type="button" className={'atlas-tone-button'+(mode==='golden'?' active':'')} onClick={()=>setMode(x=>x==='day'?'golden':'day')} title={mode==='day'?t.golden:t.day} aria-label={mode==='day'?t.golden:t.day}>{mode==='day'?<Sunset size={17}/>:<Sun size={17}/>}<span>{mode==='day'?t.golden:t.day}</span></button>
       <button type="button" className={'atlas-air-button'+(luftbild?' active':'')} aria-pressed={luftbild} onClick={()=>{setLuftbildFehler(false);if(!luftbild)set3D(false);else set3D(true);setLuftbild(v=>!v)}} title="Amtliche Luftbilder statt Kartenzeichnung">{luftbild?'Stadtplan':'Luftbild'}</button>
-      <button type="button" disabled={fallback} onClick={()=>{const m=mapRef.current;if(!m)return;set3D(false);setLuftbild(false);setFallback(true);m.setStyle(fallbackRaster);}} title="Bei grauer oder leerer Karte auf OSM wechseln">{fallback?'OSM aktiv':'Einfache Karte laden'}</button>
+      <button type="button" disabled={fallback} onClick={()=>safeMapRef.current()} title="Bei grauer oder leerer Karte auf OSM wechseln">{fallback?'OSM aktiv':'Einfache Karte laden'}</button>
     </div></details>
    </div>
   </div>
@@ -611,6 +615,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   {fallback&&!domFallback&&<div className="atlas-luftbild-warning" role="status">3D Kartendienst momentan nicht erreichbar. Über „3D neu“ erneut versuchen.</div>}
   {luftbildFehler&&<div className="atlas-luftbild-warning" role="status">Luftbild gerade nicht verfügbar. Stadtplan wird angezeigt.</div>}
   {!domFallback&&!ready&&!error&&<div className="atlas-map-loading" role="status"><div className="atlas-loading-mark"><span/></div><strong>FFM ATLAS</strong><small>{t.loading}</small></div>}
-  {error&&!domFallback&&<div className="atlas-map-loading atlas-map-error" role="alert"><strong>{t.error}</strong><small>{lang==='de'?'Kartendaten konnten nicht geladen werden.':'Map tiles are unavailable.'}</small><button onClick={()=>window.location.reload()}>{t.retry}</button><a href="https://www.openstreetmap.org/#map=14/50.1114/8.6813" target="_blank" rel="noopener noreferrer">{lang==='de'?'Karte bei OpenStreetMap öffnen':'Open map on OpenStreetMap'}</a></div>}
+  {error&&!domFallback&&<div className="atlas-map-loading atlas-map-error" role="alert"><strong>{t.error}</strong><small>{lang==='de'?'Kartendaten konnten nicht geladen werden.':'Map tiles are unavailable.'}</small><button onClick={retry3D}>{t.retry}</button><a href="https://www.openstreetmap.org/#map=14/50.1114/8.6813" target="_blank" rel="noopener noreferrer">{lang==='de'?'Karte bei OpenStreetMap öffnen':'Open map on OpenStreetMap'}</a></div>}
  </section>;
 }
+

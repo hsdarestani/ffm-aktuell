@@ -1,24 +1,10 @@
 'use client';
 import {Bookmark,BookmarkCheck,CalendarPlus,ExternalLink} from 'lucide-react';
 
-type Event={id:string;title:string;description_de:string;venue:string;starts_at:string;ticket_url:string|null;demo?:boolean};
+import {eventCalendarContent,confirmedEventEnd} from '@/lib/event-calendar';
+export {eventCalendarContent} from '@/lib/event-calendar';
+type Event={id:string;title:string;description_de:string;venue:string;starts_at:string;ends_at?:string|null;ticket_url:string|null;demo?:boolean};
 type Props={event:Event;saved:boolean;loggedIn:boolean;onLogin:()=>void;onSaved:(id:string,active:boolean)=>Promise<void>;onNotice:(message:string)=>void};
-function icsEscape(value:string){return value.replace(/\\/g,'\\\\').replace(/\r?\n/g,'\\n').replace(/;/g,'\\;').replace(/,/g,'\\,');}
-export function eventCalendarContent(event:Event){
- const start=new Date(event.starts_at);
- if(Number.isNaN(start.getTime()))return null;
- // The event source specifies only the start. One hour is a calendar block
- // placeholder, NOT a claimed organizer-provided end time.
- const end=new Date(start.getTime()+60*60*1000);
- const stamp=(d:Date)=>d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
- return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//FFM Aktuell//Veranstaltung//DE','CALSCALE:GREGORIAN','METHOD:PUBLISH',
-  'BEGIN:VEVENT','UID:'+encodeURIComponent(event.id)+'@ffm-aktuell.smarbiz.sbs',
-  'DTSTAMP:'+stamp(new Date()),'DTSTART:'+stamp(start),'DTEND:'+stamp(end),
-  'SUMMARY:'+icsEscape(event.title),'LOCATION:'+icsEscape(event.venue),
-  'DESCRIPTION:'+icsEscape(event.description_de||'')+'\\nEndzeit nicht bestätigt. Bitte beim Veranstalter prüfen.',
-  'BEGIN:VALARM','TRIGGER:-PT60M','ACTION:DISPLAY','DESCRIPTION:'+icsEscape('FFM Aktuell: '+event.title),'END:VALARM',
-  'END:VEVENT','END:VCALENDAR',''].join('\r\n');
-}
 export default function EventActions({event,saved,loggedIn,onLogin,onSaved,onNotice}:Props){
  const calendar=()=>{
   if(event.demo)return;
@@ -28,7 +14,7 @@ export default function EventActions({event,saved,loggedIn,onLogin,onSaved,onNot
   const href=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=href;a.download='ffm-veranstaltung.ics';document.body.appendChild(a);
   a.click();a.remove();window.setTimeout(()=>URL.revokeObjectURL(href),2000);
-  onNotice('Kalendereintrag mit Erinnerung 1 Stunde vorher erstellt. Endzeit beim Anbieter prüfen.');
+  onNotice(confirmedEventEnd(event)?'Kalendereintrag mit Erinnerung 1 Stunde vorher erstellt.':'Kalendereintrag mit Erinnerung erstellt. Endzeit unbekannt, Kalenderblock: 1 Stunde.');
  };
  if(event.demo)return null;
  let safeTicket:string|null=null;
@@ -40,3 +26,4 @@ export default function EventActions({event,saved,loggedIn,onLogin,onSaved,onNot
   {safeTicket&&<a href={safeTicket} target="_blank" rel="noopener noreferrer"><span>Infos</span><ExternalLink size={13}/></a>}
  </div>;
 }
+

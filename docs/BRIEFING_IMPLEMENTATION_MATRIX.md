@@ -142,3 +142,8 @@ Name/trademark, prices & trial rules, billing/tax/PSP, operator verification, ve
 - User JSON export now covers staff and email status, social providers, uploads, Stories, rights grants and coupons, in addition to original preferences, posts, tours and bookmarks, without exporting secret token hashes.
 - Social-only accounts created with random internal passwords can request self-deletion with exact confirmation after a fresh OAuth session; stale sessions cannot delete. Admin and verified-business transfer gates remain. 
 - **Open:** comprehensive DSA/GDPR review, immutable legal retention, object/DB backup erasure procedures and real OAuth account deletion device tests.
+
+
+## 21 October 2026 increment
+
+Default 3D landing, bounded startup/recovery, complete editorial pagination and distance sorting, cancellation-safe load-more, private saved-event list and organizer-end-aware RFC 5545 export are implemented. See [increment and validation](INCREMENT_20261021.md). This does not complete media/OAuth/push/payment/native operational requirements.
