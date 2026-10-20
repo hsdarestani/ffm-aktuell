@@ -30,7 +30,7 @@ export async function GET(req:NextRequest){
  const dist=`6371*ACOS(LEAST(1,GREATEST(-1,
  COS(RADIANS(latitude))*COS(RADIANS($5::float8))*COS(RADIANS(longitude-$6::float8))
  +SIN(RADIANS(latitude))*SIN(RADIANS($5::float8)))))`;
- const distance=`CASE WHEN $5::float8 IS NULL OR latitude IS NULL OR longitude IS NULL THEN NULL ELSE ROUND((${dist})::numeric,2) END AS distance_km`;
+ const distance=`CASE WHEN $5::float8 IS NULL OR latitude IS NULL OR longitude IS NULL THEN NULL ELSE ROUND((${dist})::numeric,2)::float8 END AS distance_km`;
  const where=`status='published' AND activity_status!='permanently_closed'
   AND (cardinality($1::text[])=0 OR category=ANY($1::text[]) OR EXISTS(
     SELECT 1 FROM place_categories pc WHERE pc.place_id=places.id AND pc.category_slug=ANY($1::text[])))
