@@ -39,7 +39,7 @@ import './premium-preview.css';
 const ProfileSettings=dynamic(()=>import('@/components/ProfileSettings'),{ssr:false});
 const EventActions=dynamic(()=>import('@/components/EventActions'),{ssr:false});
 const BusinessBranchEditor=dynamic(()=>import('@/components/BusinessBranchEditor'),{ssr:false});
-type Place=MapPlace & {categories?:string[];district:string,address:string,description_de:string,description_en:string,website:string|null,source_url:string|null,image_url?:string|null,demo?:true,candidate?:boolean,osm_id?:string,phone?:string,verification_status?:'verified'|'unverified'|'disputed',activity_status?:'unknown'|'operating'|'temporarily_closed'|'permanently_closed',verified_at?:string|null,verification_source?:string|null,editorial_rank?:number|null,opening_hours_text?:string|null,business_id?:string|null,following_business?:boolean};
+type Place=MapPlace & {categories?:string[];district:string,address:string,description_de:string,description_en:string,website:string|null,source_url:string|null,image_url?:string|null,demo?:true,candidate?:boolean,osm_id?:string,phone?:string,verification_status?:'verified'|'unverified'|'disputed',activity_status?:'unknown'|'operating'|'temporarily_closed'|'permanently_closed',verified_at?:string|null,verification_source?:string|null,editorial_rank?:number|null,opening_hours_text?:string|null,business_id?:string|null,following_business?:boolean,distance_km?:number|null};
 type User={id:string,email:string,display_name:string,role:string};
 type Event={id:string,title:string,venue:string,starts_at:string,description_de:string,description_en:string,ticket_url:string|null,image_url?:string,demo?:true,organizer?:string,category?:string,price_cents?:number|null,price_source_url?:string|null,ends_at?:string|null};
 type News={id:string,title:string,body_de:string,body_en:string,source_url:string|null,published_at:string,image_url?:string,demo?:true,category?:string};
@@ -197,7 +197,7 @@ export default function Home(){
  const onAuth=async(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.currentTarget));const ok=await submit(register?'auth/register':'auth/login',data,t.welcome);if(ok){setAuth(false);setRegister(false)}};
  const nav:[Page,any,string][]=[['home',Compass,t.home],['discover',Search,t.discover],['map',MapIcon,t.map]];
  const picture=(index:number,p?:Place)=> <div className="v3-photo"><img src={ortsbild(p?.name||'',p?.image_url)} alt="Stimmungsbild zur Stadtempfehlung" loading="lazy"/><span className="v3-photo-index">{String(index+1).padStart(2,'0')}</span><span className="v3-photo-credit">Stimmungsbild</span></div>;
- const cards=(arr:Place[])=>arr.length?<div className="cards v3-place-grid">{arr.map((p,i)=><article className="card v3-place-card" key={p.id}><button className="card-cover" onClick={()=>setSelected(p)} aria-label={p.name}>{picture(i,p)}<span className="v3-visit-mark"><Plus size={18}/></span></button><div className="card-info"><div className="v3-card-label"><span>{catBezeichnungen[p.category]||p.category} · {p.district||t.city}</span><span className="v4-check-label">{statusLabel(p)}</span></div><div><button onClick={()=>setSelected(p)}>{p.name}</button><button className={'heart '+(favorites.includes(p.id)?'liked':'')} onClick={()=>favorite(p.id)} aria-label={t.save}><Heart size={19} fill={favorites.includes(p.id)?'currentColor':'none'}/></button></div><p>{p.description_de}</p><span><MapPin size={14}/>{p.district||t.city}</span></div></article>)}</div>:<div className="empty"><Compass size={28}/><p>{t.empty}</p></div>;
+ const cards=(arr:Place[])=>arr.length?<div className="cards v3-place-grid">{arr.map((p,i)=><article className="card v3-place-card" key={p.id}><button className="card-cover" onClick={()=>setSelected(p)} aria-label={p.name}>{picture(i,p)}<span className="v3-visit-mark"><Plus size={18}/></span></button><div className="card-info"><div className="v3-card-label"><span>{catBezeichnungen[p.category]||p.category} · {p.district||t.city}</span><span className="v4-check-label">{statusLabel(p)}</span></div><div><button onClick={()=>setSelected(p)}>{p.name}</button><button className={'heart '+(favorites.includes(p.id)?'liked':'')} onClick={()=>favorite(p.id)} aria-label={t.save}><Heart size={19} fill={favorites.includes(p.id)?'currentColor':'none'}/></button></div><p>{p.description_de}</p><span><MapPin size={14}/>{p.district||t.city}{nearby&&p.distance_km!=null?' · '+p.distance_km+' km':''}</span></div></article>)}</div>:<div className="empty"><Compass size={28}/><p>{t.empty}</p></div>;
  const sectionHeading=(index:string,head:string,sub:string)=> <div className="section-head"><small>{index} / FFM JOURNAL <span/></small><h2>{head}</h2><p>{sub}</p></div>;
  const catBezeichnungen:Record<string,string>={...kategorienAnzeigen,...Object.fromEntries(managedCategories.map(c=>[c.slug,lang==='de'?c.label_de:c.label_en]))};
  const categoryIds=[...new Set([...categories,...managedCategories.map(c=>c.slug)])];
@@ -232,20 +232,33 @@ export default function Home(){
     {id:'Freizeit',label:'Freizeit',Icon:Activity,tone:'play'},
     {id:'Museen',label:'Kultur',Icon:Landmark,tone:'culture'},
     {id:'Apotheken',label:'Apotheken',Icon:Pill,tone:'health'}
-   ].map(({id,label,Icon,tone})=><button key={id} type="button" aria-pressed={category===id} onClick={()=>{setCategory(id);setNurGepruefte(false)}} className={'ffm-find-category '+tone+(category===id?' active':'')}>
+   ].map(({id,label,Icon,tone})=><button key={id} type="button" aria-pressed={id==='Alle'?selectedCategories.length===0:selectedCategories.includes(id)} onClick={()=>toggleDiscoveryCategory(id)} className={'ffm-find-category '+tone+((id==='Alle'?selectedCategories.length===0:selectedCategories.includes(id))?' active':'')}>
     <span className="ffm-find-category-visual"><Icon size={24} strokeWidth={1.9} aria-hidden="true"/></span>
     <span>{label}</span>
    </button>)}
   </div>
+  <div className="ffm-find-quick-filters" aria-label="Weitere Suchfilter">
+   <label>Stadtteil
+    <select aria-label="Stadtteil" value={district} onChange={e=>setDistrict(e.target.value)}>
+     <option value="">Alle Stadtteile</option>{districtOptions.map(v=><option key={v} value={v}>{v}</option>)}
+    </select>
+   </label>
+   <button type="button" aria-pressed={Boolean(nearby)} disabled={findingNearby} onClick={toggleNearby}>{nearby?'✓ Standort aktiv':findingNearby?'Standort wird gesucht …':'Standort verwenden'}</button>
+   {nearby&&<label>Umkreis <select aria-label="Suchradius" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value) as 1|3|5|10)}>
+    {[1,3,5,10].map(n=><option value={n} key={n}>{n} km</option>)}
+   </select></label>}
+   <label className="ffm-find-verified"><input type="checkbox" checked={nurGepruefte} onChange={e=>setNurGepruefte(e.target.checked)}/> Nur aktuell geprüfte Betriebe</label>
+   {(selectedCategories.length>0||district||nearby||nurGepruefte)&&<button type="button" className="ffm-find-filter-reset"
+    onClick={()=>{setSelectedCategories([]);setCategory('Alle');setDistrict('');setNearby(null);setRadiusKm(3);setNurGepruefte(false)}}>Filter löschen</button>}
+  </div>
   <details className="ffm-find-more">
-   <summary><Plus size={16}/> Mehr {category!=='Alle'&&!['Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(category)?'· '+(catBezeichnungen[category]||category):''}</summary>
+   <summary><Plus size={16}/> Weitere Kategorien{selectedCategories.length?' · '+selectedCategories.length+' gewählt':''}</summary>
    <div className="ffm-find-extra">
-    <button type="button" aria-pressed={Boolean(nearby)} disabled={findingNearby} onClick={toggleNearby}>{nearby?'✓ In meiner Nähe (3 km)':findingNearby?'Standort wird gesucht …':'Standort verwenden (3 km)'}</button>
-    <div className="ffm-find-extra-cats">{categoryIds.filter(cat=>!['Alle','Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(cat)).map(cat=><button type="button" key={cat} className={category===cat?'active':''} onClick={()=>setCategory(cat)}>{catBezeichnungen[cat]||cat}</button>)}</div>
-    <label className="ffm-find-verified"><input type="checkbox" checked={nurGepruefte} onChange={e=>setNurGepruefte(e.target.checked)}/> Nur aktuell geprüfte Betriebe</label>
+    <p className="ffm-find-category-hint">Mehrere Kategorien kombinieren (bis zu 6).</p>
+    <div className="ffm-find-extra-cats">{categoryIds.filter(cat=>!['Alle','Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(cat)).map(cat=><button type="button" key={cat} aria-pressed={selectedCategories.includes(cat)}
+     className={selectedCategories.includes(cat)?'active':''} onClick={()=>toggleDiscoveryCategory(cat)}>{selectedCategories.includes(cat)?'✓ ':''}{catBezeichnungen[cat]||cat}</button>)}</div>
    </div>
-  </details>
- </section>
+  </details> </section>
 
  {category==='Apotheken Notdienst'&&<section className="ffm-find-duty"><strong>Apotheken-Notdienst</strong><p>Unsere Ortsliste ist keine Notdienstbestätigung.</p><a href="https://www.aponet.de/notdienstsuche/60320-Frankfurt" target="_blank" rel="noopener noreferrer">Aktuellen Dienst bei aponet prüfen <ChevronRight size={16}/></a></section>}
 
@@ -260,13 +273,14 @@ export default function Home(){
    {comparePlaces.length===1&&<p>Öffne einen weiteren Ort und wähle „Vergleichen“.</p>}
   </div>}
   <div className="ffm-find-result-head">
-   <h2 id="ffm-find-results-title">Orte <span>{nurGepruefte?filtered.filter(p=>!p.demo).length:candidateTotal+filtered.filter(p=>!p.demo).length}</span></h2>
+   <h2 id="ffm-find-results-title">Orte <span>{discoverPlacesTotal+candidateTotal}</span></h2>
    <details className="ffm-find-data"><summary><Info size={16}/> Dateninfo</summary><div><strong>Hinweis zu den Orten</strong><p>OSM Einträge sind noch nicht auf Betrieb oder Öffnungszeiten geprüft. Bitte vor dem Besuch beim Anbieter nachsehen. Redaktionell bestätigte Orte sind gesondert gekennzeichnet.</p><small>© OpenStreetMap-Mitwirkende · ODbL</small></div></details>
   </div>
 
-  {filtered.some(p=>!p.demo)&&<div className="ffm-find-verified-results"><div className="ffm-find-subhead"><Check size={17}/><strong>Redaktionelle Orte</strong></div>{cards(filtered.filter(p=>!p.demo))}</div>}
+  {discoverLoadError&&<div className="ffm-find-empty" role="alert">Die Suche ist gerade nicht erreichbar. <button type="button" onClick={()=>setRefresh(v=>v+1)}>Erneut versuchen</button></div>}
+   {!discoverLoadError&&filtered.some(p=>!p.demo)&&<div className="ffm-find-verified-results"><div className="ffm-find-subhead"><Check size={17}/><strong>Redaktionelle Orte</strong></div>{cards(filtered.filter(p=>!p.demo))}</div>}
 
-  {!nurGepruefte&&<>
+  {!nurGepruefte&&!district&&!discoverLoadError&&<>
    <div className="ffm-find-source-line"><span className="ffm-find-source-dot"/><strong>Weitere Orte</strong><small>OSM · ungeprüft</small></div>
    <div className="ffm-find-list" aria-busy={candidateLoading&&candidates.length===0}>
     {candidates.map(p=>{
@@ -275,7 +289,7 @@ export default function Home(){
      return <button type="button" className={'ffm-find-item '+tone} key={p.id} onClick={()=>setSelected(p)} aria-label={p.name+' · Details öffnen'}>
       <span className="ffm-find-place-visual" aria-hidden="true"><span className="ffm-find-visual-rim"/><Icon size={32} strokeWidth={1.45}/></span>
       <span className="ffm-find-item-copy"><strong title={p.name}>{p.name}</strong><small title={p.address||''}>{p.address||catBezeichnungen[p.category]||p.category}</small></span>
-      <span className="ffm-find-item-footer"><span><ShieldAlert size={12}/> Ungeprüft</span><ChevronRight size={17}/></span>
+      <span className="ffm-find-item-footer"><span><ShieldAlert size={12}/> Ungeprüft{nearby&&p.distance_km!=null?' · '+p.distance_km+' km':''}</span><ChevronRight size={17}/></span>
      </button>;
     })}
    </div>
@@ -285,7 +299,8 @@ export default function Home(){
    <p className="ffm-find-source-credit">© OpenStreetMap-Mitwirkende (ODbL)</p>
   </>}
 
-  {nurGepruefte&&filtered.filter(p=>!p.demo).length===0&&<div className="ffm-find-empty">Noch keine bestätigten Orte.</div>}
+  {candidateDistrictUnsupported&&!nurGepruefte&&<p className="ffm-find-district-note">OSM Einträge ohne geprüfte Stadtteilzuordnung werden bei diesem Filter nicht angezeigt.</p>}
+   {!candidateLoading&&!discoverLoadError&&discoverPlacesTotal+candidateTotal===0&&<div className="ffm-find-empty">Keine passenden Orte. Filter anpassen.</div>}
   {filtered.some(p=>p.demo)&&!nurGepruefte&&<details className="ffm-find-preview"><summary>Musterorte anzeigen <Plus size={16}/></summary><p>Beispiele, keine bestätigten Empfehlungen.</p>{cards(filtered.filter(p=>p.demo))}</details>}
  </section>
  </main>}
