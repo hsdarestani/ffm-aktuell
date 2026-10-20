@@ -304,6 +304,29 @@ try{
   exploreFirst.body.candidates.some(p=>exploreSecond.body.candidates.some(q=>p.id===q.id)))
   throw Error('Stable OSM pagination/count failed');
  console.log('PASS: source-honest multi-category, real districts, radius, verified-only, SQL safety and stable pagination');
+ // Admin-only data quality never silently certifies an imported OSM place.
+ const inaccessibleQuality=await get('admin/data-quality',reader);
+ if(inaccessibleQuality.status!==403)throw Error('Data quality leaks operational audit to public users');
+ const qualityDuplicate='node/'+String(711111118001);
+ await pool.query("INSERT INTO discovery_candidates(osm_id,name,category,latitude,longitude,address,osm_url) VALUES($1,'CI Example Venue','Cafés',50.11002,8.68003,'','https://www.openstreetmap.org/node/711111118001')",[qualityDuplicate]);
+ const quality=await get('admin/data-quality?kind=duplicate',cookie);
+ if(quality.status!==200||!quality.body.items.some(v=>v.osm_id===testOsm&&v.possible_duplicate)||
+  !quality.body.items.some(v=>v.osm_id===qualityDuplicate&&v.possible_duplicate)||
+  quality.body.overview.duplicates<2)throw Error('Duplicate geo/name triage missing '+JSON.stringify(quality.body).slice(0,350));
+ const missing=await get('admin/data-quality?kind=incomplete',cookie);
+ if(missing.status!==200||!missing.body.items.some(v=>v.osm_id===qualityDuplicate&&v.missing_address&&v.missing_contact&&v.missing_hours))
+   throw Error('Incomplete contact, address and hours not exposed');
+ const editorialProblems=await get('admin/data-quality?scope=editorial',cookie);
+ if(editorialProblems.status!==200||!editorialProblems.body.items.some(v=>v.id===publicPlace.rows[0].id&&v.missing_photo&&v.requires_verification))
+   throw Error('Published missing photos or verification not surfaced');
+ const flaggedReview=await post('admin/review-candidate',cookie,{action:'needs_review',osm_id:qualityDuplicate,reason:'Quelle, Kontakt, Öffnungszeiten und mögliche Dublette manuell prüfen.'});
+ if(flaggedReview.status!==200)throw Error('Quality issue could not enter existing review queue');
+ const reviewQuality=await get('admin/data-quality?kind=review',cookie);
+ if(reviewQuality.status!==200||!reviewQuality.body.items.some(v=>v.osm_id===qualityDuplicate&&v.reviewed_status==='needs_review'))
+  throw Error('Marked candidate is not in editorial review list');
+ const stillNotVerified=await pool.query('SELECT reviewed_status FROM discovery_candidates WHERE osm_id=$1',[qualityDuplicate]);
+ if(stillNotVerified.rows[0].reviewed_status!=='needs_review')throw Error('Data quality auto-published a candidate');
+ console.log('PASS: protected data-quality audit, close-name duplicate signals, real missing fields and manual-only moderation');
  // Advertising requests stay drafts until approved, and editorial approval
  // NEVER creates a paid or live campaign without commercial configuration.
  const start=new Date(Date.now()+2*86400000).toISOString().slice(0,10);
