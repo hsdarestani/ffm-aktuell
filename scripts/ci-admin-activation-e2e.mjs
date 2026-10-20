@@ -297,11 +297,11 @@ try{
   await pool.query("INSERT INTO discovery_candidates(osm_id,name,category,latitude,longitude,address,osm_url) VALUES($1,$2,'Bars',50.113,8.684,'CI Paginationstraße',$3)",
    [id,'CI Filter Test '+String(i).padStart(2,'0'),'https://www.openstreetmap.org/'+id]);
  }
- const first=await get('explore?'+new URLSearchParams({q:'CI Filter Test',offset:'0'}));
- const second=await get('explore?'+new URLSearchParams({q:'CI Filter Test',offset:'18'}));
- if(first.status!==200||second.status!==200||first.body.candidates_total!==23||second.body.candidates_total!==23||
-  first.body.candidates.length!==18||second.body.candidates.length!==5||
-  first.body.candidates.some(p=>second.body.candidates.some(q=>p.id===q.id)))
+ const exploreFirst=await get('explore?'+new URLSearchParams({q:'CI Filter Test',offset:'0'}));
+ const exploreSecond=await get('explore?'+new URLSearchParams({q:'CI Filter Test',offset:'18'}));
+ if(exploreFirst.status!==200||exploreSecond.status!==200||exploreFirst.body.candidates_total!==23||exploreSecond.body.candidates_total!==23||
+  exploreFirst.body.candidates.length!==18||exploreSecond.body.candidates.length!==5||
+  exploreFirst.body.candidates.some(p=>exploreSecond.body.candidates.some(q=>p.id===q.id)))
   throw Error('Stable OSM pagination/count failed');
  console.log('PASS: source-honest multi-category, real districts, radius, verified-only, SQL safety and stable pagination');
  // Advertising requests stay drafts until approved, and editorial approval
