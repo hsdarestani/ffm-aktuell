@@ -128,13 +128,18 @@ function setColorScheme(map:LibreMap,mode:AtlasMode){
 }
 function add3DBuildings(map:LibreMap){
  if(map.getLayer('ffm-architecture'))return;
- if(!map.getSource('ffm-openmaptiles')){
-  map.addSource('ffm-openmaptiles',{type:'vector',url:'https://tiles.openfreemap.org/planet',attribution:'© OpenStreetMap contributors'});
+ // Reuse the primary vector source. Adding a duplicate planet source can
+ // fail independently and must not disable an already working 3D map.
+ const mainVector=Object.entries(map.getStyle().sources||{})
+  .find(([id,src])=>id!=='ffm-openmaptiles'&&src.type==='vector')?.[0];
+ const buildingSource=mainVector||'ffm-openmaptiles';
+ if(!map.getSource(buildingSource)){
+  map.addSource(buildingSource,{type:'vector',url:'https://tiles.openfreemap.org/planet',attribution:'© OpenStreetMap contributors'});
  }
  // Base footprints remain behind; 3D towers share the real map projection.
  const firstLabel=map.getStyle().layers?.find(l=>l.type==='symbol');
  map.addLayer({
-  id:'ffm-architecture',type:'fill-extrusion',source:'ffm-openmaptiles','source-layer':'building',minzoom:12.2,
+  id:'ffm-architecture',type:'fill-extrusion',source:buildingSource,'source-layer':'building',minzoom:12.2,
   paint:{
    'fill-extrusion-color':'#c6beb5',
    'fill-extrusion-height':['interpolate',['linear'],['zoom'],12.2,['*',0.45,['coalesce',['get','render_height'],['get','height'],12]],14.4,['coalesce',['get','render_height'],['get','height'],12]],
@@ -339,6 +344,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   if(!mapDiv.current)return;
   let cancelled=false,hasStyle=false,triedRaster=false,revealed=false;
   let baseTileErrors=0,vectorTileSeen=false,rasterTileSeen=false;
+  let baseVectorSource='openmaptiles',lastFeatureProbe=0;
   let revealTimer:number|undefined;
   import('maplibre-gl').then(({default:maplibre})=>{
    if(cancelled||!mapDiv.current)return;
@@ -368,7 +374,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     const finishedTile=Boolean(e.tile||e.coord||e.isSourceLoaded);
     if(!finishedTile)return;
     if(triedRaster&&e.sourceId==='osm')rasterTileSeen=true;
-    if(!triedRaster&&(e.sourceId==='openmaptiles'||e.sourceId==='ffm-openmaptiles'))vectorTileSeen=true;
+    if(!triedRaster&&e.sourceId===baseVectorSource)vectorTileSeen=true;
    });
    const revealScene=()=>{
     if(cancelled||revealed)return;
@@ -390,6 +396,8 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    const onStyle=()=>{
     if(cancelled)return;
     hasStyle=true;setError(false);
+    baseVectorSource=Object.entries(map.getStyle().sources||{})
+     .find(([id,src])=>id!=='ffm-openmaptiles'&&src.type==='vector')?.[0]||'openmaptiles';
     // One failing optional city model or imagery request must never prevent
     // place pins or the basic road map from loading.
     try{addGeoPins(map);}catch(e){console.warn('FFM place pin layer:',e);}
@@ -412,16 +420,30 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     map.once('idle',revealScene);
     revealTimer=window.setTimeout(()=>{
       if(cancelled)return;
-      if(!triedRaster&&!revealed)switchToSafeMap();
+      if(!triedRaster&&!revealed){
+        try{vectorTileSeen=vectorTileSeen||map.queryRenderedFeatures().some(f=>f.source===baseVectorSource);}catch{}
+        if(vectorTileSeen)revealScene();
+        else switchToSafeMap();
+      }
       // A 2D DOM map is the last resort if WebGL/raster tiles cannot paint.
       // It uses real OSM tile IMG elements and real projected location pins.
       else if(triedRaster&&!rasterTileSeen){setError(false);setDomFallback(true);setReady(true);}
-    },7500);
+    },triedRaster?10000:18000);
    };
    map.on('style.load',onStyle);
    // Optional building requests can keep 'idle' from firing for a long time.
    // Once a real tile is received, the first rendered frame is enough.
-   map.on('render',revealScene);
+   map.on('render',()=>{
+    if(cancelled||revealed||triedRaster||!hasStyle)return;
+    const now=performance.now();
+    if(now-lastFeatureProbe<350)return;
+    lastFeatureProbe=now;
+    // Visible road/building geometry is proof of working primary vector tiles,
+    // even when MapLibre sourcedata events omit coordinate metadata.
+    try{if(map.queryRenderedFeatures().some(f=>f.source===baseVectorSource)){
+      vectorTileSeen=true;revealScene();
+    }}catch{}
+   });
       map.on('click',e=>{
     if(map.getLayer('ffm-osm-points')){
       const point=map.queryRenderedFeatures(e.point,{layers:['ffm-osm-points']})[0];
@@ -448,12 +470,15 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     if(String(e.error?.message||'').includes('gds-srv.hessen.de')){setLuftbildFehler(true);setLuftbild(false);return;}
     const message=String(e.error?.message||'');
     const sourceId=String((e as unknown as {sourceId?:string}).sourceId||'');
-    const vectorFailure=/openfreemap|openmaptiles|tiles\\.openfreemap\\.org/i.test(message+' '+sourceId);
-    if(hasStyle&&!vectorFailure&&!triedRaster)return; // ignore optional LoD2 layers
-    if(vectorFailure&&++baseTileErrors<2)return; // one transient request
-    console.warn('FFM Atlas base map:',e.error);
-    if(!triedRaster)switchToSafeMap();
-    else if(!rasterTileSeen){setReady(true);setError(false);setDomFallback(true);} // independent clickable 2D rescue
+    // Optional LoD2, aerial and secondary tile sources may fail while
+    // primary vector streets remain perfectly functional.
+    const baseFailure=!hasStyle||(!triedRaster&&sourceId===baseVectorSource);
+    const rasterFailure=triedRaster&&sourceId==='osm';
+    if(!baseFailure&&!rasterFailure)return;
+    if(++baseTileErrors<3)return;
+    console.warn('FFM Atlas primary map source:',e.error);
+    if(baseFailure&&!triedRaster&&!vectorTileSeen)switchToSafeMap();
+    else if(rasterFailure&&!rasterTileSeen){setReady(true);setError(false);setDomFallback(true);}
    });
    map.addControl(new maplibre.AttributionControl({compact:true}),'bottom-right');
   }).catch(()=>{if(!cancelled){setDomFallback(true);setReady(true);setError(false)}});
