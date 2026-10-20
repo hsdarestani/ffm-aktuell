@@ -55,6 +55,7 @@ export async function GET(req:NextRequest){
  // An explicit district filter therefore omits them rather than lying to users.
  const candidatesAllowed=!verified&&!district;
  const candidateWhere=`reviewed_status='unverified' AND activity_status!='permanently_closed'
+  AND ($3::text='' AND NOT $4::boolean)
   AND (cardinality($1::text[])=0 OR category=ANY($1::text[]))
   AND ($2::text='' OR (name||' '||address) ILIKE '%'||$2||'%')
   AND ($5::float8 IS NULL OR (${dist})<=$7::float8)`;
