@@ -1,0 +1,15 @@
+.atlas-2d-native{position:absolute;inset:0;z-index:1;overflow:hidden;background:#e6ede5;color:#264232}
+.atlas-2d-plane{position:absolute;inset:0;overflow:hidden;touch-action:none;cursor:grab;user-select:none}
+.atlas-2d-plane:active{cursor:grabbing}
+.atlas-2d-grid{position:absolute;inset:0;background:linear-gradient(#d6e3d6 1px,transparent 1px),linear-gradient(90deg,#d6e3d6 1px,transparent 1px);background-size:64px 64px;opacity:.5}
+.atlas-2d-pin{position:absolute;z-index:3;border:1px solid #fdfdfc;background:#24513a;color:#fff;border-radius:20px;transform:translate(-50%,-50%);padding:6px 10px;max-width:145px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 4px 11px #102d294d;font:650 11px/1.2 system-ui;cursor:pointer}
+.atlas-2d-pin>span:last-child{overflow:hidden;text-overflow:ellipsis}
+.atlas-2d-pin-unknown{background:#fdfcf9;color:#284a39;border:1px solid #6b8a76}
+.atlas-2d-pin:focus-visible{outline:3px solid #d9a94c;outline-offset:2px}
+.atlas-2d-status{position:absolute;left:14px;top:125px;z-index:2;background:#fffef1f2;border-radius:10px;padding:7px 10px;color:#395944;max-width:min(72%,410px);font:550 11px/1.4 system-ui}
+.atlas-2d-controls{position:absolute;z-index:3;right:14px;top:50%;transform:translateY(-50%);display:grid;gap:4px;padding:6px;background:#fffdf9e9;border-radius:13px;box-shadow:0 7px 25px #233c2a29}
+.atlas-2d-controls button{width:37px;height:37px;border:0;background:transparent;color:#244e38;display:grid;place-items:center;cursor:pointer}
+.atlas-2d-credit{position:absolute;bottom:7px;right:9px;z-index:3;display:flex;gap:9px;align-items:center;background:#fffffff0;border-radius:6px;padding:4px 6px;font:10px/1.3 system-ui}
+.atlas-2d-credit a{color:#185837}
+.atlas-root:has(.atlas-2d-native)>.atlas-map-utilities,.atlas-root:has(.atlas-2d-native)>.atlas-credits{display:none}
+@media(max-width:650px){.atlas-2d-pin{max-width:100px;padding:5px 7px;font-size:10px}.atlas-2d-status{top:111px;left:10px;max-width:72%;font-size:10px}.atlas-2d-controls{right:8px}.atlas-2d-credit{right:4px;bottom:4px;font-size:8px;gap:5px}}
