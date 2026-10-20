@@ -10,6 +10,7 @@ test('dense mobile map keeps labels separated and clear of controls',()=>{
  assert.ok(visible.length>0&&visible.length<=9);
  for(const pin of visible){
   assert.ok(pin.left>=62&&pin.left<=328&&pin.top>=150&&pin.top<=580);
+  assert.ok(!(pin.left+50>320&&Math.abs(pin.top-350)<100),'Marker overlaps zoom controls');
   for(const other of visible)if(pin!==other)assert.ok(Math.abs(pin.left-other.left)>=112||Math.abs(pin.top-other.top)>=38);
  }
  assert.deepEqual(visible,visibleMapPins([...pins].reverse(),390,700));

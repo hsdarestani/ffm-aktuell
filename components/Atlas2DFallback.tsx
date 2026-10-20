@@ -96,8 +96,8 @@ export default function Atlas2DFallback({places,category,lang,center,initialZoom
    <div className="atlas-2d-grid" aria-hidden="true"/>
    {tiles.map(t=><img key={t.key} src={'https://tile.openstreetmap.org/'+zoom+'/'+t.x+'/'+t.y+'.png'}
     alt="" draggable={false} decoding="async"
-    onLoad={()=>{if(seen.current.has(t.key))return;seen.current.add(t.key);setLoaded(seen.current.size);setTileMissing(false)}}
-    onError={()=>{}}
+    onLoad={e=>{e.currentTarget.style.visibility='visible';if(seen.current.has(t.key))return;seen.current.add(t.key);setLoaded(seen.current.size);setTileMissing(false)}}
+    onError={e=>{e.currentTarget.style.visibility='hidden'}}
     style={{position:'absolute',width:TILE,height:TILE,left:t.left,top:t.top,pointerEvents:'none'}}/>)}
    {visible.map(({place,left,top})=><button type="button" key={place.id}
     className={'atlas-2d-pin'+(isRawMapId(place.id)?' atlas-2d-pin-unknown':'')}
