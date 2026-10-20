@@ -268,7 +268,7 @@ try{
  const combined=await get('explore?category=Caf%C3%A9s&category=Restaurants');
  if(combined.status!==200||!combined.body.places.some(p=>p.id===locationA.rows[0].id)||
   !combined.body.places.some(p=>p.id===locationB.rows[0].id)||
-  !combined.body.candidates.some(p=>p.id===testOsm))throw Error('Combined category search failed HTTP '+combined.status+' '+JSON.stringify(combined.body).slice(0,1500));
+  !combined.body.candidates.some(p=>p.id===testOsm))throw Error('Combined category search failed HTTP '+combined.status+' '+JSON.stringify(combined.body).slice(0,1500)+' SERVER='+output.replaceAll(password,'[redacted]').slice(-2200));
  const secondaryExplore=await get('explore?category='+encodeURIComponent('CI Geheimtipp'));
  if(!secondaryExplore.body.places.some(p=>p.id===publicPlace.rows[0].id))throw Error('Secondary editorial category not found');
  const districtOnly=await get('explore?district=Innenstadt');
