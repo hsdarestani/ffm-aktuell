@@ -350,8 +350,13 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
    // Loading a style or an empty background is not proof of real tiles.
    map.on('sourcedata',event=>{
     if(cancelled)return;
-    const e=event as unknown as {sourceId?:string;sourceDataType?:string;coord?:unknown};
-    if(e.sourceDataType!=='content'||!e.coord)return;
+    // MapLibre's successful source events are not guaranteed to include coord
+    // (metadata/idle and source-complete events can omit it). Requiring coord
+    // kept the full-screen loader above fully usable raster tiles and all pins.
+    const e=event as unknown as {sourceId?:string;sourceDataType?:string;coord?:unknown;tile?:unknown;isSourceLoaded?:boolean};
+    if(!['content','idle'].includes(e.sourceDataType||''))return;
+    const finishedTile=Boolean(e.tile||e.coord||e.isSourceLoaded);
+    if(!finishedTile)return;
     if(triedRaster&&e.sourceId==='osm')rasterTileSeen=true;
     if(!triedRaster&&(e.sourceId==='openmaptiles'||e.sourceId==='ffm-openmaptiles'))vectorTileSeen=true;
    });
@@ -386,14 +391,22 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
      try{addRealLod2Layer(map,setLod2Triangles);}catch(e){console.warn('FFM optional nearby LoD2:',e);}
      try{addCitywideLod2Layer(map);}catch(e){console.warn('FFM optional citywide LoD2:',e);}
     }
-    // Idle may occur even when all vector tiles failed: don't dismiss loading.
+    // A raster fallback is useful even if source-data event coordinates are
+    // omitted by a provider. Never let an opaque full-screen loader hide pins.
+    if(triedRaster){
+      revealed=true;
+      setReady(true);
+      map.jumpTo({center:CENTER,zoom:14.35,pitch:0,bearing:0});
+    }
     if(revealTimer!==undefined)window.clearTimeout(revealTimer);
     map.once('idle',revealScene);
     revealTimer=window.setTimeout(()=>{
-      if(cancelled||revealed)return;
-      if(!triedRaster)switchToSafeMap();
-      else setError(true);
-    },10000);
+      if(cancelled)return;
+      if(!triedRaster&&!revealed)switchToSafeMap();
+      // A bad fallback tile server must not hide the map UI or pins.
+      // Keep external OSM navigation available instead of infinite loading.
+      else if(triedRaster&&!rasterTileSeen)setError(false);
+    },7500);
    };
    map.on('style.load',onStyle);
    // Optional building requests can keep 'idle' from firing for a long time.
@@ -426,11 +439,11 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     const message=String(e.error?.message||'');
     const sourceId=String((e as unknown as {sourceId?:string}).sourceId||'');
     const vectorFailure=/openfreemap|openmaptiles|tiles\\.openfreemap\\.org/i.test(message+' '+sourceId);
-    if(hasStyle&&!vectorFailure)return; // ignore optional LoD2 layers
+    if(hasStyle&&!vectorFailure&&!triedRaster)return; // ignore optional LoD2 layers
     if(vectorFailure&&++baseTileErrors<2)return; // one transient request
     console.warn('FFM Atlas base map:',e.error);
     if(!triedRaster)switchToSafeMap();
-    else if(!rasterTileSeen)setError(true);
+    else if(!rasterTileSeen){setReady(true);setError(false);} // pins and navigation stay usable
    });
    map.addControl(new maplibre.AttributionControl({compact:true}),'bottom-right');
   }).catch(()=>{if(!cancelled)setError(true);});
