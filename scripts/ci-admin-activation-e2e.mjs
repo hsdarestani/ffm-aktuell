@@ -604,6 +604,27 @@ try{
  if(emailInvites.rowCount)throw Error('Deleted user left recipient email in staff invitation');
  let existsAfter=false;try{await readFile(mediaDir+'/'+socialMediaKey);existsAfter=true}catch{}
  if(existsAfter)throw Error('Deleted user private media file remained on disk');
+ // Officially sourced facts are only source evidence, not a claim of
+ // real-time operation, a license to reuse images or a verified badge.
+ const starterSQL=await readFile('db/seed.sql','utf8');
+ await pool.query(starterSQL);
+ const evidence=await pool.query("SELECT p.name,p.opening_hours_text,p.verification_status,p.activity_status,p.image_url,e.source_url FROM places p JOIN place_field_evidence e ON e.place_id=p.id WHERE p.name=ANY($1::text[]) ORDER BY p.name",[['Städel Museum','Palmengarten','MAIN TOWER','Römerberg']]);
+ if(evidence.rowCount!==4||evidence.rows.some(r=>r.verification_status==='verified'||r.activity_status==='operating'||r.image_url))
+  throw Error('Starter seed falsely certified venues or assigned unlicensed images: '+JSON.stringify(evidence.rows));
+ for(const n of ['Städel Museum','Palmengarten','MAIN TOWER']){
+  const row=evidence.rows.find(r=>r.name===n);
+  if(!row?.opening_hours_text||!row.source_url.startsWith('https://'))throw Error('Missing authentic hours or source: '+n);
+ }
+ if(evidence.rows.find(r=>r.name==='Römerberg')?.opening_hours_text)
+  throw Error('A public square was assigned arbitrary business opening hours');
+ const before=await pool.query("SELECT count(*)::int AS n FROM places WHERE name IN ('Städel Museum','Palmengarten','MAIN TOWER','Römerberg')");
+ await pool.query("UPDATE places SET opening_hours_text='Redaktionell korrigierte Zeiten' WHERE name='Städel Museum'");
+ await pool.query(starterSQL);
+ const after=await pool.query("SELECT count(*)::int AS n FROM places WHERE name IN ('Städel Museum','Palmengarten','MAIN TOWER','Römerberg')");
+ const edited=await pool.query("SELECT opening_hours_text FROM places WHERE name='Städel Museum'");
+ if(after.rows[0].n!==before.rows[0].n||edited.rows[0].opening_hours_text!=='Redaktionell korrigierte Zeiten')
+  throw Error('Redeploy duplicated starter venues or overwrote editorial amendments');
+ console.log('PASS: official hours provenance, no invented certified/open status, no unlicensed imagery, idempotent seed');
  console.log('PASS: expanded personal data export, fresh social account deletion, stale session denial and cascade cleanup');
  console.log('PASS: media isolation, moderated 24h Story, private consent, Highlight review, revocation, 206 playback and owner delete');
  console.log('PASS: moderated coupon issue, private wallet, issuer ownership, single-use redemption and replay prevention');
