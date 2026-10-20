@@ -262,6 +262,48 @@ try{
  if(tagUpdate.status!==200)throw Error('Admin cannot deactivate a category');
  const publicAfter=await get('categories');
  if(publicAfter.body.items.some(c=>c.slug==='CI Stadtideen'))throw Error('Inactive category leaked to public catalog');
+ // Discovery must combine real categories with AND filters, preserving OSM provenance.
+ const locationA=await pool.query("INSERT INTO places(name,category,district,address,latitude,longitude,status,verification_status,activity_status,verified_at) VALUES('CI City Verified','Cafés','Innenstadt','CI Central',50.11,8.68,'published','verified','operating',now()) RETURNING id");
+ const locationB=await pool.query("INSERT INTO places(name,category,district,latitude,longitude,status,verification_status,activity_status) VALUES('CI City Other','Restaurants','Sachsenhausen',50.12,8.69,'published','unverified','unknown') RETURNING id");
+ const combined=await get('explore?category=Caf%C3%A9s&category=Restaurants');
+ if(combined.status!==200||!combined.body.places.some(p=>p.id===locationA.rows[0].id)||
+  !combined.body.places.some(p=>p.id===locationB.rows[0].id)||
+  !combined.body.candidates.some(p=>p.id===testOsm))throw Error('Combined category search failed');
+ const secondaryExplore=await get('explore?category='+encodeURIComponent('CI Geheimtipp'));
+ if(!secondaryExplore.body.places.some(p=>p.id===publicPlace.rows[0].id))throw Error('Secondary editorial category not found');
+ const districtOnly=await get('explore?district=Innenstadt');
+ if(districtOnly.status!==200||!districtOnly.body.places.some(p=>p.id===locationA.rows[0].id)||
+  districtOnly.body.places.some(p=>p.id===locationB.rows[0].id)||
+  districtOnly.body.candidates_total!==0||!districtOnly.body.candidate_district_unsupported)
+  throw Error('Unverified OSM locations incorrectly assigned to districts');
+ const options=await get('explore/districts');
+ if(options.status!==200||!options.body.items.includes('Innenstadt')||!options.body.items.includes('Sachsenhausen'))throw Error('District choices missing');
+ const near=await get('explore?lat=50.11&lon=8.68&radius=1&category=Caf%C3%A9s');
+ if(near.status!==200||!near.body.places.some(p=>p.id===locationA.rows[0].id&&p.distance_km===0)||
+  !near.body.candidates.some(p=>p.id===testOsm&&p.distance_km===0))throw Error('Nearby distance filter failed');
+ const far=await get('explore?lat=50.30&lon=8.90&radius=1&category=Caf%C3%A9s');
+ if(far.status!==200||far.body.places.some(p=>p.id===locationA.rows[0].id)||far.body.candidates.some(p=>p.id===testOsm))throw Error('Outside-radius result leaked');
+ const verifiedOnly=await get('explore?verified=1');
+ if(verifiedOnly.status!==200||verifiedOnly.body.candidates_total!==0||
+  !verifiedOnly.body.places.some(p=>p.id===locationA.rows[0].id)||
+  verifiedOnly.body.places.some(p=>p.id===locationB.rows[0].id))throw Error('Unverified place included as verified');
+ if((await get('explore?lat=abc&lon=8.6')).status!==400||
+  (await get('explore?'+Array.from({length:7},(_,i)=>'category=c'+i).join('&'))).status!==400)
+  throw Error('Invalid search filters not rejected');
+ const injected=await get('explore?'+new URLSearchParams({q:"' OR 1=1--"}));
+ if(injected.status!==200||injected.body.candidates_total!==0||injected.body.places_total!==0)throw Error('Query was not safely parameterized');
+ for(let i=0;i<23;i++){
+  const id='node/'+String(610000000000+i);
+  await pool.query("INSERT INTO discovery_candidates(osm_id,name,category,latitude,longitude,address,osm_url) VALUES($1,$2,'Bars',50.113,8.684,'CI Paginationstraße',$3)",
+   [id,'CI Filter Test '+String(i).padStart(2,'0'),'https://www.openstreetmap.org/'+id]);
+ }
+ const first=await get('explore?'+new URLSearchParams({q:'CI Filter Test',offset:'0'}));
+ const second=await get('explore?'+new URLSearchParams({q:'CI Filter Test',offset:'18'}));
+ if(first.status!==200||second.status!==200||first.body.candidates_total!==23||second.body.candidates_total!==23||
+  first.body.candidates.length!==18||second.body.candidates.length!==5||
+  first.body.candidates.some(p=>second.body.candidates.some(q=>p.id===q.id)))
+  throw Error('Stable OSM pagination/count failed');
+ console.log('PASS: source-honest multi-category, real districts, radius, verified-only, SQL safety and stable pagination');
  // Advertising requests stay drafts until approved, and editorial approval
  // NEVER creates a paid or live campaign without commercial configuration.
  const start=new Date(Date.now()+2*86400000).toISOString().slice(0,10);
