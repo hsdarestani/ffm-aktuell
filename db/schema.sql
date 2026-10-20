@@ -112,6 +112,18 @@ CREATE UNIQUE INDEX IF NOT EXISTS places_osm_id_unique ON places(osm_id) WHERE o
 CREATE INDEX IF NOT EXISTS places_recheck_idx ON places(status, verified_at) WHERE status='published';
 CREATE INDEX IF NOT EXISTS places_status_category_idx ON places(status,category);
 CREATE INDEX IF NOT EXISTS places_name_idx ON places USING gin(to_tsvector('simple',name||' '||description_de||' '||district));
+-- Source-backed facts are *not* a statement that a venue is operating now.
+-- Record provenance per field without silently granting the 'verified' badge.
+CREATE TABLE IF NOT EXISTS place_field_evidence (
+ place_id uuid NOT NULL REFERENCES places(id) ON DELETE CASCADE,
+ field text NOT NULL CHECK(field IN ('identity','opening_hours','address')),
+ source_url text NOT NULL CHECK(source_url ~ '^https://'),
+ source_type text NOT NULL DEFAULT 'official' CHECK(source_type IN ('official','tourism_office')),
+ checked_at timestamptz NOT NULL,
+ statement text NOT NULL CHECK(char_length(statement) BETWEEN 4 AND 500),
+ PRIMARY KEY(place_id,field)
+);
+CREATE INDEX IF NOT EXISTS place_field_evidence_checked_idx ON place_field_evidence(checked_at);
 -- Separate crowd-sourced discovery index. Raw OSM candidates are never
 -- published/verified places, cannot receive favorites and never imply openNow.
 -- Dynamic editorial taxonomy: no auto-promotion of OSM tags to certified facts.
