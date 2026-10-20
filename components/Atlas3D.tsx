@@ -562,7 +562,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
  return <section className={'atlas-root atlas-'+variant+' atlas-tone-'+mode} aria-label={t.map}>
   <div className="atlas-map-host" ref={mapDiv} aria-label={t.map} role="application"/>
   {domFallback&&<Atlas2DFallback
-    places={filtered} category={cat} lang={lang}
+    places={filtered} category={cat} lang={lang} selectedId={selected}
     center={(DISTRICTS.find(d=>d.id===area)||DISTRICTS[0]).center}
     initialZoom={(DISTRICTS.find(d=>d.id===area)||DISTRICTS[0]).zoom}
     onPick={selectFallbackPlace} onCandidates={receiveFallbackCandidates}/>}

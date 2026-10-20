@@ -2,10 +2,11 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import type {AtlasPlace} from './Atlas3D';
 import {LocateFixed,Minus,Plus} from 'lucide-react';
+import {visibleMapPins,isRawMapId} from '@/lib/visible-map-pins';
 
 type Coordinates=[number,number];
 type Props={
- places:AtlasPlace[];category:string;lang:'de'|'en';center:Coordinates;initialZoom:number;
+ selectedId?:string|null;places:AtlasPlace[];category:string;lang:'de'|'en';center:Coordinates;initialZoom:number;
  onPick:(place:AtlasPlace)=>void;onCandidates:(items:AtlasPlace[])=>void;
 };
 const TILE=256,PI=Math.PI;
@@ -22,7 +23,7 @@ const lngLat=(x:number,y:number,z:number):Coordinates=>{
 const good=(p:AtlasPlace)=>Number.isFinite(p.longitude)&&Number.isFinite(p.latitude)&&
  p.longitude!==null&&p.latitude!==null&&Math.abs(p.longitude)<=180&&Math.abs(p.latitude)<=85;
 
-export default function Atlas2DFallback({places,category,lang,center,initialZoom,onPick,onCandidates}:Props){
+export default function Atlas2DFallback({places,category,lang,center,initialZoom,onPick,onCandidates,selectedId}:Props){
  const host=useRef<HTMLDivElement>(null),pointer=useRef<{x:number;y:number;center:Coordinates}|null>(null);
  const seen=useRef(new Set<string>()),[size,setSize]=useState({w:900,h:560});
  const [at,setAt]=useState<Coordinates>(center),[zoom,setZoom]=useState(clamp(Math.round(initialZoom),12,17));
@@ -55,12 +56,12 @@ export default function Atlas2DFallback({places,category,lang,center,initialZoom
  const visible=useMemo(()=>{
   const dedup=new Map<string,AtlasPlace>();
   for(const p of [...places,...candidates])if(good(p))dedup.set(p.id,p);
-  return [...dedup.values()].map(p=>{
+  const projected=[...dedup.values()].map(p=>{
    const pt=xy([p.longitude as number,p.latitude as number],zoom);
-   return {place:p,left:pt.x-centerXY.x+size.w/2,top:pt.y-centerXY.y+size.h/2};
-  }).filter(p=>p.left>=10&&p.left<=size.w-10&&p.top>=10&&p.top<=size.h-10)
-   .sort((a,b)=>a.place.name.localeCompare(b.place.name,'de')).slice(0,90);
- },[places,candidates,zoom,centerXY,size]);
+   return {id:p.id,place:p,left:pt.x-centerXY.x+size.w/2,top:pt.y-centerXY.y+size.h/2};
+  });
+  return visibleMapPins(projected,size.w,size.h,selectedId);
+ },[places,candidates,zoom,centerXY,size,selectedId]);
  useEffect(()=>{
   seen.current.clear();setLoaded(0);setTileMissing(false);
   const timer=window.setTimeout(()=>{if(seen.current.size===0)setTileMissing(true)},6500);
@@ -99,8 +100,8 @@ export default function Atlas2DFallback({places,category,lang,center,initialZoom
     onError={()=>{}}
     style={{position:'absolute',width:TILE,height:TILE,left:t.left,top:t.top,pointerEvents:'none'}}/>)}
    {visible.map(({place,left,top})=><button type="button" key={place.id}
-    className={'atlas-2d-pin'+(place.id.startsWith('osm:')?' atlas-2d-pin-unknown':'')}
-    style={{left,top}} title={place.name} aria-label={'Ort: '+place.name}
+    className={'atlas-2d-pin'+(isRawMapId(place.id)?' atlas-2d-pin-unknown':'')}
+    style={{left,top}} title={place.name} aria-label={'Ort: '+place.name+(isRawMapId(place.id)?' · Ungeprüft':'')}
     onPointerDown={e=>e.stopPropagation()}
     onClick={e=>{e.stopPropagation();onPick(place)}}>
     <span aria-hidden="true">●</span><span>{place.name}</span>
@@ -120,3 +121,4 @@ export default function Atlas2DFallback({places,category,lang,center,initialZoom
   </div>
  </div>;
 }
+

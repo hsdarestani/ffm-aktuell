@@ -41,9 +41,13 @@ try{
  }
  {
   const {ctx,page,errors}=await context(true);
+  await ctx.route('**/api/discovery-map?*',route=>route.fulfill({json:{items:Array.from({length:100},(_,n)=>({id:'node/'+(70000+n),name:'Testort '+n,category:'Cafés',longitude:8.665+(n%10)*.003,latitude:50.10+Math.floor(n/10)*.002}))}}));
   await page.goto(base,{waitUntil:'domcontentloaded'});
   await page.locator('.atlas-2d-native').waitFor({state:'visible'});
   assert.equal(await page.locator('.atlas-map-loading').count(),0,'No WebGL leaves an opaque loader');
+  await page.locator('.atlas-2d-pin').first().waitFor({state:'visible'});
+  const pinCount=await page.locator('.atlas-2d-pin').count();assert.ok(pinCount>0&&pinCount<=9,'Dense fallback markers must stay readable');
+  assert.equal(await page.locator('.atlas-2d-pin-unknown').count(),pinCount,'Raw OSM markers must be labelled unverified');
   assert.equal(await page.locator('.atlas-dim-button').innerText(),'3D neu');
   await page.screenshot({path:'artifacts/map-startup/mobile-no-webgl.png'});
   assert.deepEqual(errors,[]);await ctx.close();
