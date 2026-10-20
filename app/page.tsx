@@ -60,6 +60,12 @@ export default function Home(){
  const [page,setPage]=useState<Page>('home'),[places,setPlaces]=useState<Place[]>([]),[events,setEvents]=useState<Event[]>([]),[news,setNews]=useState<News[]>([]),[posts,setPosts]=useState<Post[]>([]),[deals,setDeals]=useState<Deal[]>([]);
  const [user,setUser]=useState<User|null>(null),[favorites,setFavorites]=useState<string[]>([]),[savedPlaces,setSavedPlaces]=useState<Place[]>([]),[savedLoading,setSavedLoading]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [query,setQuery]=useState(''),[category,setCategory]=useState('Alle'),[district,setDistrict]=useState(''),[selected,setSelected]=useState<Place|null>(null),[nurGepruefte,setNurGepruefte]=useState(false);
+ const [selectedCategories,setSelectedCategories]=useState<string[]>([]);
+ const [radiusKm,setRadiusKm]=useState<1|3|5|10>(3);
+ const [districtOptions,setDistrictOptions]=useState<string[]>([]);
+ const [discoverPlaces,setDiscoverPlaces]=useState<Place[]>([]),[discoverPlacesTotal,setDiscoverPlacesTotal]=useState(0);
+ const [discoverLoadError,setDiscoverLoadError]=useState(false);
+ const [candidateDistrictUnsupported,setCandidateDistrictUnsupported]=useState(false);
  const [followingOnly,setFollowingOnly]=useState(false);
   const [comparePlaces,setComparePlaces]=useState<Place[]>([]);
  const [nearby,setNearby]=useState<{lat:number;lon:number}|null>(null);
@@ -99,24 +105,50 @@ export default function Home(){
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[]);
  
- useEffect(()=>{if(page!=='discover')return;let disposed=false;const controller=new AbortController();setCandidateLoading(true);setCandidates([]);setCandidateTotal(0);const timer=window.setTimeout(()=>{
-  const q=new URLSearchParams({limit:'18',offset:'0'});
-  if(category!=='Alle')q.set('category',category==='Apotheken Notdienst'?'Apotheken':category);
+ useEffect(()=>{if(page!=='discover')return;let alive=true;
+  fetch('/api/explore/districts',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject())
+   .then(d=>{if(alive)setDistrictOptions(Array.isArray(d.items)?d.items:[])}).catch(()=>{});
+  return()=>{alive=false};
+ },[page,refresh]);
+ const exploreParams=(offset:number)=>{
+  const q=new URLSearchParams({offset:String(offset),radius:String(radiusKm),verified:nurGepruefte?'1':'0'});
+  for(const cat of selectedCategories)q.append('category',cat);
   if(query.trim())q.set('q',query.trim());
-  if(nearby){q.set('lat',String(nearby.lat));q.set('lon',String(nearby.lon));q.set('radius','3');}
-  fetch('/api/discovery?'+q,{signal:controller.signal,cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('Fehler');return r.json()})
-   .then(data=>{if(!disposed){setCandidates(data.items||[]);setCandidateTotal(data.total||0);}})
-   .catch(()=>{if(!disposed){setCandidates([]);setCandidateTotal(0);}})
-   .finally(()=>{if(!disposed)setCandidateLoading(false)});
-  },240);return()=>{disposed=true;window.clearTimeout(timer);controller.abort()};
- },[page,category,query,nearby,refresh]);
- const mehrLaden=async()=>{if(candidateLoading||candidates.length>=candidateTotal)return;
-  setCandidateLoading(true);try{const q=new URLSearchParams({limit:'18',offset:String(candidates.length)});
-   if(category!=='Alle')q.set('category',category==='Apotheken Notdienst'?'Apotheken':category);
-   if(query.trim())q.set('q',query.trim());
-   if(nearby){q.set('lat',String(nearby.lat));q.set('lon',String(nearby.lon));q.set('radius','3');}
-   const r=await fetch('/api/discovery?'+q);if(!r.ok)throw Error('Fehler');const d=await r.json();
-   setCandidates(prev=>[...prev,...d.items.filter((p:Place)=>!prev.some(o=>o.id===p.id))]);
+  if(district)q.set('district',district);
+  if(nearby){q.set('lat',String(nearby.lat));q.set('lon',String(nearby.lon));}
+  return q;
+ };
+ const toggleDiscoveryCategory=(id:string)=>{
+  const next=id==='Alle'?[]:selectedCategories.includes(id)?
+   selectedCategories.filter(c=>c!==id):selectedCategories.length<6?[...selectedCategories,id]:selectedCategories;
+  if(id!=='Alle'&&!selectedCategories.includes(id)&&next===selectedCategories){
+   flash('Bis zu sechs Kategorien gleichzeitig.');return;
+  }
+  setSelectedCategories(next);setCategory(next[0]||'Alle');
+ };
+ useEffect(()=>{
+  if(page!=='discover')return;
+  let disposed=false;const controller=new AbortController();
+  setCandidateLoading(true);setDiscoverLoadError(false);setCandidates([]);setCandidateTotal(0);setDiscoverPlaces([]);setDiscoverPlacesTotal(0);
+  const timer=window.setTimeout(()=>{
+   fetch('/api/explore?'+exploreParams(0),{signal:controller.signal,cache:'no-store'})
+    .then(async r=>{if(!r.ok)throw Error('Suche nicht erreichbar');return r.json()})
+    .then(d=>{if(disposed)return;setCandidates(d.candidates||[]);setCandidateTotal(d.candidates_total||0);
+     setDiscoverPlaces(d.places||[]);setDiscoverPlacesTotal(d.places_total||0);
+     setCandidateDistrictUnsupported(Boolean(d.candidate_district_unsupported));})
+    .catch(()=>{if(!disposed)setDiscoverLoadError(true)})
+    .finally(()=>{if(!disposed)setCandidateLoading(false)});
+  },240);
+  return()=>{disposed=true;window.clearTimeout(timer);controller.abort()};
+ // API owns counts, filters and pagination rather than first-80 client list.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[page,selectedCategories,district,query,nurGepruefte,nearby,radiusKm,refresh]);
+ const mehrLaden=async()=>{
+  if(candidateLoading||candidates.length>=candidateTotal)return;
+  setCandidateLoading(true);
+  try{const r=await fetch('/api/explore?'+exploreParams(candidates.length),{cache:'no-store'});
+   if(!r.ok)throw Error('Suche nicht erreichbar');const d=await r.json();
+   setCandidates(prev=>[...prev,...(d.candidates||[]).filter((p:Place)=>!prev.some(v=>v.id===p.id))]);
   }catch{flash('Weitere Orte konnten nicht geladen werden.')}finally{setCandidateLoading(false)}
  };
 
@@ -141,8 +173,12 @@ export default function Home(){
  const sichtbareBeitraege=useMemo(()=>[...news,...vorschauBeitraege],[news]);
  const sichtbarePosts=useMemo(()=>followingOnly?posts:[...posts,...vorschauPosts],[posts,followingOnly]);
  const sichtbareAngebote=useMemo(()=>[...deals,...vorschauAngebote],[deals]);
- const distanceKm=(p:Place)=>!nearby?0:(!Number.isFinite(p.latitude)||!Number.isFinite(p.longitude)?Infinity:6371*2*Math.asin(Math.sqrt(Math.sin(((p.latitude as number)-nearby.lat)*Math.PI/360)**2+Math.cos(nearby.lat*Math.PI/180)*Math.cos((p.latitude as number)*Math.PI/180)*Math.sin(((p.longitude as number)-nearby.lon)*Math.PI/360)**2)));
- const filtered=useMemo(()=>sichtbareOrte.filter(p=>(!nearby||distanceKm(p)<=3)&&passendeRubrik(p,category)&&(!nurGepruefte||frischBestaetigt(p))&&(!district||p.district===district)&&[p.name,p.category,p.district,p.description_de,p.description_en].join(' ').toLocaleLowerCase().includes(query.toLocaleLowerCase())),[sichtbareOrte,category,district,query,nurGepruefte,nearby]);
+ const previewFiltered=useMemo(()=>vorschauOrte.filter(p=>
+  !nearby&&!nurGepruefte&&!district&&
+  (selectedCategories.length===0||selectedCategories.some(cat=>passendeRubrik(p,cat)))&&
+  [p.name,p.category,p.district,p.description_de,p.description_en].join(' ').toLocaleLowerCase().includes(query.toLocaleLowerCase())
+ ),[selectedCategories,nearby,district,query,nurGepruefte]);
+ const filtered=useMemo(()=>[...discoverPlaces,...previewFiltered],[discoverPlaces,previewFiltered]);
  const toggleCompare=(p:Place)=>setComparePlaces(list=>list.some(x=>x.id===p.id)?list.filter(x=>x.id!==p.id):[...list,p].slice(-3));
  const toggleNearby=()=>{if(nearby){setNearby(null);return;}if(!navigator.geolocation){flash('Standortzugriff nicht verfügbar. Bitte normal suchen.');return;}setFindingNearby(true);navigator.geolocation.getCurrentPosition(pos=>{setFindingNearby(false);const {latitude:lat,longitude:lon}=pos.coords;if(lat<49.7||lat>50.4||lon<8.2||lon>9.1){flash('Der Standort liegt außerhalb des Frankfurter Suchbereichs.');return;}setNearby({lat,lon});},()=>{setFindingNearby(false);flash('Standort nicht freigegeben. Suche ohne Standort bleibt möglich.');},{enableHighAccuracy:false,timeout:10000,maximumAge:60000});};
  const navigate=(p:Page)=>{if(new URLSearchParams(window.location.search).has('tour'))window.history.replaceState(null,'',window.location.pathname);setPage(p);setMenu(false);window.scrollTo({top:0,behavior:'smooth'})};
@@ -173,7 +209,7 @@ export default function Home(){
   {(page==='events'||page==='community')&&<div className="v3-preview-strip" role="status"><span className="v3-preview-spark"/><strong>VORSCHAU</strong><span>{VORSCHAU_HINWEIS}</span></div>}
    {toast&&<div className="toast" role="status"><Check size={16}/>{toast}<button onClick={()=>setToast('')}><X size={16}/></button></div>}
   {error&&<div className="error">{error}<button onClick={()=>setRefresh(x=>x+1)}>{lang==='de'?'Erneut laden':'Retry'}</button></div>}
-  {page==='home'&&<><AtlasHome lang={lang} places={sichtbareOrte} events={sichtbareVeranstaltungen} news={sichtbareBeitraege} onDiscover={()=>navigate('discover')} onMap={()=>navigate('map')} onEvents={()=>navigate('events')} onCommunity={()=>navigate('community')} onBusiness={()=>navigate('business')} onPlace={selectPlace} onCategory={cat=>{setCategory(cat);navigate('discover')}} onSearch={value=>{setQuery(value);setCategory('Alle');setDistrict('');navigate('discover')}} onTours={()=>navigate('tours')} /><SmartDiscover onPlace={selectPlace} onDiscover={()=>navigate('discover')} lang={lang} loggedIn={Boolean(user)}/></>}
+  {page==='home'&&<><AtlasHome lang={lang} places={sichtbareOrte} events={sichtbareVeranstaltungen} news={sichtbareBeitraege} onDiscover={()=>navigate('discover')} onMap={()=>navigate('map')} onEvents={()=>navigate('events')} onCommunity={()=>navigate('community')} onBusiness={()=>navigate('business')} onPlace={selectPlace} onCategory={cat=>{setCategory(cat);setSelectedCategories(cat==='Alle'?[]:[cat]);navigate('discover')}} onSearch={value=>{setQuery(value);setCategory('Alle');setSelectedCategories([]);setDistrict('');navigate('discover')}} onTours={()=>navigate('tours')} /><SmartDiscover onPlace={selectPlace} onDiscover={()=>navigate('discover')} lang={lang} loggedIn={Boolean(user)}/></>}
   {page==='discover'&&<main className="ffm-find-page ffm-find-visual" id="entdecken">
  <section className="ffm-find-head">
   <h1>Entdecken<span>.</span></h1>
