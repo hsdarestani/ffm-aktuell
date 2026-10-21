@@ -1,4 +1,5 @@
 'use client';
+import PlaceAttributeEditor from '@/components/PlaceAttributeEditor';
 import {useCallback,useEffect,useState,type FormEvent} from 'react';
 type Category={slug:string;label_de:string;label_en:string;parent_slug:string|null;active:boolean};
 type Place={id:string;name:string;category:string;status:string;categories:string[]};
@@ -53,5 +54,7 @@ export default function CatalogStudio({onNotice}:{onNotice:(message:string,succe
      <button type="button" disabled={busy||tags.length<1||tags.length>8} onClick={()=>void send({place_id:chosen,categories:tags},'/api/categories/places')}>Zuordnung speichern ({tags.length}/8)</button></>}
    </section>
   </div>
+  <PlaceAttributeEditor placeId={chosen}/>
  </div>;
 }
+

@@ -38,6 +38,18 @@ test('public discovery executes pagination and distance ordering against Postgre
    assert.equal(result.body.candidates[0].name,'Z nearest OSM');
    assert.ok(result.body.places[1].distance_km>result.body.places[0].distance_km);
   });
+  await t.test('source-backed filters exclude unknown, stale, negative and unpublished evidence',async()=>{
+   const ids=(await db.query("SELECT id FROM places WHERE name LIKE 'Pagination venue%' ORDER BY name LIMIT 4")).rows.map(r=>r.id);
+   for(let i=0;i<4;i++)await db.query("INSERT INTO place_attributes(place_id,field,value,source_url,checked_at,note) VALUES($1,'family_friendly',$2,'https://example.org/source',now()-($3::int*interval '1 day'),'Official source checked')",[ids[i],i===1?'no':'yes',i===2?31:0]);
+   await db.query("INSERT INTO place_attributes(place_id,field,value,source_url,checked_at,note) VALUES($1,'price_level','2','https://example.org/prices',now(),'Official price level source')",[ids[0]]);
+   const first=await get('feature=family_friendly');assert.equal(first.status,200);assert.equal(first.body.places_total,2);assert.equal(first.body.candidates_total,0);
+   const combined=await get('feature=family_friendly&price_max=2');assert.equal(combined.body.places_total,1);assert.equal(combined.body.places[0].id,ids[0]);
+   assert.equal((await get('feature=family_friendly&price_max=1')).body.places_total,0);
+   const u=(await db.query("INSERT INTO users(email,password_hash) VALUES('reviews@test.invalid','test') RETURNING id")).rows[0].id;
+   await db.query("INSERT INTO venue_reviews(user_id,place_id,rating,body,status) VALUES($1,$2,5,'A detailed actual review for test','pending'),($1,$3,4,'A published actual review for test','published')",[u,ids[0],ids[3]]);
+   const rated=await get('rating_min=4');assert.equal(rated.body.places_total,1);assert.equal(rated.body.places[0].id,ids[3]);
+   for(const params of ['feature=invented','price_max=5','rating_min=6','rating_min=NaN'])assert.equal((await get(params)).status,400);
+  });
   await t.test('invalid offsets fail before SQL and curated pages do not advance raw OSM',async()=>{
    for(const value of ['-1','0.5','Infinity','10001','bad'])assert.equal((await get('place_offset='+value)).status,400);
    const result=await get('category=Bars&place_offset=18');

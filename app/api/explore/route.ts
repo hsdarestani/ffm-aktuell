@@ -26,7 +26,12 @@ export async function GET(req:NextRequest){
   lat<49.7||lat>50.4||lon<8.2||lon>9.1))return fail('Ungültiger Standort oder Radius');
  const offset=Number(qs.get('offset')||0),placeOffset=Number(qs.get('place_offset')||0);
  if([offset,placeOffset].some(n=>!Number.isSafeInteger(n)||n<0||n>10000))return fail('Ungültige Seite');
+ const features=[...new Set(qs.getAll('feature'))];
+ const supported=['indoor','outdoor','family_friendly','wheelchair_accessible'];
+ const price=Number(qs.get('price_max')||0),rating=Number(qs.get('rating_min')||0);
+ if(features.some(v=>!supported.includes(v))||features.length>4||![0,1,2,3,4].includes(price)||![0,1,2,3,4,5].includes(rating))return fail('Ungültiges Merkmal, Preisniveau oder Bewertung');
  const params=[categories,search,district,verified,nearby?lat:null,nearby?lon:null,radius];
+ const editorialParams=[...params,placeOffset,features,price,rating];
  const dist=`6371*ACOS(LEAST(1,GREATEST(-1,
  COS(RADIANS(latitude))*COS(RADIANS($5::float8))*COS(RADIANS(longitude-$6::float8))
  +SIN(RADIANS(latitude))*SIN(RADIANS($5::float8)))))`;
@@ -38,7 +43,13 @@ export async function GET(req:NextRequest){
   AND ($3::text='' OR district=$3)
   AND (NOT $4::boolean OR (verification_status='verified' AND activity_status='operating'
     AND verified_at BETWEEN now()-interval '30 days' AND now()))
-  AND ($5::float8 IS NULL OR (${dist})<=$7::float8)`;
+  AND ($5::float8 IS NULL OR (${dist})<=$7::float8)
+  AND NOT EXISTS(SELECT 1 FROM unnest($9::text[]) AS wanted(field) WHERE NOT EXISTS(
+   SELECT 1 FROM place_attributes a WHERE a.place_id=places.id AND a.field=wanted.field AND a.value='yes'
+   AND a.checked_at BETWEEN now()-interval '30 days' AND now()))
+  AND ($10::int=0 OR EXISTS(SELECT 1 FROM place_attributes a WHERE a.place_id=places.id AND a.field='price_level'
+   AND CASE WHEN a.field='price_level' THEN a.value::int ELSE NULL END<=$10 AND a.checked_at BETWEEN now()-interval '30 days' AND now()))
+  AND ($11::int=0 OR (SELECT avg(r.rating) FROM venue_reviews r WHERE r.place_id=places.id AND r.status='published') >= $11)`;
  // Editorial results are bounded; raw OSM candidates have a separate
  // complete count + stable pagination. Sample/demo records never enter SQL.
  const editorSQL=`SELECT id,name,category,district,description_de,description_en,address,latitude,longitude,
@@ -53,7 +64,7 @@ export async function GET(req:NextRequest){
    AND verified_at>now()-interval '30 days' THEN 0 ELSE 1 END,editorial_rank DESC,name,id LIMIT 18 OFFSET $8`;
  // OSM entries contain no authoritative district column; no guess from address.
  // An explicit district filter therefore omits them rather than lying to users.
- const candidatesAllowed=!verified&&!district;
+ const candidatesAllowed=!verified&&!district&&!features.length&&!price&&!rating;
  const candidateWhere=`reviewed_status='unverified' AND activity_status!='permanently_closed'
   AND ($3::text='' AND NOT $4::boolean)
   AND (cardinality($1::text[])=0 OR category=ANY($1::text[]))
@@ -61,8 +72,8 @@ export async function GET(req:NextRequest){
   AND ($5::float8 IS NULL OR (${dist})<=$7::float8)`;
  try{
   const [editor,editorCount,osm,osmCount]=await Promise.all([
-   query(editorSQL,[...params,placeOffset]),
-   query(`SELECT count(*)::int AS n FROM places WHERE ${where}`,params),
+   query(editorSQL,editorialParams),
+   query(`SELECT count(*)::int AS n FROM places WHERE ${where} AND $8::int>=0`,editorialParams),
    candidatesAllowed?query(`SELECT osm_id AS id,osm_id,name,category,latitude,longitude,address,website,phone,
  opening_hours AS opening_hours_text,last_osm_check,osm_url AS source_url,
  activity_status,'unverified' AS verification_status,true AS candidate,false AS demo,
@@ -74,7 +85,7 @@ export async function GET(req:NextRequest){
    places:editor.rows,places_total:editorCount.rows[0]?.n||0,
    candidates:osm.rows,candidates_total:osmCount.rows[0]?.n||0,
    limit:18,offset,places_limit:18,places_offset:placeOffset,candidate_district_unsupported:Boolean(district),
-   openingNowAvailable:false,pricesAvailable:false,
+   openingNowAvailable:false,pricesAvailable:false,priceLevelFilterAvailable:true,attribute_filters_supported:true,unknown_attributes_excluded:Boolean(features.length||price||rating),
    source:'© OpenStreetMap-Mitwirkende · ODbL'
   },{headers:{'Cache-Control':'public, max-age=0, s-maxage=15'}});
  }catch(e){console.error('Public filtered discovery failed',e);

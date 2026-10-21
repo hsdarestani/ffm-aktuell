@@ -550,5 +550,23 @@ CREATE TABLE IF NOT EXISTS push_deliveries (
  UNIQUE(subscription_id,kind,source_id,source_version)
 );
 CREATE INDEX IF NOT EXISTS push_deliveries_pending_idx ON push_deliveries(available_at) WHERE state='pending';
+-- Source-backed search facts; unknown is represented by absence, never false.
+CREATE TABLE IF NOT EXISTS place_attributes (
+ place_id uuid NOT NULL REFERENCES places(id) ON DELETE CASCADE,
+ field text NOT NULL CHECK(field IN ('price_level','indoor','outdoor','family_friendly','wheelchair_accessible')),
+ value text NOT NULL,
+ source_url text NOT NULL CHECK(source_url ~ '^https://'),
+ checked_at timestamptz NOT NULL, note text NOT NULL CHECK(char_length(note) BETWEEN 10 AND 500),
+ checked_by uuid REFERENCES users(id) ON DELETE SET NULL,
+ PRIMARY KEY(place_id,field),
+ CHECK((field='price_level' AND value IN ('1','2','3','4')) OR
+       (field<>'price_level' AND value IN ('yes','no')))
+);
+CREATE INDEX IF NOT EXISTS place_attributes_filter_idx ON place_attributes(field,value,checked_at);
+CREATE TABLE IF NOT EXISTS place_attribute_history (
+ id bigserial PRIMARY KEY, place_id uuid NOT NULL REFERENCES places(id) ON DELETE CASCADE,
+ actor_id uuid REFERENCES users(id) ON DELETE SET NULL, field text NOT NULL,
+ before_value jsonb, after_value jsonb, created_at timestamptz NOT NULL DEFAULT now()
+);
 COMMIT;
 

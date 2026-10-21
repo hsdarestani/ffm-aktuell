@@ -6,6 +6,7 @@ import type {MapPlace} from '@/components/CityMap';
 import AtlasHome from '@/components/AtlasHome';
 import AdminStudio from '@/components/AdminStudio';
 import PlaceLocationMap from '@/components/PlaceLocationMap';
+import PlaceFacts from '@/components/PlaceFacts';
 import PlaceActions from '@/components/PlaceActions';
 import VenueReviews from '@/components/VenueReviews';
 import PostEngagement from '@/components/PostEngagement';
@@ -61,6 +62,7 @@ export default function Home(){
  const [page,setPage]=useState<Page>('map'),[places,setPlaces]=useState<Place[]>([]),[events,setEvents]=useState<Event[]>([]),[news,setNews]=useState<News[]>([]),[posts,setPosts]=useState<Post[]>([]),[deals,setDeals]=useState<Deal[]>([]);
  const [user,setUser]=useState<User|null>(null),[favorites,setFavorites]=useState<string[]>([]),[savedPlaces,setSavedPlaces]=useState<Place[]>([]),[savedLoading,setSavedLoading]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [query,setQuery]=useState(''),[category,setCategory]=useState('Alle'),[district,setDistrict]=useState(''),[selected,setSelected]=useState<Place|null>(null),[nurGepruefte,setNurGepruefte]=useState(false);
+ const [factFilters,setFactFilters]=useState<string[]>([]),[priceMax,setPriceMax]=useState(0),[ratingMin,setRatingMin]=useState(0);
  const [selectedCategories,setSelectedCategories]=useState<string[]>([]);
  const [radiusKm,setRadiusKm]=useState<1|3|5|10>(3);
  const [districtOptions,setDistrictOptions]=useState<string[]>([]);
@@ -128,13 +130,16 @@ export default function Home(){
    .then(d=>{if(alive)setDistrictOptions(Array.isArray(d.items)?d.items:[])}).catch(()=>{});
   return()=>{alive=false};
  },[page,refresh]);
- const filterKey=JSON.stringify([page,selectedCategories,district,query,nurGepruefte,nearby,radiusKm,refresh]);
+ const filterKey=JSON.stringify([page,selectedCategories,district,query,nurGepruefte,nearby,radiusKm,factFilters,priceMax,ratingMin,refresh]);
  const latestFilter=useRef(filterKey);latestFilter.current=filterKey;
  const exploreParams=(offset:number,placeOffset=0)=>{
   const q=new URLSearchParams({offset:String(offset),place_offset:String(placeOffset),radius:String(radiusKm),verified:nurGepruefte?'1':'0'});
   for(const cat of selectedCategories)q.append('category',cat);
   if(query.trim())q.set('q',query.trim());
   if(district)q.set('district',district);
+  for(const f of factFilters)q.append('feature',f);
+  if(priceMax)q.set('price_max',String(priceMax));
+  if(ratingMin)q.set('rating_min',String(ratingMin));
   if(nearby){q.set('lat',String(nearby.lat));q.set('lon',String(nearby.lon));}
   return q;
  };
@@ -163,7 +168,7 @@ export default function Home(){
   return()=>{disposed=true;window.clearTimeout(timer);controller.abort();pageRequest.current?.abort();pageRequest.current=null};
  // API owns counts, filters and pagination rather than first-80 client list.
  // eslint-disable-next-line react-hooks/exhaustive-deps
- },[page,selectedCategories,district,query,nurGepruefte,nearby,radiusKm,refresh]);
+ },[page,selectedCategories,district,query,nurGepruefte,nearby,radiusKm,factFilters,priceMax,ratingMin,refresh]);
  const mehrLaden=async(source:'places'|'candidates'='candidates')=>{
   const items=source==='places'?discoverPlaces:candidates;
   const total=source==='places'?discoverPlacesTotal:candidateTotal;
@@ -278,8 +283,8 @@ export default function Home(){
     {[1,3,5,10].map(n=><option value={n} key={n}>{n} km</option>)}
    </select></label>}
    <label className="ffm-find-verified"><input type="checkbox" checked={nurGepruefte} onChange={e=>setNurGepruefte(e.target.checked)}/> Nur aktuell geprüfte Betriebe</label>
-   {(selectedCategories.length>0||district||nearby||nurGepruefte)&&<button type="button" className="ffm-find-filter-reset"
-    onClick={()=>{setSelectedCategories([]);setCategory('Alle');setDistrict('');setNearby(null);setRadiusKm(3);setNurGepruefte(false)}}>Filter löschen</button>}
+   {(selectedCategories.length>0||district||nearby||nurGepruefte||factFilters.length>0||priceMax>0||ratingMin>0)&&<button type="button" className="ffm-find-filter-reset"
+    onClick={()=>{setSelectedCategories([]);setCategory('Alle');setDistrict('');setNearby(null);setRadiusKm(3);setNurGepruefte(false);setFactFilters([]);setPriceMax(0);setRatingMin(0)}}>Filter löschen</button>}
   </div>
   <details className="ffm-find-more">
    <summary><Plus size={16}/> Weitere Kategorien{selectedCategories.length?' · '+selectedCategories.length+' gewählt':''}</summary>
@@ -288,9 +293,15 @@ export default function Home(){
     <div className="ffm-find-extra-cats">{categoryIds.filter(cat=>!['Alle','Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(cat)).map(cat=><button type="button" key={cat} aria-pressed={selectedCategories.includes(cat)}
      className={selectedCategories.includes(cat)?'active':''} onClick={()=>toggleDiscoveryCategory(cat)}>{selectedCategories.includes(cat)?'✓ ':''}{catBezeichnungen[cat]||cat}</button>)}</div>
    </div>
+  </details>
+  <details className="ffm-find-more"><summary>Merkmale, Preisniveau und Bewertung</summary>
+   <p>Nur belegte, in den letzten 30 Tagen geprüfte Merkmale. Unbekannte Angaben und ungeprüfte OSM Orte werden bei Merkmalsfiltern ausgeschlossen. Preisniveau ist kein konkreter Preis.</p>
+   <div className="ffm-find-quick-filters">{([['indoor','Indoor'],['outdoor','Outdoor'],['family_friendly','Familienfreundlich'],['wheelchair_accessible','Rollstuhlgerecht']] as const).map(([key,label])=><label key={key}><input type="checkbox" checked={factFilters.includes(key)} onChange={e=>setFactFilters(v=>e.target.checked?[...v,key]:v.filter(f=>f!==key))}/>{label}</label>)}
+   <label>Preisniveau bis<select aria-label="Maximales Preisniveau" value={priceMax} onChange={e=>setPriceMax(Number(e.target.value))}><option value={0}>Alle oder unbekannt</option>{[1,2,3,4].map(v=><option key={v} value={v}>{'€'.repeat(v)}</option>)}</select></label>
+   <label>Bewertung ab<select aria-label="Mindestbewertung" value={ratingMin} onChange={e=>setRatingMin(Number(e.target.value))}><option value={0}>Alle oder ohne Bewertung</option>{[1,2,3,4,5].map(v=><option key={v} value={v}>{v} Sterne</option>)}</select></label></div>
   </details> </section>
 
- {category==='Apotheken Notdienst'&&<section className="ffm-find-duty"><strong>Apotheken-Notdienst</strong><p>Unsere Ortsliste ist keine Notdienstbestätigung.</p><a href="https://www.aponet.de/notdienstsuche/60320-Frankfurt" target="_blank" rel="noopener noreferrer">Aktuellen Dienst bei aponet prüfen <ChevronRight size={16}/></a></section>}
+ {category==='Apotheken Notdienst'&&<section className="ffm-find-duty"><strong>Apotheken-Notdienst</strong><p>Diese Ortsliste ist keine Notdienstbestätigung.</p><a href="https://www.aponet.de/notdienstsuche/60320-Frankfurt" target="_blank" rel="noopener noreferrer">Aktuellen Dienst bei aponet prüfen <ChevronRight size={16}/></a></section>}
 
  <section className="ffm-find-results" aria-labelledby="ffm-find-results-title">
   {comparePlaces.length>0&&<div className="ffm-compare" role="region" aria-label="Orte vergleichen">
@@ -310,7 +321,7 @@ export default function Home(){
   {discoverLoadError&&<div className="ffm-find-empty" role="alert">Die Suche ist gerade nicht erreichbar. <button type="button" onClick={()=>setRefresh(v=>v+1)}>Erneut versuchen</button></div>}
    {!discoverLoadError&&filtered.some(p=>!p.demo)&&<div className="ffm-find-verified-results"><div className="ffm-find-subhead"><Check size={17}/><strong>Redaktionelle Orte</strong></div>{cards(filtered.filter(p=>!p.demo))}{discoverPlacesTotal>discoverPlaces.length&&<button type="button" className="ffm-find-load" disabled={candidateLoading||moreLoading!==null} onClick={()=>void mehrLaden('places')}>{moreLoading==='places'?'Orte werden geladen …':'Weitere redaktionelle Orte'} <span>{discoverPlaces.length} / {discoverPlacesTotal}</span></button>}</div>}
 
-  {!nurGepruefte&&!district&&!discoverLoadError&&<>
+  {!nurGepruefte&&!district&&!factFilters.length&&!priceMax&&!ratingMin&&!discoverLoadError&&<>
    <div className="ffm-find-source-line"><span className="ffm-find-source-dot"/><strong>Weitere Orte</strong><small>OSM · ungeprüft</small></div>
    <div className="ffm-find-list" aria-busy={candidateLoading&&candidates.length===0}>
     {candidates.map(p=>{
@@ -329,6 +340,7 @@ export default function Home(){
    <p className="ffm-find-source-credit">© OpenStreetMap-Mitwirkende (ODbL)</p>
   </>}
 
+  {(factFilters.length>0||priceMax>0||ratingMin>0)&&<p className="ffm-find-district-note">Nur passende belegte Angaben. Unbekannte Merkmale und ungeprüfte OSM Einträge werden nicht angezeigt.</p>}
   {candidateDistrictUnsupported&&!nurGepruefte&&<p className="ffm-find-district-note">OSM Einträge ohne geprüfte Stadtteilzuordnung werden bei diesem Filter nicht angezeigt.</p>}
    {!candidateLoading&&!discoverLoadError&&discoverPlacesTotal+candidateTotal===0&&<div className="ffm-find-empty">Keine passenden Orte. Filter anpassen.</div>}
   {filtered.some(p=>p.demo)&&!nurGepruefte&&<details className="ffm-find-preview"><summary>Musterorte anzeigen <Plus size={16}/></summary><p>Beispiele, keine bestätigten Empfehlungen.</p>{cards(filtered.filter(p=>p.demo))}</details>}
@@ -388,6 +400,7 @@ export default function Home(){
   <footer className="footer"><div className="footer-top"><div><strong>ffm<b>aktuell</b><em>.</em></strong><p>FRANKFURT VON INNEN. DEINE STADT, DEIN BLICK.</p></div><div><button onClick={()=>navigate('discover')}>{t.discover}</button><button onClick={()=>navigate('events')}>{t.events}</button><button onClick={()=>navigate('business')}>{t.business}</button></div></div><div className="footer-bottom"><span>© 2026 FFM Aktuell</span><span>Frankfurt am Main</span></div></footer>
   <nav className="mobile-bottom">{nav.map(([p,Icon,title])=><button className={page===p?'active':''} key={p} onClick={()=>navigate(p)}><Icon size={21}/><span>{title}</span></button>)}</nav>
   {selected&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}><div className="place-dialog" role="dialog" aria-modal="true" aria-label="Ortsdetails"><div className="ffm-place-dialog-header"><span>Ortsdetails</span><button type="button" className="dialog-close" aria-label="Details schließen" onClick={()=>setSelected(null)}><X size={20}/></button></div><div className="dialog-body">{selected.demo&&<span className="v3-demo-label">Musterort – noch keine redaktionelle Freigabe</span>}<small>{catBezeichnungen[selected.category]||selected.category} / {selected.district}</small><p className="v4-place-check">{selected.candidate?'OSM · Ungeprüft':statusLabel(selected)}{selected.verified_at&&frischBestaetigt(selected)?' · Zuletzt geprüft: '+date(selected.verified_at,lang):''}</p><h2>{selected.name}</h2>{!selected.demo&&<button type="button" className="ffm-compare-add" aria-pressed={comparePlaces.some(p=>p.id===selected.id)} onClick={()=>toggleCompare(selected)}>{comparePlaces.some(p=>p.id===selected.id)?'✓ Im Vergleich · entfernen':'+ Zum Vergleich hinzufügen'}</button>}<p>{!selected.candidate&&(lang==='de'?selected.description_de||selected.description_en:selected.description_en||selected.description_de)}</p><p className="address"><MapPin size={16}/>{selected.address}</p>
+  {!selected.candidate&&!selected.demo&&<PlaceFacts placeId={selected.id}/>}
   {selected.opening_hours_text&&<div className="ffm-venue-hours"><strong>Reguläre Öffnungszeiten laut Anbieter</strong>
    <p>{selected.opening_hours_text}</p><small>Keine Live-Öffnungsprüfung. Sonderöffnungen vor dem Besuch bei der Quelle prüfen.</small></div>}
   <PlaceActions key={selected.id} venue={selected} saved={favorites.includes(selected.id)} loggedIn={Boolean(user)}

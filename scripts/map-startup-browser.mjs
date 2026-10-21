@@ -131,6 +131,23 @@ try{
   assert.deepEqual(errors,[]);await ctx.close();
   console.log('PASS: private saved events open in profile, use confirmed calendar end and can be removed');
  }
+ {
+  const {ctx,page,errors}=await context(true);
+  let requested=null;
+  await ctx.route('**/api/explore?*',route=>{requested=new URL(route.request().url()).searchParams;return route.fulfill({json:{places:[],places_total:0,candidates:[],candidates_total:0}})});
+  await page.goto(base,{waitUntil:'domcontentloaded'});
+  await page.locator('.mobile-bottom').getByRole('button',{name:'Entdecken',exact:true}).click();
+  await page.getByText('Merkmale, Preisniveau und Bewertung',{exact:true}).click();
+  await page.getByRole('checkbox',{name:'Familienfreundlich',exact:true}).check();
+  await page.getByRole('combobox',{name:'Maximales Preisniveau'}).selectOption('2');
+  await page.getByRole('combobox',{name:'Mindestbewertung'}).selectOption('4');
+  await page.waitForFunction(()=>!document.querySelector('.ffm-find-list'));
+  await page.waitForTimeout(800);
+  assert.deepEqual(requested.getAll('feature'),['family_friendly']);assert.equal(requested.get('price_max'),'2');assert.equal(requested.get('rating_min'),'4');
+  await page.getByRole('button',{name:'Filter löschen',exact:true}).click();
+  await page.waitForTimeout(800);assert.equal(requested.has('feature'),false);assert.equal(requested.has('price_max'),false);assert.equal(requested.has('rating_min'),false);
+  assert.deepEqual(errors,[]);await ctx.close();console.log('PASS: factual filters reach the server, suppress unsupported OSM rows and reset completely');
+ }
 }finally{
  await browser?.close();server.kill('SIGTERM');
 }

@@ -151,3 +151,7 @@ Default 3D landing, bounded startup/recovery, complete editorial pagination and 
 ## 21 October 2026 service activation increment
 
 Web Push device opt-in/removal, bookmarked event reminders, new editorial news, a bounded retry/deduplication ledger and an isolated scheduler are implemented. VAPID credentials are generated privately at first deployment. OpenAI configuration now reaches the production container. Optional Google/Apple/OpenAI/scanner credentials can be applied through one allowlisted deployment secret without editing source code. See [activation and remaining prerequisites](SERVICE_ACTIVATION.md). Offer/business/tip push, payment entitlements, native clients and product/legal decisions are still incomplete.
+
+## 21 October 2026 source-backed discovery filters
+
+Combined indoor/outdoor, family-friendly, wheelchair accessibility, relative price level and minimum published-review rating filters are implemented. Editors manage each fact with an HTTPS source, a recent check date, a statement and a before/after history. Facts older than 30 days leave public filtering automatically. Unknown facts never match affirmative filters; raw OSM records are omitted while unsupported factual filters are active. Place details show the current source and check date. No facts were fabricated or seeded. Live opening status, occasion/weather interpretation and verified inventory remain incomplete.
