@@ -6,7 +6,7 @@ test('Editorial taxonomy is managed by admins, supports nested groups and real m
  const schema=file('db/schema.sql'),cats=file('app/api/categories/route.ts'),places=file('app/api/categories/places/route.ts');
  assert.match(schema,/CREATE TABLE IF NOT EXISTS catalog_categories/);
  assert.match(schema,/CREATE TABLE IF NOT EXISTS place_categories/);
- assert.match(cats,/u\?\.role!=='admin'/);
+ assert.match(cats,/!canAdmin\(u,'editorial'\)/);
  assert.match(cats,/parent_slug/);
  assert.match(places,/JOIN|SELECT slug FROM catalog_categories/);
  assert.match(places,/FOR UPDATE/);
@@ -28,3 +28,4 @@ test('Place comparison never manufactures star ratings, prices or operating stat
  assert.match(page,/Nicht hinterlegt/);
  assert.match(page,/Zum Vergleich hinzufügen/);
 });
+

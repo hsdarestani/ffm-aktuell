@@ -1,3 +1,4 @@
+import {canAdmin} from '@/lib/admin-permissions';
 import {NextRequest,NextResponse} from 'next/server';
 import {sessionUser,trustedOrigin} from '@/lib/auth';
 import {pool,query} from '@/lib/db';
@@ -8,14 +9,14 @@ const input=z.object({place_id:z.uuid(),field,value:z.enum(['yes','no','1','2','
 const reply=(d:unknown,status=200)=>NextResponse.json(d,{status,headers:{'Cache-Control':'no-store'}});
 export async function GET(req:NextRequest){
  const id=req.nextUrl.searchParams.get('place_id')||'';if(!z.uuid().safeParse(id).success)return reply({error:'Ungültiger Ort'},400);
- const u=await sessionUser(req);const admin=u?.role==='admin'&&req.nextUrl.searchParams.get('scope')==='admin';
+ const u=await sessionUser(req);const admin=canAdmin(u,'editorial')&&req.nextUrl.searchParams.get('scope')==='admin';
  const r=await query(`SELECT a.field,a.value,a.source_url,a.checked_at,a.note FROM place_attributes a JOIN places p ON p.id=a.place_id
  WHERE a.place_id=$1 AND ($2::boolean OR (p.status='published' AND a.checked_at BETWEEN now()-interval '30 days' AND now())) ORDER BY a.field`,[id,admin]);
  return reply({items:r.rows});
 }
 export async function POST(req:NextRequest){
  if(!trustedOrigin(req))return reply({error:'Ungültige Herkunft'},403);
- const u=await sessionUser(req);if(u?.role!=='admin')return reply({error:'Admin erforderlich'},403);
+ const u=await sessionUser(req);if(!u||!canAdmin(u,'editorial'))return reply({error:'Admin erforderlich'},403);
  const parsed=input.safeParse(await req.json().catch(()=>null));if(!parsed.success)return reply({error:'Beleg, HTTPS Quelle und gültige Angabe erforderlich'},400);
  const d=parsed.data,stamp=Date.parse(d.checked_at);if(stamp>Date.now()||stamp<Date.now()-30*86400000)return reply({error:'Prüfdatum muss in den letzten 30 Tagen liegen'},400);
  const tx=await pool.connect();

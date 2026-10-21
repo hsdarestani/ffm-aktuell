@@ -1,3 +1,4 @@
+import {canAdmin} from '@/lib/admin-permissions';
 import {NextRequest,NextResponse} from 'next/server';
 import {sessionUser} from '@/lib/auth';
 import {query} from '@/lib/db';
@@ -6,7 +7,7 @@ import {pushConfigured} from '@/lib/push-policy';
 import {scannerReady} from '@/lib/media-storage';
 export const dynamic='force-dynamic';
 export async function GET(req:NextRequest){
- const u=await sessionUser(req);if(u?.role!=='admin')return NextResponse.json({error:'Admin erforderlich'},{status:403});
+ const u=await sessionUser(req);if(!u||!canAdmin(u,'operations'))return NextResponse.json({error:'Admin erforderlich'},{status:403});
  const [scanner,push,inventory]=await Promise.all([
   scannerReady(),
   query("SELECT count(*)::int AS devices FROM push_subscriptions"),

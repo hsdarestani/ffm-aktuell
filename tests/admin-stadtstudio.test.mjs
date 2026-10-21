@@ -6,7 +6,7 @@ const admin=read('components/AdminStudio.tsx'),css=read('app/stadtstudio.css'),
  site=read('app/page.tsx'),dedicated=read('app/admin/page.tsx'),layout=read('app/layout.tsx');
 test('new Stadtstudio is the only main-page admin and has a separate protected route',()=>{
  assert.match(site,/import AdminStudio from/);
- assert.match(site,/<AdminStudio onChanged=/);
+ assert.match(site,/<AdminStudio permissions=/);
  assert.doesNotMatch(site,/<AdminOrtpruefung/);
  assert.match(site,/ffm-studio-active/);
  assert.match(dedicated,/fetch\('\/api\/me'/);
@@ -68,3 +68,4 @@ test('publishing stays a three choice, short basic form with optional advanced f
  assert.match(admin,/price_source_url/);
  assert.match(admin,/published_at/);
 });
+

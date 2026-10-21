@@ -7,7 +7,7 @@ export async function GET(req:NextRequest){
  const u=await sessionUser(req);if(!u)return NextResponse.json({error:'Bitte anmelden'},{status:401});
  const businessId=req.nextUrl.searchParams.get('business_id')||'';
  if(!uuid.test(businessId))return NextResponse.json({error:'Unternehmen auswählen'},{status:400});
- const acl=await query("SELECT b.id,b.name FROM businesses b LEFT JOIN business_team_members tm ON tm.business_id=b.id AND tm.user_id=$2 WHERE b.id=$1 AND b.status='approved' AND (b.owner_id=$2 OR tm.user_id IS NOT NULL) LIMIT 1",[businessId,u.id]);
+ const acl=await query("SELECT b.id,b.name FROM businesses b LEFT JOIN business_team_members tm ON tm.business_id=b.id AND tm.user_id=$2 WHERE b.id=$1 AND b.status='approved' AND (b.owner_id=$2 OR (tm.user_id IS NOT NULL AND tm.all_places)) LIMIT 1",[businessId,u.id]);
  if(!acl.rowCount)return NextResponse.json({error:'Kein Zugriff auf diesen Betrieb'},{status:403});
  const [venues,offers,coupons,posts,followers,ads]=await Promise.all([
   query("SELECT count(*)::int AS n FROM places WHERE business_id=$1 AND status='published'",[businessId]),
@@ -32,3 +32,4 @@ export async function GET(req:NextRequest){
   disclaimer:'Nur gespeicherte echte Ereignisse; keine erfundenen Impressionen, Einnahmen oder bestätigten Besuche.'
  },{headers:{'Cache-Control':'private,no-store'}});
 }
+

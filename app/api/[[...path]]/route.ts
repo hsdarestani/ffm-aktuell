@@ -4,6 +4,7 @@ import {z} from 'zod';
 import {pool,query} from '@/lib/db';
 import {beginSession,endSession,hashPassword,verifyPassword,sessionUser,trustedOrigin,isRecentlyAuthenticated,User} from '@/lib/auth';
 import {validLocationId,osmId} from '@/lib/location-actions';
+import {canAdmin,type AdminCapability} from '@/lib/admin-permissions';
 import {resolveBusinessEditor} from '@/lib/business-team';
 import {remove as removeMediaFile} from '@/lib/media-storage';
 export const runtime='nodejs';
@@ -32,7 +33,7 @@ function conflict(message:string){return Object.assign(new Error(message),{statu
 function parse<T>(schema:z.ZodSchema<T>,body:unknown):T{const r=schema.safeParse(body);if(!r.success)throw Error('Invalid fields: '+r.error.issues.map(x=>x.path.join('.')).join(', '));return r.data;}
 async function payload(req:NextRequest){try{return await req.json();}catch{throw Error('Invalid JSON');}}
 function need(user:User|null){if(!user)throw Object.assign(new Error('Login required'),{status:401});return user;}
-function admin(user:User|null){const u=need(user);if(u.role!=='admin')throw Object.assign(new Error('Admin required'),{status:403});return u;}
+function admin(user:User|null,permission:AdminCapability|'access'='access'){const u=need(user);if(!u||!canAdmin(u,permission))throw Object.assign(new Error('Admin required'),{status:403});return u;}
 function pageNumber(s:string|null){return Math.min(Math.max(Number(s)||1,1),50);}
 const limits=new Map<string,{count:number,expires:number}>();
 function rate(req:NextRequest,action:string){const key=action+':'+(req.headers.get('x-real-ip')||req.headers.get('x-forwarded-for')?.split(',')[0]||'unknown');const now=Date.now();let v=limits.get(key);if(!v||v.expires<now)v={count:0,expires:now+15*60*1000};v.count++;limits.set(key,v);if(v.count>30)throw Object.assign(new Error('Too many requests, try later'),{status:429});if(limits.size>10000)for(const [k,v]of limits){if(v.expires<now)limits.delete(k);}}
@@ -692,7 +693,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   }
 
   if(method==='GET'&&path==='admin/validation'){
-    admin(user);
+    admin(user,'editorial');
     const [counts,stale]=await Promise.all([
       query(`SELECT
         (SELECT count(*)::int FROM discovery_candidates WHERE reviewed_status='unverified') AS kandidaten,
@@ -706,7 +707,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     return ok({stats:counts.rows[0],recheck:stale.rows,validity_days:30,opening_now_guaranteed:false});
   }
   if(method==='GET'&&path==='admin/candidates'){
-    admin(user);
+    admin(user,'editorial');
     const q=trim(qs.get('q')).slice(0,90);
     const cat=trim(qs.get('category')).slice(0,70);
     const state=trim(qs.get('state'))||'unverified';
@@ -722,7 +723,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     return ok({items:r.rows,total:n.rows[0]?.total||0,limit:25,offset});
   }
   if(method==='POST'&&path==='admin/review-candidate'){
-    const u=admin(user);
+    const u=admin(user,'editorial');
     const b=parse(z.discriminatedUnion('action',[
       z.object({action:z.literal('publish'),osm_id:z.string().regex(new RegExp('^(node|way|relation)/[0-9]+$')),
         verification_source:z.url().max(1000),
@@ -771,10 +772,10 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       query("SELECT rr.id,rr.review_id,rr.reason,rr.message AS note,vr.body,COALESCE(p.name,dc.name) AS place_name FROM venue_review_reports rr JOIN venue_reviews vr ON vr.id=rr.review_id LEFT JOIN places p ON p.id=vr.place_id LEFT JOIN discovery_candidates dc ON dc.osm_id=vr.osm_id WHERE rr.status='pending' ORDER BY rr.created_at LIMIT 60"),
       query("SELECT c.id,c.body,LEFT(p.body,80) AS title FROM post_comments c JOIN posts p ON p.id=c.post_id WHERE c.status='pending' ORDER BY c.created_at LIMIT 80"),
       query("SELECT cr.id,cr.name,cr.address,cr.website,cr.phone,cr.opening_hours_text,cr.submitted_at,p.name AS place_name,b.name AS business_name FROM place_change_requests cr JOIN places p ON p.id=cr.place_id JOIN businesses b ON b.id=cr.business_id WHERE cr.status='pending' ORDER BY cr.submitted_at ASC LIMIT 80")
-    ]);return ok({businesses:b.rows,claims:c.rows,places:p.rows,deals:d.rows,posts:posts.rows,reports:reports.rows,reviews:reviews.rows,reviewReports:reviewReports.rows,comments:comments.rows,branchChanges:branchChanges.rows});
+    ]);return ok({businesses:canAdmin(user,'business')?b.rows:[],claims:canAdmin(user,'business')?c.rows:[],places:canAdmin(user,'editorial')?p.rows:[],deals:canAdmin(user,'marketing')?d.rows:[],posts:canAdmin(user,'moderation')?posts.rows:[],reports:canAdmin(user,'moderation')?reports.rows:[],reviews:canAdmin(user,'moderation')?reviews.rows:[],reviewReports:canAdmin(user,'moderation')?reviewReports.rows:[],comments:canAdmin(user,'moderation')?comments.rows:[],branchChanges:canAdmin(user,'business')?branchChanges.rows:[]});
   }
   if(method==='POST'&&path==='admin/review-place-change'){
-    const u=admin(user);
+    const u=admin(user,'business');
     const b=parse(z.object({id,approve:z.boolean(),note:z.string().trim().max(500).optional().default('')}),await payload(req));
     const tx=await pool.connect();
     try{
@@ -792,7 +793,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     }catch(e){await tx.query('ROLLBACK');throw e}finally{tx.release()}
   }
   if(method==='POST'&&path==='admin/moderate-review'){
-    const u=admin(user);const b=parse(z.object({id,approve:z.boolean()}),await payload(req));
+    const u=admin(user,'moderation');const b=parse(z.object({id,approve:z.boolean()}),await payload(req));
     const target=b.approve?'published':'rejected';
     const result=await query("UPDATE venue_reviews SET status=$2,reviewed_by=$3,reviewed_at=now() WHERE id=$1 AND status='pending' RETURNING id",[b.id,target,u.id]);
     if(!result.rowCount)return bad('Pending review not found',404);
@@ -800,7 +801,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     return ok({success:true});
   }
   if(method==='POST'&&path==='admin/moderate-review-report'){
-    const u=admin(user);const b=parse(z.object({id,reviewed:z.boolean()}),await payload(req));
+    const u=admin(user,'moderation');const b=parse(z.object({id,reviewed:z.boolean()}),await payload(req));
     const result=await query("UPDATE venue_review_reports SET status=$2,reviewed_by=$3,reviewed_at=now() WHERE id=$1 AND status='pending' RETURNING id,review_id",
       [b.id,b.reviewed?'reviewed':'rejected',u.id]);
     if(!result.rowCount)return bad('Pending review report not found',404);
@@ -809,14 +810,14 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     return ok({success:true});
   }
   if(method==='POST'&&path==='admin/remove-review'){
-    const u=admin(user);const b=parse(z.object({id,reason:z.string().trim().min(10).max(300)}),await payload(req));
+    const u=admin(user,'moderation');const b=parse(z.object({id,reason:z.string().trim().min(10).max(300)}),await payload(req));
     const r=await query("UPDATE venue_reviews SET status='rejected',reviewed_by=$2,reviewed_at=now() WHERE id=$1 AND status='published' RETURNING id",[b.id,u.id]);
     if(!r.rowCount)return bad('Published review not found',404);
     await audit(u,'review:removed:'+b.reason.slice(0,70),'venue_review',b.id);
     return ok({success:true});
   }
   if(method==='POST'&&path==='admin/review-report'){
-    const u=admin(user);const b=parse(z.object({id,reviewed:z.boolean()}),await payload(req));
+    const u=admin(user,'moderation');const b=parse(z.object({id,reviewed:z.boolean()}),await payload(req));
     const r=await query("UPDATE place_reports SET status=$2,reviewed_at=now(),reviewed_by=$3 WHERE id=$1 AND status='pending' RETURNING id,osm_id,place_id",[b.id,b.reviewed?'reviewed':'rejected',u.id]);
     if(!r.rowCount)return bad('Report not found',404);
     // This records review only; independent verification is required for a
@@ -827,6 +828,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   if(method==='POST'&&path==='admin/review'){
     const u=admin(user);const b=parse(z.object({type:z.enum(['business','claim','place','deal','post','comment']),id:id,approve:z.boolean()}),await payload(req));
     const map={business:['businesses','approved'],claim:['claims','approved'],place:['places','published'],deal:['deals','published'],post:['posts','published'],comment:['post_comments','published']} as const;
+    admin(user,b.type==='business'||b.type==='claim'?'business':b.type==='place'?'editorial':b.type==='deal'?'marketing':'moderation');
     const [table,yes]=map[b.type];const target=b.approve?yes:'rejected';
     if(b.type==='claim'&&b.approve){
       const claim=await query('SELECT business_id,place_id FROM claims WHERE id=$1',[b.id]);
@@ -842,7 +844,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     await audit(u,'review:'+target,b.type,b.id);return ok({success:true});
   }
   if(method==='POST'&&path==='admin/verify-place'){
-    const u=admin(user);
+    const u=admin(user,'editorial');
     const b=parse(z.object({
       id,activity_status:z.enum(['unknown','operating','temporarily_closed','permanently_closed']),
       verification_source:z.url().max(1000),
@@ -863,21 +865,21 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     return ok({success:true,verification_status:'verified'});
   }
   if(method==='POST'&&path==='admin/dispute-place'){
-    const u=admin(user);
+    const u=admin(user,'editorial');
     const b=parse(z.object({id,reason:text(500)}),await payload(req));
     const r=await query("UPDATE places SET verification_status='disputed',editorial_rank=0,updated_at=now() WHERE id=$1 RETURNING id",[b.id]);
     if(!r.rowCount)return bad('Ort nicht gefunden',404);
     await audit(u,'dispute:'+b.reason,'place',b.id);return ok({success:true});
   }
   if(method==='POST'&&path==='admin/places'){
-    const u=admin(user);
+    const u=admin(user,'editorial');
     const b=parse(z.object({name:text(150),category:text(80),district:optionalText(100),description_de:optionalText(2000),description_en:optionalText(2000),address:optionalText(200),latitude:z.number().min(-90).max(90).nullish(),longitude:z.number().min(-180).max(180).nullish(),website:z.string().max(1000).optional(),source_url:z.string().max(1000).optional()}),await payload(req));
     if((b.website&&!allowedUrl(b.website))||(b.source_url&&!allowedUrl(b.source_url)))return bad('Invalid URL');
     const r=await query("INSERT INTO places(name,category,district,description_de,description_en,address,latitude,longitude,website,source_url,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'published') RETURNING id",[b.name,b.category,b.district,b.description_de,b.description_en,b.address,b.latitude||null,b.longitude||null,b.website||null,b.source_url||null]);
     await audit(u,'create','place',r.rows[0].id);return ok({id:r.rows[0].id},201);
   }
   if(method==='POST'&&path==='admin/events'){
-    const u=admin(user);const b=parse(z.object({
+    const u=admin(user,'editorial');const b=parse(z.object({
       title:text(150),description_de:optionalText(3000),description_en:optionalText(3000),venue:text(150),
       starts_at:z.iso.datetime({offset:true}),ends_at:z.iso.datetime({offset:true}).nullish(),
       category:optionalText(80),organizer:optionalText(150),
@@ -893,7 +895,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     await audit(u,'create','event',r.rows[0].id);return ok({id:r.rows[0].id},201);
   }
   if(method==='POST'&&path==='admin/news'){
-    const u=admin(user);const b=parse(z.object({title:text(150),body_de:optionalText(10000),body_en:optionalText(10000),category:optionalText(80),published_at:z.iso.datetime({offset:true}).nullish(),source_url:z.string().max(1000).optional()}),await payload(req));
+    const u=admin(user,'editorial');const b=parse(z.object({title:text(150),body_de:optionalText(10000),body_en:optionalText(10000),category:optionalText(80),published_at:z.iso.datetime({offset:true}).nullish(),source_url:z.string().max(1000).optional()}),await payload(req));
     if(b.source_url&&!allowedUrl(b.source_url))return bad('Invalid link');
     const r=await query("INSERT INTO news(title,body_de,body_en,source_url,status,category,published_at) VALUES($1,$2,$3,$4,'published',$5,COALESCE($6::timestamptz,now())) RETURNING id,published_at",
       [b.title,b.body_de,b.body_en,b.source_url||null,b.category||'Stadtleben',b.published_at||null]);

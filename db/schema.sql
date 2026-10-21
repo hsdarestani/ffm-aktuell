@@ -568,5 +568,25 @@ CREATE TABLE IF NOT EXISTS place_attribute_history (
  actor_id uuid REFERENCES users(id) ON DELETE SET NULL, field text NOT NULL,
  before_value jsonb, after_value jsonb, created_at timestamptz NOT NULL DEFAULT now()
 );
+-- Delegation never changes users.role: existing administrators remain the root authority.
+CREATE TABLE IF NOT EXISTS admin_roles (
+ code text PRIMARY KEY, label text NOT NULL, permissions text[] NOT NULL,
+ CHECK(permissions <@ ARRAY['editorial','moderation','business','marketing','finance','operations']::text[])
+);
+INSERT INTO admin_roles(code,label,permissions) VALUES
+ ('editorial','Redaktion',ARRAY['editorial']),('moderation','Moderation',ARRAY['moderation']),
+ ('marketing','Marketing',ARRAY['marketing']),('support','Support',ARRAY['business']),
+ ('finance','Finanzen',ARRAY['finance']),('operations','Betrieb',ARRAY['operations'])
+ON CONFLICT(code) DO NOTHING;
+CREATE TABLE IF NOT EXISTS admin_role_assignments (
+ user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ role_code text NOT NULL REFERENCES admin_roles(code),
+ granted_by uuid REFERENCES users(id) ON DELETE SET NULL,
+ created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(user_id,role_code)
+);
+ALTER TABLE business_team_members ADD COLUMN IF NOT EXISTS all_places boolean NOT NULL DEFAULT true;
+ALTER TABLE business_team_members ADD COLUMN IF NOT EXISTS place_ids uuid[] NOT NULL DEFAULT '{}';
+ALTER TABLE business_team_invites ADD COLUMN IF NOT EXISTS all_places boolean NOT NULL DEFAULT true;
+ALTER TABLE business_team_invites ADD COLUMN IF NOT EXISTS place_ids uuid[] NOT NULL DEFAULT '{}';
 COMMIT;
 

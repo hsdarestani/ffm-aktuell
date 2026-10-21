@@ -174,6 +174,19 @@ try{
  // Role-scoped company teams require out-of-band verified user identity,
  // an explicitly approved seat allocation and owner-scoped access.
  const readerIdentity=(await get('me',reader)).body.user;
+ // Delegated admin roles remain ordinary accounts with explicit request-level permissions.
+ const roleGrant=await post('admin/roles',cookie,{action:'assign',code:'editorial',email:readerIdentity.email,reason:'CI editorial access only for permission boundary checks'});
+ if(roleGrant.status!==200)throw Error('Delegated role grant failed: '+JSON.stringify(roleGrant));
+ if((await get('admin/validation',reader)).status!==200)throw Error('Editor cannot access editorial validation');
+ if((await get('admin/business-seats',reader)).status!==403)throw Error('Editor accessed business permissions');
+ if((await get('admin/service-status',reader)).status!==403)throw Error('Editor accessed operational configuration');
+ if((await post('admin/plans',reader,{action:'withdraw',code:'user_premium'})).status!==403)throw Error('Editor changed financial plans');
+ if((await post('admin/roles',reader,{action:'assign',code:'finance',email:readerIdentity.email,reason:'Attempted self escalation'})).status!==403)throw Error('Delegated editor escalated their own rights');
+ const delegatedQueue=await get('admin/queue',reader);
+ if(delegatedQueue.status!==200||delegatedQueue.body.businesses.length||delegatedQueue.body.reports.length)throw Error('Editorial queue leaked another department');
+ const revokedRole=await post('admin/roles',cookie,{action:'revoke',code:'editorial',email:readerIdentity.email,reason:'CI editorial access now revoked without ending the session'});
+ if(revokedRole.status!==200||(await get('admin/validation',reader)).status!==403)throw Error('Role revocation did not apply immediately');
+ console.log('PASS: granular roles are enforced by actual APIs, prevent escalation and revoke immediately');
  const initialProof=await get('me/verify-email/request',reader);
  if(initialProof.status!==200||initialProof.body.verified)throw Error('Password-only user incorrectly marked verified');
  const unavailableEmail=await post('me/verify-email/request',reader,{});
@@ -216,12 +229,25 @@ try{
  if(promote.status!==200)throw Error('Owner could not promote team member');
  const editorChange=await post('business/places/change',reader,{place_id:publicPlace.rows[0].id,name:'Approved editor proposal'});
  if(editorChange.status!==201)throw Error('Authorized staff editor cannot propose reviewed correction: '+JSON.stringify(editorChange));
+ // Branch restrictions apply to read, edit and company-wide insights.
+ const secondBranch=await pool.query("INSERT INTO places(business_id,name,status) VALUES($1,'CI separate branch','published') RETURNING id",[createdBusiness.body.id]);
+ const narrowed=await post('business/team',client,{action:'scope',user_id:readerIdentity.id,all_places:false,place_ids:[secondBranch.rows[0].id]});
+ if(narrowed.status!==200)throw Error('Owner could not restrict branch scope: '+JSON.stringify(narrowed));
+ const restricted=await get('business/team/access',reader);
+ if(restricted.body.places.some(p=>p.id===publicPlace.rows[0].id)||!restricted.body.places.some(p=>p.id===secondBranch.rows[0].id))throw Error('Restricted staff could read another branch');
+ const restrictedWrite=await post('business/places/change',reader,{place_id:publicPlace.rows[0].id,name:'Unauthorized other branch'});
+ if(restrictedWrite.status!==403)throw Error('Restricted staff could edit another branch');
+ if((await get('business/insights?business_id='+createdBusiness.body.id,reader)).status!==403)throw Error('Restricted staff could read whole-company insights');
+ const foreignScope=await post('business/team',client,{action:'scope',user_id:readerIdentity.id,all_places:false,place_ids:[randomUUID()]});
+ if(foreignScope.status!==403)throw Error('Foreign branch accepted into staff scope');
+ console.log('PASS: branch-scoped staff cannot read/edit other branches or whole-company analytics');
  const invalidSeatDecrease=await post('admin/business-seats',cookie,{business_id:createdBusiness.body.id,seats:0,terms_approved:true,reason:'Cannot go below occupied seat while member active'});
  if(invalidSeatDecrease.status!==409)throw Error('Admin could revoke below occupied seats');
  const fired=await post('business/team',client,{action:'remove',user_id:readerIdentity.id});
  if(fired.status!==200)throw Error('Owner could not revoke staff membership');
  const afterFired=await post('business/places/change',reader,{place_id:publicPlace.rows[0].id,name:'Revoked editor proposal'});
  if(afterFired.status!==403)throw Error('Revoked staff editor retained permission');
+ await pool.query('DELETE FROM places WHERE id=$1',[secondBranch.rows[0].id]);
  console.log('PASS: independent email verification, unreplayable team invites, admin-gated seats, viewer/editor scope and membership revocation');
  // Premium tariff definitions can be reviewed but cannot bill or enable entitlements.
  const nonePriced=await get('plans');
@@ -643,3 +669,4 @@ try{
  await pool.end();
  await rm(mediaDir,{recursive:true,force:true});
 }
+

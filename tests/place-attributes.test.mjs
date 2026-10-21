@@ -6,6 +6,7 @@ import ts from 'typescript';
 import {PGlite} from '@electric-sql/pglite';
 import {pgcrypto} from '@electric-sql/pglite/contrib/pgcrypto';
 const require=createRequire(import.meta.url);
+const permissions=await import('data:text/javascript;base64,'+Buffer.from(ts.transpileModule(readFileSync('lib/admin-permissions.ts','utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText).toString('base64'));
 test('editorial attribute API authenticates writes, records evidence history and withdraws public facts',async()=>{
  const db=new PGlite({extensions:{pgcrypto}});
  try{
@@ -17,7 +18,7 @@ test('editorial attribute API authenticates writes, records evidence history and
   const tx={query,release(){}};
   const module={exports:{}};
   const compiled=ts.transpileModule(readFileSync('app/api/place-attributes/route.ts','utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
-  new Function('require','module','exports',compiled)(name=>name==='@/lib/db'?{query,pool:{connect:async()=>tx}}:name==='@/lib/auth'?{sessionUser:async()=>actor,trustedOrigin:()=>origin}:require(name),module,module.exports);
+  new Function('require','module','exports',compiled)(name=>name==='@/lib/admin-permissions'?permissions:name==='@/lib/db'?{query,pool:{connect:async()=>tx}}:name==='@/lib/auth'?{sessionUser:async()=>actor,trustedOrigin:()=>origin}:require(name),module,module.exports);
   const data={place_id:id,field:'indoor',value:'yes',source_url:'https://example.org/official',checked_at:new Date().toISOString(),note:'Checked actual venue official source'};
   const post=body=>module.exports.POST({json:async()=>body});
   assert.equal((await post(data)).status,403);

@@ -1,16 +1,17 @@
+import {canAdmin} from '@/lib/admin-permissions';
 import {NextRequest,NextResponse} from 'next/server';
 import {sessionUser,trustedOrigin} from '@/lib/auth';
 import {pool,query} from '@/lib/db';
 export const runtime='nodejs';export const dynamic='force-dynamic';
 const uuid=/^[a-f0-9-]{36}$/;
 export async function GET(req:NextRequest){
- const u=await sessionUser(req);if(u?.role!=='admin')return NextResponse.json({error:'Admin erforderlich'},{status:403});
+ const u=await sessionUser(req);if(!u||!canAdmin(u,'business'))return NextResponse.json({error:'Admin erforderlich'},{status:403});
  const r=await query("SELECT b.id,b.name,b.status,b.team_seat_limit,(SELECT count(*)::int FROM business_team_members tm WHERE tm.business_id=b.id) AS used_seats FROM businesses b WHERE b.status='approved' ORDER BY b.created_at DESC LIMIT 100");
  return NextResponse.json({items:r.rows},{headers:{'Cache-Control':'private,no-store'}});
 }
 export async function POST(req:NextRequest){
  if(!trustedOrigin(req))return NextResponse.json({error:'Ungültige Herkunft'},{status:403});
- const u=await sessionUser(req);if(u?.role!=='admin')return NextResponse.json({error:'Admin erforderlich'},{status:403});
+ const u=await sessionUser(req);if(!u||!canAdmin(u,'business'))return NextResponse.json({error:'Admin erforderlich'},{status:403});
  const d=await req.json().catch(()=>null);
  const note=typeof d?.reason==='string'?d.reason.trim():'';
  if(!uuid.test(d?.business_id||'')||!Number.isInteger(d.seats)||d.seats<0||d.seats>50||note.length<20||note.length>700||d.terms_approved!==true)
@@ -27,3 +28,4 @@ export async function POST(req:NextRequest){
   await tx.query('COMMIT');return NextResponse.json({updated:true,seats:d.seats});
  }catch(e){await tx.query('ROLLBACK');console.error('Admin seats',e);return NextResponse.json({error:'Mitarbeiterplätze konnten nicht geändert werden'},{status:500})}finally{tx.release()}
 }
+

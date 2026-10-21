@@ -1,3 +1,4 @@
+import {canAdmin} from '@/lib/admin-permissions';
 import {NextRequest,NextResponse} from 'next/server';
 import {sessionUser} from '@/lib/auth';
 import {query} from '@/lib/db';
@@ -30,7 +31,7 @@ const flagged=`WITH flags AS (
 )`;
 const scopes=['all','duplicate','incomplete','review'] as const;
 export async function GET(req:NextRequest){
- const u=await sessionUser(req);if(u?.role!=='admin')return rejected();
+ const u=await sessionUser(req);if(!u||!canAdmin(u,'editorial'))return rejected();
  const q=req.nextUrl.searchParams;
  const scope=q.get('scope')||'candidates';
  const kind=q.get('kind')||'all';
@@ -84,3 +85,4 @@ export async function GET(req:NextRequest){
    {headers:{'Cache-Control':'no-store'}});
  }catch(e){console.error('Editorial data quality query failed',e);return NextResponse.json({error:'Datenprüfung nicht erreichbar'},{status:503});}
 }
+

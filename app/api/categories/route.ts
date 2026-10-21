@@ -1,3 +1,4 @@
+import {canAdmin} from '@/lib/admin-permissions';
 import {NextRequest,NextResponse} from 'next/server';
 import {sessionUser,trustedOrigin} from '@/lib/auth';
 import {pool,query} from '@/lib/db';
@@ -6,13 +7,13 @@ export const dynamic='force-dynamic';
 const code=/^[\p{L}\p{N}][\p{L}\p{N} .&-]{1,69}$/u;
 export async function GET(req:NextRequest){
  const u=await sessionUser(req);
- const all=req.nextUrl.searchParams.get('include_inactive')==='1'&&u?.role==='admin';
+ const all=req.nextUrl.searchParams.get('include_inactive')==='1'&&canAdmin(u,'editorial');
  const r=await query("SELECT slug,label_de,label_en,parent_slug,active FROM catalog_categories WHERE active OR $1 ORDER BY COALESCE(parent_slug,slug),parent_slug NULLS FIRST,label_de",[all]);
  return NextResponse.json({items:r.rows},{headers:{'Cache-Control':'no-store'}});
 }
 export async function POST(req:NextRequest){
  if(!trustedOrigin(req))return NextResponse.json({error:'Ungültige Herkunft'},{status:403});
- const u=await sessionUser(req);if(u?.role!=='admin')return NextResponse.json({error:'Admin erforderlich'},{status:403});
+ const u=await sessionUser(req);if(!u||!canAdmin(u,'editorial'))return NextResponse.json({error:'Admin erforderlich'},{status:403});
  const data=await req.json().catch(()=>null);
  if(!data||!['save','status'].includes(data.action)||typeof data.slug!=='string'||!code.test(data.slug))return NextResponse.json({error:'Kategorie ungültig'},{status:400});
  if(data.action==='status'){
@@ -41,3 +42,4 @@ export async function POST(req:NextRequest){
  }catch(e){await tx.query('ROLLBACK');console.error('Category save failed',e);return NextResponse.json({error:'Kategorie konnte nicht gespeichert werden'},{status:500})}
  finally{tx.release()}
 }
+

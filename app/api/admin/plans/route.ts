@@ -1,3 +1,4 @@
+import {canAdmin} from '@/lib/admin-permissions';
 import {NextRequest,NextResponse} from 'next/server';
 import {sessionUser,trustedOrigin} from '@/lib/auth';
 import {pool} from '@/lib/db';
@@ -7,7 +8,7 @@ const features=['extended_profile','stories','analytics','campaign_tools','addit
 const fail=(message:string,status=400)=>NextResponse.json({error:message},{status});
 export async function POST(req:NextRequest){
  if(!trustedOrigin(req))return fail('Ungültige Herkunft',403);
- const u=await sessionUser(req);if(u?.role!=='admin')return fail('Admin erforderlich',403);
+ const u=await sessionUser(req);if(!u||!canAdmin(u,'finance'))return fail('Admin erforderlich',403);
  const d=await req.json().catch(()=>null);
  if(!d||!codes.includes(d.code)||!['save','approve','withdraw'].includes(d.action))return fail('Planaktion ungültig');
  const tx=await pool.connect();
@@ -44,3 +45,4 @@ export async function POST(req:NextRequest){
   return NextResponse.json({success:true,code:d.code,status:d.action==='approve'?'approved_for_display':'draft',checkout_available:false});
  }catch(e){await tx.query('ROLLBACK');console.error('Admin subscription plans',e);return fail('Tarif konnte nicht gespeichert werden',500)}finally{tx.release()}
 }
+

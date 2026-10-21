@@ -1,18 +1,20 @@
 'use client';
 import {useEffect,useState} from 'react';
+import {canAdmin} from '@/lib/admin-permissions';
 import AdminStudio from '@/components/AdminStudio';
 import {LockKeyhole} from 'lucide-react';
 
 export default function Redaktion(){
+ const [permissions,setPermissions]=useState<string[]>([]);
  const [role,setRole]=useState<'loading'|'admin'|'denied'>('loading');
  useEffect(()=>{
   let active=true;
   fetch('/api/me',{cache:'no-store',credentials:'same-origin'}).then(r=>r.json())
-   .then(d=>{if(active)setRole(d.user?.role==='admin'?'admin':'denied')})
+   .then(d=>{if(active){setRole(canAdmin(d.user)?'admin':'denied');setPermissions(d.user?.role==='admin'?['*']:d.user?.admin_permissions||[])}})
    .catch(()=>{if(active)setRole('denied')});
   return()=>{active=false};
  },[]);
- if(role==='admin')return <AdminStudio onChanged={()=>{}}/>;
+ if(role==='admin')return <AdminStudio permissions={permissions} onChanged={()=>{}}/>;
  return <main className="ffm-studio-access">
   <div className="ffm-studio-access-card">
    <span>FFM AKTUELL · STADTSTUDIO</span>

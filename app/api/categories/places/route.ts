@@ -1,17 +1,18 @@
+import {canAdmin} from '@/lib/admin-permissions';
 import {NextRequest,NextResponse} from 'next/server';
 import {sessionUser,trustedOrigin} from '@/lib/auth';
 import {pool,query} from '@/lib/db';
 export const runtime='nodejs';export const dynamic='force-dynamic';
 const uuid=/^[0-9a-f-]{36}$/;
 export async function GET(req:NextRequest){
- const u=await sessionUser(req);if(u?.role!=='admin')return NextResponse.json({error:'Admin erforderlich'},{status:403});
+ const u=await sessionUser(req);if(!u||!canAdmin(u,'editorial'))return NextResponse.json({error:'Admin erforderlich'},{status:403});
  const q=(req.nextUrl.searchParams.get('q')||'').trim().slice(0,80);
  const r=await query("SELECT p.id,p.name,p.category,p.status,COALESCE((SELECT array_agg(pc.category_slug ORDER BY pc.category_slug) FROM place_categories pc WHERE pc.place_id=p.id),ARRAY[]::text[]) AS categories FROM places p WHERE $1='' OR p.name ILIKE '%'||$1||'%' OR p.address ILIKE '%'||$1||'%' ORDER BY p.name LIMIT 80",[q]);
  return NextResponse.json({items:r.rows},{headers:{'Cache-Control':'no-store'}});
 }
 export async function POST(req:NextRequest){
  if(!trustedOrigin(req))return NextResponse.json({error:'Ungültige Herkunft'},{status:403});
- const u=await sessionUser(req);if(u?.role!=='admin')return NextResponse.json({error:'Admin erforderlich'},{status:403});
+ const u=await sessionUser(req);if(!u||!canAdmin(u,'editorial'))return NextResponse.json({error:'Admin erforderlich'},{status:403});
  const data=await req.json().catch(()=>null);
  const ids=data?.categories;
  if(!uuid.test(data?.place_id||'')||!Array.isArray(ids)||ids.length<1||ids.length>8||ids.some((v:unknown)=>typeof v!=='string'||v.length>70)||new Set(ids).size!==ids.length)return NextResponse.json({error:'Ungültige Zuordnung'},{status:400});
@@ -31,3 +32,4 @@ export async function POST(req:NextRequest){
  }catch(e){await tx.query('ROLLBACK');console.error('Category assignment failed',e);return NextResponse.json({error:'Zuordnung konnte nicht gespeichert werden'},{status:500})}
  finally{tx.release()}
 }
+

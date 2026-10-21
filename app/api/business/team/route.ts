@@ -10,22 +10,31 @@ export async function GET(req:NextRequest){
  const u=await sessionUser(req);if(!u)return err('Anmeldung erforderlich',401);
  const owned=await query("SELECT id,name,status,team_seat_limit FROM businesses WHERE owner_id=$1 ORDER BY created_at LIMIT 1",[u.id]);
  const b=owned.rows[0];if(!b)return NextResponse.json({business:null,members:[],invites:[]});
- const [members,invites]=await Promise.all([
-  query("SELECT tm.user_id,tm.role,tm.joined_at,u.email,u.display_name FROM business_team_members tm JOIN users u ON u.id=tm.user_id WHERE tm.business_id=$1 ORDER BY tm.joined_at",[b.id]),
-  query("SELECT id,invite_email,role,expires_at,created_at FROM business_team_invites WHERE business_id=$1 AND redeemed_at IS NULL AND revoked_at IS NULL AND expires_at>now() ORDER BY created_at DESC",[b.id])
+ const [members,invites,places]=await Promise.all([
+  query("SELECT tm.user_id,tm.role,tm.all_places,tm.place_ids,tm.joined_at,u.email,u.display_name FROM business_team_members tm JOIN users u ON u.id=tm.user_id WHERE tm.business_id=$1 ORDER BY tm.joined_at",[b.id]),
+  query("SELECT id,invite_email,role,all_places,place_ids,expires_at,created_at FROM business_team_invites WHERE business_id=$1 AND redeemed_at IS NULL AND revoked_at IS NULL AND expires_at>now() ORDER BY created_at DESC",[b.id]),
+  query("SELECT id,name FROM places WHERE business_id=$1 ORDER BY name",[b.id])
  ]);
- return NextResponse.json({business:b,members:members.rows,invites:invites.rows,mail_enabled:deliveryConfigured()},{headers:{'Cache-Control':'private,no-store'}});
+ return NextResponse.json({business:b,members:members.rows,invites:invites.rows,places:places.rows,mail_enabled:deliveryConfigured()},{headers:{'Cache-Control':'private,no-store'}});
 }
 export async function POST(req:NextRequest){
  if(!trustedOrigin(req))return err('Ungültige Herkunft',403);
  const u=await sessionUser(req);if(!u)return err('Anmeldung erforderlich',401);
  const d=await req.json().catch(()=>null);
- if(!d||!['invite','revoke','remove','role'].includes(d.action))return err('Unbekannte Teamaktion');
+ if(!d||!['invite','revoke','remove','role','scope'].includes(d.action))return err('Unbekannte Teamaktion');
  const tx=await pool.connect();let mailed:{to:string,token:string,inviteId:string,businessName:string}|null=null;
  try{
   await tx.query('BEGIN');
   const owned=await tx.query("SELECT id,name,status,team_seat_limit FROM businesses WHERE owner_id=$1 ORDER BY created_at LIMIT 1 FOR UPDATE",[u.id]);
   const b=owned.rows[0];if(!b||b.status!=='approved'){await tx.query('ROLLBACK');return err('Unternehmen noch nicht freigegeben',403)}
+  let allPlaces=true,placeIds:string[]=[];
+  if(d.action==='invite'||d.action==='scope'){
+   allPlaces=d.all_places!==false;
+   placeIds=Array.isArray(d.place_ids)?[...new Set(d.place_ids)] as string[]:[];
+   if(placeIds.length>100||placeIds.some(v=>typeof v!=='string'||!uuid.test(v))||!allPlaces&&!placeIds.length){await tx.query('ROLLBACK');return err('Mindestens einen gültigen Standort wählen')}
+   const valid=await tx.query('SELECT id FROM places WHERE business_id=$1 AND id=ANY($2::uuid[])',[b.id,placeIds]);
+   if(valid.rowCount!==placeIds.length){await tx.query('ROLLBACK');return err('Standort gehört nicht zu diesem Unternehmen',403)}
+  }
   if(d.action==='invite'){
    if(!deliveryConfigured()){await tx.query('ROLLBACK');return err('Einladung per E-Mail ist noch nicht eingerichtet',503)}
    const to=typeof d.email==='string'?d.email.trim().toLowerCase():'';
@@ -39,7 +48,7 @@ export async function POST(req:NextRequest){
    if(already.rowCount){await tx.query('ROLLBACK');return err('Die Person ist bereits im Team',409)}
    const token=randomBytes(32).toString('hex');
    const hash=createHash('sha256').update(token).digest('hex');
-   const inv=await tx.query("INSERT INTO business_team_invites(business_id,inviter_id,invite_email,role,token_hash,expires_at) VALUES($1,$2,$3,$4,$5,now()+interval '7 days') RETURNING id",[b.id,u.id,to,d.role,hash]);
+   const inv=await tx.query("INSERT INTO business_team_invites(business_id,inviter_id,invite_email,role,token_hash,all_places,place_ids,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7,now()+interval '7 days') RETURNING id",[b.id,u.id,to,d.role,hash,allPlaces,allPlaces?[]:placeIds]);
    mailed={to,token,inviteId:inv.rows[0].id,businessName:b.name};
   }else if(d.action==='revoke'){
    if(!uuid.test(d.id||'')){await tx.query('ROLLBACK');return err('Einladung ungültig')}
@@ -47,7 +56,10 @@ export async function POST(req:NextRequest){
    if(!r.rowCount){await tx.query('ROLLBACK');return err('Einladung nicht offen',404)}
   }else{
    if(!uuid.test(d.user_id||'')){await tx.query('ROLLBACK');return err('Person ungültig')}
-   if(d.action==='remove'){
+   if(d.action==='scope'){
+    const r=await tx.query('UPDATE business_team_members SET all_places=$3,place_ids=$4 WHERE business_id=$1 AND user_id=$2 RETURNING user_id',[b.id,d.user_id,allPlaces,allPlaces?[]:placeIds]);
+    if(!r.rowCount){await tx.query('ROLLBACK');return err('Person nicht gefunden',404)}
+   }else if(d.action==='remove'){
     const r=await tx.query("DELETE FROM business_team_members WHERE business_id=$1 AND user_id=$2 RETURNING user_id",[b.id,d.user_id]);
     if(!r.rowCount){await tx.query('ROLLBACK');return err('Person nicht gefunden',404)}
    }else{
@@ -68,3 +80,4 @@ export async function POST(req:NextRequest){
  }
  return NextResponse.json({success:true,notice:mailed?'Einladung per E-Mail versendet.':'Team aktualisiert.'});
 }
+

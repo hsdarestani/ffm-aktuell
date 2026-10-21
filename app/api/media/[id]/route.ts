@@ -1,3 +1,4 @@
+import {canAdmin} from '@/lib/admin-permissions';
 import {NextRequest,NextResponse} from 'next/server';
 import {sessionUser} from '@/lib/auth';
 import {load} from '@/lib/media-storage';
@@ -8,7 +9,7 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
  const u=await sessionUser(req);
  const r=await query('SELECT * FROM user_media WHERE id=$1',[id]);const m=r.rows[0];
  if(!m)return new NextResponse(null,{status:404});
- if(u?.id!==m.owner_id&&u?.role!=='admin'){
+ if(u?.id!==m.owner_id&&!canAdmin(u,'moderation')){
   if(m.status!=='approved')return new NextResponse(null,{status:404});
   // The owner of a business with explicit current permission may preview
   // the medium prior to editorial Highlight approval, but the general public cannot.
@@ -34,3 +35,4 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
   return new NextResponse(new Uint8Array(bytes),{headers:{...common,'Content-Length':String(bytes.length)}});
  }catch{return new NextResponse(null,{status:404})}
 }
+

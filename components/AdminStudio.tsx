@@ -13,6 +13,7 @@ import CatalogStudio from '@/components/CatalogStudio';
 import CampaignStudio from '@/components/CampaignStudio';
 import AdminTeamSeats from '@/components/AdminTeamSeats';
 import AdminTariffs from '@/components/AdminTariffs';
+import AdminRoles from '@/components/AdminRoles';
 import ServiceStatus from '@/components/ServiceStatus';
 import DataQualityStudio from '@/components/DataQualityStudio';
 import '@/app/data-quality.css';
@@ -21,7 +22,7 @@ import '@/app/team-management.css';
 import '@/app/campaigns.css';
 import '@/app/catalog-studio.css';
 
-type View='overview'|'review'|'moderation'|'publish'|'catalog'|'ads'|'team'|'tariffs'|'quality'|'services';
+type View='overview'|'review'|'moderation'|'publish'|'catalog'|'ads'|'team'|'tariffs'|'quality'|'services'|'roles';
 type PublishMode='place'|'news'|'event';
 type ReviewMode='unverified'|'needs_review'|'existing';
 type Candidate={osm_id:string;name:string;category:string;address:string|null;website:string|null;phone:string|null;opening_hours:string|null;last_osm_check:string|null;osm_url:string;latitude:number;longitude:number};
@@ -43,7 +44,8 @@ const NAV:{view:View;label:string;small:string;icon:IconComponent;index:string}[
  {view:'team',label:'Teamplätze',small:'Teams',icon:UsersRound,index:'07'},
  {view:'tariffs',label:'Tarife',small:'Tarife',icon:BarChart3,index:'08'},
  {view:'quality',label:'Datenqualität',small:'Qualität',icon:FileCheck2,index:'09'},
- {view:'services',label:'Dienste',small:'Dienste',icon:FileCheck2,index:'10'}
+ {view:'services',label:'Dienste',small:'Dienste',icon:FileCheck2,index:'10'},
+ {view:'roles',label:'Berechtigungen',small:'Rechte',icon:ShieldCheck,index:'11'}
 ];
 const queueNames:{key:keyof Queue;title:string;singular:string}[]=[
  {key:'businesses',title:'Unternehmen',singular:'business'},
@@ -87,8 +89,14 @@ function DateStamp(){return <span className="ffm-studio-date"><span className="f
 function CityPanel({children,className=''}:{children:React.ReactNode;className?:string}){return <section className={'ffm-studio-panel '+className}>{children}</section>}
 function Field({label,children,hint}:{label:string;children:React.ReactNode;hint?:string}){return <label className="ffm-studio-field"><span>{label}</span>{children}{hint&&<small>{hint}</small>}</label>}
 
-export default function AdminStudio({onChanged}:{onChanged:()=>void}){
- const [view,setView]=useState<View>('overview');
+export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=>void;permissions?:string[]}){
+ const root=permissions.includes('*');
+ const allowed=(cap:string)=>root||permissions.includes(cap);
+ const navPermission:Record<View,string>={overview:'root',review:'editorial',moderation:'access',publish:'editorial',catalog:'editorial',ads:'marketing',team:'business',tariffs:'finance',quality:'editorial',services:'operations',roles:'root'};
+ const availableNav=NAV.filter(n=>root||navPermission[n.view]==='access'&&permissions.some(p=>['editorial','moderation','business','marketing'].includes(p))||allowed(navPermission[n.view]));
+ const queuePermission:Record<keyof Queue,string>={businesses:'business',claims:'business',places:'editorial',deals:'marketing',posts:'moderation',reports:'moderation',reviews:'moderation',reviewReports:'moderation',comments:'moderation',branchChanges:'business'};
+ const visibleQueues=queueNames.filter(q=>allowed(queuePermission[q.key]));
+ const [view,setView]=useState<View>(availableNav[0]?.view||'moderation');
  const [reviewMode,setReviewMode]=useState<ReviewMode>('unverified');
  const [publishMode,setPublishMode]=useState<PublishMode>('place');
  const [stats,setStats]=useState<Stats|null>(null);
@@ -110,22 +118,22 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
  const [loadingList,setLoadingList]=useState(true);
  const [busy,setBusy]=useState(false);
  const [revision,setRevision]=useState(0);
- const [queueSection,setQueueSection]=useState<keyof Queue>('businesses');
+ const [queueSection,setQueueSection]=useState<keyof Queue>(visibleQueues[0]?.key||'businesses');
  const [mobileMenu,setMobileMenu]=useState(false);
  const [detailDecision,setDetailDecision]=useState(false);
  const [newPlaceId,setNewPlaceId]=useState('');
 
  const refresh=useCallback(()=>{setRevision(n=>n+1);onChanged()},[onChanged]);
  const navigate=useCallback((next:View)=>{
-  setView(next);setMobileMenu(false);setNotice(null);setDrawer(false);
- },[]);
+  if(!availableNav.some(n=>n.view===next))return;setView(next);setMobileMenu(false);setNotice(null);setDrawer(false);
+ },[permissions.join(',')]);
  useEffect(()=>{const id=setTimeout(()=>{setPage(0);setApplied(search.trim())},290);return()=>clearTimeout(id)},[search]);
  useEffect(()=>{
   let active=true;
   const run=async()=>{
    try{
     const [a,b,c]=await Promise.all([
-     request<{stats:Stats;recheck:Due[]}>('admin/validation'),
+     allowed('editorial')?request<{stats:Stats;recheck:Due[]}>('admin/validation'):Promise.resolve({stats:null,recheck:[]}),
      request<Queue>('admin/queue'),
      request<{items:Place[]}>('places')
     ]);
@@ -137,6 +145,7 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
  },[revision]);
  useEffect(()=>{
   let active=true;
+  if(!allowed('editorial')){setLoadingList(false);return}
   setLoadingList(true);
   const params=new URLSearchParams({state:reviewMode==='existing'?'unverified':reviewMode,page:String(page),q:applied,category});
   request<{items:Candidate[];total:number}>('admin/candidates?'+params)
@@ -155,7 +164,7 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
   }catch(e){setNotice({kind:'error',text:(e as Error).message});return false}
   finally{setBusy(false)}
  }
- const currentCount=queueNames.reduce((n,{key})=>n+(queue[key]?.length||0),0);
+ const currentCount=visibleQueues.reduce((n,{key})=>n+(queue[key]?.length||0),0);
  const hasReviewTarget=Boolean(selected);
  const openCandidate=(item:Candidate)=>{setSelected(item);setSelectedDue(null);setReason('');setDetailDecision(false);setDrawer(true)};
  const openDue=(item:Due)=>{setSelectedDue(item);setDrawer(true);setReason('');setDetailDecision(false)};
@@ -215,7 +224,7 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
     approve?'Meldung geprüft. Den Ortsstatus nur nach unabhängiger Verifikation ändern.':'Meldung zurückgewiesen.');
    return;
   }
-  const name=queueNames.find(q=>q.key===type)?.singular;
+  const name=visibleQueues.find(q=>q.key===type)?.singular;
   await action('admin/review',{type:name,id:item.id,approve},approve?'Freigabe gespeichert.':'Eintrag abgelehnt.');
  }
  async function publish(e:FormEvent<HTMLFormElement>){
@@ -311,7 +320,7 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
    </div>
    
    <nav className="ffm-studio-rail-nav" aria-label="Redaktionsbereiche">
-    {NAV.map(n=><button type="button" key={n.view} className={view===n.view?'active':''} aria-current={view===n.view?'page':undefined} onClick={()=>navigate(n.view)}>
+    {availableNav.map(n=><button type="button" key={n.view} className={view===n.view?'active':''} aria-current={view===n.view?'page':undefined} onClick={()=>navigate(n.view)}>
      <n.icon size={19} strokeWidth={1.8}/><span>{n.label}</span><small>{n.index}</small></button>)}
    </nav>
    <div className="ffm-studio-rail-bottom">
@@ -328,13 +337,14 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
     <div className="ffm-studio-top-end"><button type="button" title="Aktualisieren" aria-label="Daten aktualisieren" className="ffm-studio-refresh" onClick={refresh}><RefreshCw size={18}/></button><span className="ffm-studio-avatar">R</span></div>
     <button type="button" className="ffm-studio-menubutton" aria-label="Menü öffnen" aria-expanded={mobileMenu} onClick={()=>setMobileMenu(v=>!v)}><Menu size={23}/></button>
    </header>
-   <div className="ffm-studio-mobile-tabs">{NAV.map(n=><button type="button" key={n.view} onClick={()=>navigate(n.view)} aria-current={view===n.view?'page':undefined} className={view===n.view?'active':''}><n.icon size={17}/>{n.small}</button>)}</div>
+   <div className="ffm-studio-mobile-tabs">{availableNav.map(n=><button type="button" key={n.view} onClick={()=>navigate(n.view)} aria-current={view===n.view?'page':undefined} className={view===n.view?'active':''}><n.icon size={17}/>{n.small}</button>)}</div>
 
    <div className="ffm-studio-content">
     {view==='catalog'&&<CatalogStudio onNotice={(msg,success)=>setNotice({kind:success?'success':'error',text:msg})}/>}
     {view==='ads'&&<CampaignStudio onNotice={(msg,success)=>setNotice({kind:success?'success':'error',text:msg})}/>}
     {view==='team'&&<AdminTeamSeats onNotice={(msg,success)=>setNotice({kind:success?'success':'error',text:msg})}/>}
     {view==='tariffs'&&<AdminTariffs onNotice={(msg,success)=>setNotice({kind:success?'success':'error',text:msg})}/>}
+    {view==='roles'&&root&&<AdminRoles/>}
     {view==='services'&&<ServiceStatus/>}
     {view==='quality'&&<DataQualityStudio onNotice={(msg,success)=>setNotice({kind:success?'success':'error',text:msg})}/>}
     {notice&&<div role={notice.kind==='error'?'alert':'status'} className={'ffm-studio-notice '+notice.kind}><span>{notice.kind==='success'?<Check size={18}/>:<ShieldAlert size={18}/>}</span>{notice.text}<button type="button" onClick={()=>setNotice(null)} aria-label="Meldung schließen"><X size={16}/></button></div>}
@@ -416,8 +426,8 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
 
     {view==='moderation'&&<>
      <div className="ffm-studio-page-heading"><div><h1>Freigaben<span>.</span></h1></div></div>
-     <div className="ffm-studio-mod-layout"><CityPanel className="ffm-studio-mod-left"><h2>{fmt(currentCount)} offen</h2><div className="ffm-studio-mod-menu">{queueNames.map(q=><button type="button" key={q.key} className={queueSection===q.key?'active':''} onClick={()=>setQueueSection(q.key)}><span>{q.title}</span><b>{fmt(queue[q.key]?.length)}</b><ChevronRight size={17}/></button>)}</div></CityPanel>
-     <CityPanel className="ffm-studio-mod-right"><div className="ffm-studio-panel-heading"><h2>{queueNames.find(q=>q.key===queueSection)?.title}</h2></div>
+     <div className="ffm-studio-mod-layout"><CityPanel className="ffm-studio-mod-left"><h2>{fmt(currentCount)} offen</h2><div className="ffm-studio-mod-menu">{visibleQueues.map(q=><button type="button" key={q.key} className={queueSection===q.key?'active':''} onClick={()=>setQueueSection(q.key)}><span>{q.title}</span><b>{fmt(queue[q.key]?.length)}</b><ChevronRight size={17}/></button>)}</div></CityPanel>
+     <CityPanel className="ffm-studio-mod-right"><div className="ffm-studio-panel-heading"><h2>{visibleQueues.find(q=>q.key===queueSection)?.title}</h2></div>
       {queue[queueSection]?.length?queue[queueSection].map((item,i)=><article key={item.id} className="ffm-studio-mod-record"><span className="ffm-studio-item-index">{String(i+1).padStart(2,'0')}</span><div><strong>{item.name||item.title||item.body||[item.business_name,item.place_name].filter(Boolean).join(' · ')||'Eintrag'}</strong>
        {item.rating&&<p>{'★'.repeat(item.rating)}{'☆'.repeat(5-item.rating)}</p>}
        {item.note&&<p>{item.note}</p>}{queueSection==='branchChanges'&&<p>Neue Angaben: {String((item as any).address||'')} · {String((item as any).phone||'')} · {String((item as any).opening_hours_text||'')}</p>}
@@ -430,7 +440,7 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
         }
        }}>Bewertung entfernen</button>}</div></div></article>):<div className="ffm-studio-mod-empty"><div><CheckCheck size={32}/></div><h3>Alles erledigt.</h3></div>}
      </CityPanel></div>
-     <MediaEditorial/>
+     {allowed('moderation')&&<MediaEditorial/>}
     </>}
 
     {view==='publish'&&<>
