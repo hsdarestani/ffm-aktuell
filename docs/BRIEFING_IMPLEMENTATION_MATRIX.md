@@ -1,5 +1,7 @@
 # FFM Aktuell — milestone plan from the 17 October 2026 IT Briefing
 
+The dated phases below retain milestone history. Later sections supersede earlier open-item statements. The current backlog is maintained in [technical handover](TECHNICAL_HANDOVER.md).
+
 This is an implementation ledger, **not** a claim of complete product delivery. The brief's 7-page specification requires native clients, media rights, subscriptions and other services not present in the initial vertical slice. Track all milestones separately; never mislabel unverified OSM locations as operating.
 
 ## Phase 1: Location actions (this PR)
@@ -171,3 +173,7 @@ Offers, new moderated contributions at followed businesses and source-backed edi
 ## Merchant-confirmed visits and loyalty
 
 One-time private confirmation codes, merchant/branch authorization, interval/rate limits, immutable per-card reward/rule snapshots, marketing approval, one-time reward redemption, subsequent cycles, private profile wallet/export and merchant-confirmed review badges are implemented. Defaults and editable decisions are documented in [loyalty decisions](LOYALTY_DECISIONS_20261021.md). The evidence is specifically business confirmation, not GPS or purchase proof. Real rewards/conditions and live operator acceptance remain external prerequisites.
+
+## Combined acceptance, 21 October 2026
+
+All 176 tests, TypeScript, production build, Chromium regressions, actual PostgreSQL HTTP acceptance and Compose validation passed for `6f81be9f49a2cd84f13a95693570631cd36bed3c` in [CI 39638646930](https://github.com/hsdarestani/ffm-aktuell/actions/runs/39638646930). Department roles, scoped staff, hosted subscription lifecycle, remaining web notification categories and merchant-confirmed loyalty now supersede their earlier pending milestones. Paid ad delivery, phone authentication, extended assistant/translation, live provider acceptance and operational/legal work remain open. Native clients and email remain excluded.
