@@ -33,7 +33,8 @@ test('profile preferences opt-in and no public activity by default',()=>{
  assert.match(api,/if\(method==='POST'&&path==='me\/preferences'\)/);
  assert.match(api,/new Set\(v\)/);
  assert.match(profile,/share_activity/);
- assert.match(profile,/Push Benachrichtigungen sind noch nicht aktiviert/);
+ assert.match(profile,/<PushSettings/);
+ assert.match(profile,/Für Push zusätzlich dieses Gerät/);
 });
 test('export excludes stored password hashes and deletions require exact confirmation',()=>{
  const a=api.slice(api.indexOf("if(method==='GET'&&path==='me/export'"),api.indexOf("if(method==='GET'&&path==='places'"));

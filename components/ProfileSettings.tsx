@@ -2,6 +2,7 @@
 import {useEffect,useState,type FormEvent} from 'react';
 import {BookMarked,CalendarDays,Download,LockKeyhole,MapPin,Save,Trash2} from 'lucide-react';
 import {CouponWallet} from '@/components/CouponPilot';
+import PushSettings from '@/components/PushSettings';
 import SavedEvents from '@/components/SavedEvents';
 type User={id:string;email:string;display_name:string;role:string};
 type Prefs={interests:string[];districts:string[];share_activity:boolean;notify_events:boolean;notify_news:boolean;notify_offers:boolean};
@@ -75,11 +76,12 @@ export default function ProfileSettings({user,onLogin,onNotice,onDeleted,onSaved
    <h2>Privatsphäre</h2>
    <label className="ffm-profile-check"><input type="checkbox" checked={pref.share_activity} onChange={e=>setPref(v=>({...v,share_activity:e.target.checked}))}/><span>Freigegebene Aktivitäten anzeigen<small>Standardmäßig aus. Es gibt noch keine öffentliche Aktivitätsübersicht.</small></span></label>
    <h2>Mitteilungen</h2>
-   <p className="ffm-profile-tip">Deine Wünsche werden gespeichert. Push Benachrichtigungen sind noch nicht aktiviert.</p>
+   <p className="ffm-profile-tip">Wähle die gewünschten Kategorien. Für Push zusätzlich dieses Gerät weiter unten aktivieren.</p>
    {([['notify_events','Veranstaltungen'],['notify_news','Neuigkeiten'],['notify_offers','Angebote']] as const).map(([key,title])=>
     <label className="ffm-profile-check" key={key}><input type="checkbox" checked={pref[key]} onChange={e=>setPref(v=>({...v,[key]:e.target.checked}))}/><span>{title}</span></label>)}
    <button type="submit" disabled={busy||!loaded} className="ffm-profile-primary"><Save size={16}/> Speichern</button>
   </form>
+  <PushSettings key={user.id+'-push'}/>
   <SavedEvents key={user.id} userId={user.id} onNotice={onNotice}/>
   <CouponWallet onNotice={onNotice}/>
   <section className="ffm-profile-panel">

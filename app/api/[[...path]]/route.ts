@@ -136,7 +136,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   }
   if(method==='GET'&&path==='me/export'){
     rate(req,'account-export');const u=need(user);
-    const [prefs,bookmarks,candidateBookmarks,eventMarks,posts,comments,reviews,tours,follows,businesses,media,stories,grants,coupons,memberships,invites,social,verification]=await Promise.all([
+    const [prefs,bookmarks,candidateBookmarks,eventMarks,posts,comments,reviews,tours,follows,businesses,media,stories,grants,coupons,memberships,invites,social,verification,push]=await Promise.all([
       query('SELECT interests,districts,share_activity,notify_events,notify_news,notify_offers,updated_at FROM user_preferences WHERE user_id=$1',[u.id]),
       query('SELECT place_id,created_at FROM favorites WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
       query('SELECT osm_id,created_at FROM candidate_favorites WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
@@ -154,7 +154,8 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       query('SELECT business_id,role,joined_at FROM business_team_members WHERE user_id=$1',[u.id]),
       query('SELECT id,business_id,role,created_at,expires_at,redeemed_at,revoked_at FROM business_team_invites WHERE lower(invite_email)=lower($1) ORDER BY created_at DESC LIMIT 1000',[u.email]),
       query('SELECT provider,email_at_link,linked_at FROM social_identities WHERE user_id=$1',[u.id]),
-      query('SELECT email_verified_at FROM users WHERE id=$1',[u.id])
+      query('SELECT email_verified_at FROM users WHERE id=$1',[u.id]),
+      query('SELECT id,created_at,updated_at FROM push_subscriptions WHERE user_id=$1',[u.id])
     ]);
     const response=ok({exported_at:new Date().toISOString(),account:{id:u.id,email:u.email,display_name:u.display_name,language:u.language},
       preferences:prefs.rows[0]||null,favorites:bookmarks.rows,candidate_favorites:candidateBookmarks.rows,
@@ -162,7 +163,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       tours:tours.rows,followed_people:follows.rows,businesses:businesses.rows,
       uploaded_media:media.rows,stories:stories.rows,media_rights:grants.rows,coupon_claims:coupons.rows,
       company_memberships:memberships.rows,team_invitations:invites.rows,linked_social_providers:social.rows,
-      email_verified_at:verification.rows[0]?.email_verified_at||null});
+      push_devices:push.rows,email_verified_at:verification.rows[0]?.email_verified_at||null});
     response.headers.set('Cache-Control','no-store, private');
     return response;
   }

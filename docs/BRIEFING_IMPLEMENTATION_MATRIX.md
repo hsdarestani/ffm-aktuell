@@ -147,3 +147,7 @@ Name/trademark, prices & trial rules, billing/tax/PSP, operator verification, ve
 ## 21 October 2026 increment
 
 Default 3D landing, bounded startup/recovery, complete editorial pagination and distance sorting, cancellation-safe load-more, private saved-event list and organizer-end-aware RFC 5545 export are implemented. See [increment and validation](INCREMENT_20261021.md). This does not complete media/OAuth/push/payment/native operational requirements.
+
+## 21 October 2026 service activation increment
+
+Web Push device opt-in/removal, bookmarked event reminders, new editorial news, a bounded retry/deduplication ledger and an isolated scheduler are implemented. VAPID credentials are generated privately at first deployment. OpenAI configuration now reaches the production container. Optional Google/Apple/OpenAI/scanner credentials can be applied through one allowlisted deployment secret without editing source code. See [activation and remaining prerequisites](SERVICE_ACTIVATION.md). Offer/business/tip push, payment entitlements, native clients and product/legal decisions are still incomplete.

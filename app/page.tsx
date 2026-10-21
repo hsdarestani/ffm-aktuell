@@ -93,6 +93,21 @@ export default function Home(){
    const url=new URL(window.location.href);url.searchParams.delete('login_error');window.history.replaceState(null,'',url.pathname+url.search);}
  },[]);
  useEffect(()=>{const p=new URLSearchParams(window.location.search);if(p.has('team_invite')||p.has('verify_email'))setPage('profile');else if(p.has('tour'))setPage('tours')},[]);
+ // Push links resolve public content directly, including records beyond the first page.
+ useEffect(()=>{
+  if(loading)return;
+  const params=new URLSearchParams(window.location.search);
+  const kind=params.has('event')?'event':params.has('news')?'news':null;
+  if(!kind)return;const id=params.get(kind)||'';
+  if(!/^[0-9a-f-]{36}$/i.test(id))return;
+  let live=true;setPage('events');
+  fetch('/api/content?'+new URLSearchParams({kind,id}),{cache:'no-store'})
+   .then(async r=>{if(!r.ok)throw Error('unavailable');return r.json()})
+   .then(d=>{if(!live)return;if(kind==='event')setEvents(v=>[d.item,...v.filter(x=>x.id!==id)]);else setNews(v=>[d.item,...v.filter(x=>x.id!==id)])})
+   .catch(()=>{if(live)flash('Dieser Inhalt ist nicht mehr öffentlich verfügbar.')});
+  return()=>{live=false};
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[loading]);
  // Deep links resolve directly to the actual place record, even when that
  // raw OSM candidate isn't in the first search page. Never invent demo venues.
  useEffect(()=>{
