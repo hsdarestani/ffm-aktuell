@@ -13,6 +13,7 @@ import CatalogStudio from '@/components/CatalogStudio';
 import CampaignStudio from '@/components/CampaignStudio';
 import AdminTeamSeats from '@/components/AdminTeamSeats';
 import AdminTariffs from '@/components/AdminTariffs';
+import ServiceStatus from '@/components/ServiceStatus';
 import DataQualityStudio from '@/components/DataQualityStudio';
 import '@/app/data-quality.css';
 import '@/app/tariffs.css';
@@ -20,7 +21,7 @@ import '@/app/team-management.css';
 import '@/app/campaigns.css';
 import '@/app/catalog-studio.css';
 
-type View='overview'|'review'|'moderation'|'publish'|'catalog'|'ads'|'team'|'tariffs'|'quality';
+type View='overview'|'review'|'moderation'|'publish'|'catalog'|'ads'|'team'|'tariffs'|'quality'|'services';
 type PublishMode='place'|'news'|'event';
 type ReviewMode='unverified'|'needs_review'|'existing';
 type Candidate={osm_id:string;name:string;category:string;address:string|null;website:string|null;phone:string|null;opening_hours:string|null;last_osm_check:string|null;osm_url:string;latitude:number;longitude:number};
@@ -41,7 +42,8 @@ const NAV:{view:View;label:string;small:string;icon:IconComponent;index:string}[
  {view:'ads',label:'Werbung',small:'Werbung',icon:BarChart3,index:'06'},
  {view:'team',label:'Teamplätze',small:'Teams',icon:UsersRound,index:'07'},
  {view:'tariffs',label:'Tarife',small:'Tarife',icon:BarChart3,index:'08'},
- {view:'quality',label:'Datenqualität',small:'Qualität',icon:FileCheck2,index:'09'}
+ {view:'quality',label:'Datenqualität',small:'Qualität',icon:FileCheck2,index:'09'},
+ {view:'services',label:'Dienste',small:'Dienste',icon:FileCheck2,index:'10'}
 ];
 const queueNames:{key:keyof Queue;title:string;singular:string}[]=[
  {key:'businesses',title:'Unternehmen',singular:'business'},
@@ -333,6 +335,7 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
     {view==='ads'&&<CampaignStudio onNotice={(msg,success)=>setNotice({kind:success?'success':'error',text:msg})}/>}
     {view==='team'&&<AdminTeamSeats onNotice={(msg,success)=>setNotice({kind:success?'success':'error',text:msg})}/>}
     {view==='tariffs'&&<AdminTariffs onNotice={(msg,success)=>setNotice({kind:success?'success':'error',text:msg})}/>}
+    {view==='services'&&<ServiceStatus/>}
     {view==='quality'&&<DataQualityStudio onNotice={(msg,success)=>setNotice({kind:success?'success':'error',text:msg})}/>}
     {notice&&<div role={notice.kind==='error'?'alert':'status'} className={'ffm-studio-notice '+notice.kind}><span>{notice.kind==='success'?<Check size={18}/>:<ShieldAlert size={18}/>}</span>{notice.text}<button type="button" onClick={()=>setNotice(null)} aria-label="Meldung schließen"><X size={16}/></button></div>}
 
@@ -480,3 +483,4 @@ export default function AdminStudio({onChanged}:{onChanged:()=>void}){
   </div>
  </main>;
 }
+
