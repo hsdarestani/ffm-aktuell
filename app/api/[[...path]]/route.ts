@@ -117,8 +117,8 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   if(method==='GET'&&path==='me')return ok({user});
   if(method==='GET'&&path==='me/preferences'){
     const u=need(user);
-    const r=await query("SELECT interests,districts,share_activity,notify_events,notify_news,notify_offers FROM user_preferences WHERE user_id=$1",[u.id]);
-    return ok({preferences:r.rows[0]||{interests:[],districts:[],share_activity:false,notify_events:false,notify_news:false,notify_offers:false}});
+    const r=await query("SELECT interests,districts,share_activity,notify_events,notify_news,notify_offers,notify_following,notify_tips FROM user_preferences WHERE user_id=$1",[u.id]);
+    return ok({preferences:r.rows[0]||{interests:[],districts:[],share_activity:false,notify_events:false,notify_news:false,notify_offers:false,notify_following:false,notify_tips:false}});
   }
   if(method==='POST'&&path==='me/preferences'){
     rate(req,'user-preferences');const u=need(user);
@@ -128,17 +128,19 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       share_activity:z.boolean().default(false),
       notify_events:z.boolean().default(false),
       notify_news:z.boolean().default(false),
-      notify_offers:z.boolean().default(false)
+      notify_offers:z.boolean().default(false),
+      notify_following:z.boolean().default(false),
+      notify_tips:z.boolean().default(false)
     }),await payload(req));
     const clean=(v:string[])=>[...new Set(v)].slice(0,12);
-    const r=await query("INSERT INTO user_preferences(user_id,interests,districts,share_activity,notify_events,notify_news,notify_offers) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(user_id) DO UPDATE SET interests=excluded.interests,districts=excluded.districts,share_activity=excluded.share_activity,notify_events=excluded.notify_events,notify_news=excluded.notify_news,notify_offers=excluded.notify_offers,updated_at=now() RETURNING interests,districts,share_activity,notify_events,notify_news,notify_offers",
-      [u.id,clean(b.interests),clean(b.districts),b.share_activity,b.notify_events,b.notify_news,b.notify_offers]);
-    return ok({preferences:r.rows[0],notice:'Preferences saved. Push notifications are not enabled until a provider is configured.'});
+    const r=await query("INSERT INTO user_preferences(user_id,interests,districts,share_activity,notify_events,notify_news,notify_offers,notify_following,notify_tips) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(user_id) DO UPDATE SET interests=excluded.interests,districts=excluded.districts,share_activity=excluded.share_activity,notify_events=excluded.notify_events,notify_news=excluded.notify_news,notify_offers=excluded.notify_offers,notify_following=excluded.notify_following,notify_tips=excluded.notify_tips,updated_at=now() RETURNING interests,districts,share_activity,notify_events,notify_news,notify_offers,notify_following,notify_tips",
+      [u.id,clean(b.interests),clean(b.districts),b.share_activity,b.notify_events,b.notify_news,b.notify_offers,b.notify_following,b.notify_tips]);
+    return ok({preferences:r.rows[0],notice:'Einstellungen gespeichert. Push setzt eine ausdrückliche Gerätefreigabe voraus.'});
   }
   if(method==='GET'&&path==='me/export'){
     rate(req,'account-export');const u=need(user);
     const [prefs,bookmarks,candidateBookmarks,eventMarks,posts,comments,reviews,tours,follows,businesses,media,stories,grants,coupons,memberships,invites,social,verification,push,billingSubs,billingInvoices,adminRoles]=await Promise.all([
-      query('SELECT interests,districts,share_activity,notify_events,notify_news,notify_offers,updated_at FROM user_preferences WHERE user_id=$1',[u.id]),
+      query('SELECT interests,districts,share_activity,notify_events,notify_news,notify_offers,notify_following,notify_tips,updated_at FROM user_preferences WHERE user_id=$1',[u.id]),
       query('SELECT place_id,created_at FROM favorites WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
       query('SELECT osm_id,created_at FROM candidate_favorites WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
       query('SELECT event_id,created_at FROM event_favorites WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
@@ -419,7 +421,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     const r=await query("SELECT c.id,c.body,c.created_at,LEFT(u.display_name,1) AS display_name FROM post_comments c JOIN users u ON u.id=c.user_id WHERE c.post_id=$1 AND c.status='published' ORDER BY c.created_at ASC LIMIT 60",[postId]);
     return ok({items:r.rows});
   }
-  if(method==='GET'&&path==='deals'){const r=await query("SELECT d.id,d.title,d.details,d.valid_until,b.name AS business_name,p.name AS place_name FROM deals d JOIN businesses b ON b.id=d.business_id LEFT JOIN places p ON p.id=d.place_id WHERE d.status='published' AND b.status='approved' AND (d.valid_until IS NULL OR d.valid_until>now()) ORDER BY d.created_at DESC LIMIT 40");return ok({items:r.rows});}
+  if(method==='GET'&&path==='deals'){const r=await query("SELECT d.id,d.title,d.details,d.valid_until,b.name AS business_name,p.name AS place_name FROM deals d JOIN businesses b ON b.id=d.business_id LEFT JOIN places p ON p.id=d.place_id WHERE d.status='published' AND b.status='approved' AND (d.valid_until IS NULL OR d.valid_until>now()) ORDER BY (d.id::text=$1) DESC,d.created_at DESC LIMIT 40",[(qs.get('priority')||'').slice(0,36)]);return ok({items:r.rows});}
   if(method==='GET'&&path==='coupons'){
     const u=need(user);
     const r=await query("SELECT c.id,c.deal_id,c.code,c.created_at,c.redeemed_at,d.title,d.valid_until,b.name AS business_name, (d.status='published' AND b.status='approved' AND (d.valid_until IS NULL OR d.valid_until>now())) AS available FROM coupon_claims c JOIN deals d ON d.id=c.deal_id JOIN businesses b ON b.id=d.business_id WHERE c.user_id=$1 ORDER BY c.created_at DESC LIMIT 100",[u.id]);

@@ -28,7 +28,7 @@ export default function PushSettings(){
   setConfig(await api());
  }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}};
  return <section className="ffm-profile-panel"><h2>Push auf diesem Gerät</h2>
- <p className="ffm-profile-tip">Erinnerungen an gespeicherte Veranstaltungen etwa eine Stunde vorher und neue redaktionelle Nachrichten. Nur mit Gerätefreigabe und gespeicherter Kategorieauswahl. Angebote werden noch nicht per Push versendet.</p>
+ <p className="ffm-profile-tip">Erinnerungen an gespeicherte Veranstaltungen, neue Nachrichten, Angebote, Beiträge bei gefolgten Unternehmen und passende Stadttipps. Nur mit Gerätefreigabe und gespeicherter Kategorieauswahl.</p>
  {!supported?<p>Dieser Browser unterstützt Web Push hier nicht. Auf iPhone oder iPad die Website zuerst zum Home Bildschirm hinzufügen.</p>:!config?<p>{message||'Status wird geladen …'}</p>:<>
  {!config.available&&<p>Der Push Dienst ist noch nicht eingerichtet.</p>}
  <button type="button" className="ffm-profile-outline" disabled={busy||(!active&&!config.available)} onClick={()=>void(active?disable():enable())}>{busy?'Bitte warten …':active?'Dieses Gerät deaktivieren':'Dieses Gerät aktivieren'}</button>

@@ -6,9 +6,9 @@ import BillingAccount from '@/components/BillingAccount';
 import PushSettings from '@/components/PushSettings';
 import SavedEvents from '@/components/SavedEvents';
 type User={id:string;email:string;display_name:string;role:string};
-type Prefs={interests:string[];districts:string[];share_activity:boolean;notify_events:boolean;notify_news:boolean;notify_offers:boolean};
+type Prefs={interests:string[];districts:string[];share_activity:boolean;notify_events:boolean;notify_news:boolean;notify_offers:boolean;notify_following:boolean;notify_tips:boolean};
 type Props={user:User|null;onLogin:()=>void;onNotice:(message:string)=>void;onDeleted:()=>void;onSavedPlaces:()=>void;onTours:()=>void};
-const defaults:Prefs={interests:[],districts:[],share_activity:false,notify_events:false,notify_news:false,notify_offers:false};
+const defaults:Prefs={interests:[],districts:[],share_activity:false,notify_events:false,notify_news:false,notify_offers:false,notify_following:false,notify_tips:false};
 const interests=['Cafés','Restaurants','Bars','Kultur','Freizeit','Familie','Sport','Natur','Events'];
 async function request(path:string,body?:unknown){
  const response=await fetch('/api/'+path,{credentials:'same-origin',cache:'no-store',method:body===undefined?'GET':'POST',
@@ -30,7 +30,7 @@ export default function ProfileSettings({user,onLogin,onNotice,onDeleted,onSaved
  useEffect(()=>{
   if(!user){setLoaded(true);return}
   let live=true;
-  request('me/preferences').then(d=>{if(live){setPref(d.preferences||defaults);setDistricts((d.preferences?.districts||[]).join(', '));}})
+  request('me/preferences').then(d=>{if(live){setPref({...defaults,...d.preferences});setDistricts((d.preferences?.districts||[]).join(', '));}})
    .catch(()=>{if(live)onNotice('Deine Einstellungen konnten nicht geladen werden.')})
    .finally(()=>{if(live)setLoaded(true)});
   return()=>{live=false};
@@ -78,7 +78,7 @@ export default function ProfileSettings({user,onLogin,onNotice,onDeleted,onSaved
    <label className="ffm-profile-check"><input type="checkbox" checked={pref.share_activity} onChange={e=>setPref(v=>({...v,share_activity:e.target.checked}))}/><span>Freigegebene Aktivitäten anzeigen<small>Standardmäßig aus. Es gibt noch keine öffentliche Aktivitätsübersicht.</small></span></label>
    <h2>Mitteilungen</h2>
    <p className="ffm-profile-tip">Wähle die gewünschten Kategorien. Für Push zusätzlich dieses Gerät weiter unten aktivieren.</p>
-   {([['notify_events','Veranstaltungen'],['notify_news','Neuigkeiten'],['notify_offers','Angebote']] as const).map(([key,title])=>
+   {([['notify_events','Veranstaltungen'],['notify_news','Neuigkeiten'],['notify_offers','Angebote'],['notify_following','Gefolgte Unternehmen'],['notify_tips','Passende Stadttipps']] as const).map(([key,title])=>
     <label className="ffm-profile-check" key={key}><input type="checkbox" checked={pref[key]} onChange={e=>setPref(v=>({...v,[key]:e.target.checked}))}/><span>{title}</span></label>)}
    <button type="submit" disabled={busy||!loaded} className="ffm-profile-primary"><Save size={16}/> Speichern</button>
   </form>

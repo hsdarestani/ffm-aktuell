@@ -658,5 +658,28 @@ CREATE OR REPLACE FUNCTION business_branch_capacity(bid uuid) RETURNS integer LA
  SELECT greatest(1,coalesce((SELECT max((s.snapshot->>'branch_limit')::int) FROM billing_subscriptions s
  WHERE s.business_id=bid AND s.status IN ('active','trialing') AND s.current_period_end>now()),1))
 $$;
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS notify_following boolean NOT NULL DEFAULT false;
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS notify_tips boolean NOT NULL DEFAULT false;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS published_at timestamptz;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS published_at timestamptz;
+CREATE OR REPLACE FUNCTION record_content_publication() RETURNS trigger LANGUAGE plpgsql AS $$
+ BEGIN
+  IF NEW.status='published' AND (TG_OP='INSERT' OR OLD.status IS DISTINCT FROM 'published') THEN NEW.published_at=now(); END IF;
+  RETURN NEW;
+ END $$;
+DROP TRIGGER IF EXISTS deals_publication_time ON deals;
+CREATE TRIGGER deals_publication_time BEFORE INSERT OR UPDATE ON deals FOR EACH ROW EXECUTE FUNCTION record_content_publication();
+DROP TRIGGER IF EXISTS posts_publication_time ON posts;
+CREATE TRIGGER posts_publication_time BEFORE INSERT OR UPDATE ON posts FOR EACH ROW EXECUTE FUNCTION record_content_publication();
+CREATE TABLE IF NOT EXISTS discovery_tips (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),place_id uuid NOT NULL REFERENCES places(id) ON DELETE CASCADE,
+ title text NOT NULL CHECK(char_length(title) BETWEEN 4 AND 150),
+ body text NOT NULL CHECK(char_length(body) BETWEEN 10 AND 500),
+ publish_at timestamptz NOT NULL,expires_at timestamptz NOT NULL,
+ published boolean NOT NULL DEFAULT true,created_by uuid REFERENCES users(id) ON DELETE SET NULL,
+ created_at timestamptz NOT NULL DEFAULT now(),CHECK(expires_at>publish_at)
+);
+ALTER TABLE push_deliveries DROP CONSTRAINT IF EXISTS push_deliveries_kind_check;
+ALTER TABLE push_deliveries ADD CONSTRAINT push_deliveries_kind_check CHECK(kind IN ('event','news','offer','following','tip'));
 COMMIT;
 

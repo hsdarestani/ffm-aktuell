@@ -7,6 +7,7 @@ import AtlasHome from '@/components/AtlasHome';
 import AdminStudio from '@/components/AdminStudio';
 import PlaceLocationMap from '@/components/PlaceLocationMap';
 import {canAdmin} from '@/lib/admin-permissions';
+import DiscoveryTips from '@/components/DiscoveryTips';
 import PlaceFacts from '@/components/PlaceFacts';
 import PlaceActions from '@/components/PlaceActions';
 import VenueReviews from '@/components/VenueReviews';
@@ -95,7 +96,7 @@ export default function Home(){
   if(problem){flash(problem==='existing_account'?'Dieses E-Mail-Konto besteht bereits. Bitte zuerst mit E-Mail und Passwort anmelden.':'Social Login ist derzeit nicht verfügbar. Bitte E-Mail Anmeldung nutzen.');
    const url=new URL(window.location.href);url.searchParams.delete('login_error');window.history.replaceState(null,'',url.pathname+url.search);}
  },[]);
- useEffect(()=>{const p=new URLSearchParams(window.location.search);if(p.has('team_invite')||p.has('verify_email'))setPage('profile');else if(p.has('billing'))setPage('profile');else if(p.has('tour'))setPage('tours')},[]);
+ useEffect(()=>{const p=new URLSearchParams(window.location.search);if(p.has('team_invite')||p.has('verify_email'))setPage('profile');else if(p.has('offer'))setPage('events');else if(p.has('billing'))setPage('profile');else if(p.has('tour'))setPage('tours')},[]);
  // Push links resolve public content directly, including records beyond the first page.
  useEffect(()=>{
   if(loading)return;
@@ -189,7 +190,7 @@ export default function Home(){
 
 
  useEffect(()=>{if(page==='business'&&user){api('businesses').then(b=>{setBusiness(b.items[0]||null);if(b.items[0])api('business/overview').then(setBusinessDetail).catch(()=>{})}).catch(()=>{})}if(page==='admin'&&canAdmin(user))api('admin/queue').then(setQueue).catch(()=>{})},[page,user,refresh]);
- useEffect(()=>{if(page==='community')void api('posts?scope='+(followingOnly?'following':'all')).then(d=>setPosts(d.items||[])).catch(()=>setPosts([]));if(page==='events')void api('deals').then(d=>setDeals(d.items||[])).catch(()=>{})},[page,refresh,user?.id,followingOnly]);
+ useEffect(()=>{if(page==='community')void api('posts?scope='+(followingOnly?'following':'all')).then(d=>setPosts(d.items||[])).catch(()=>setPosts([]));if(page==='events')void api('deals?priority='+encodeURIComponent(new URLSearchParams(window.location.search).get('offer')||'')).then(d=>setDeals(d.items||[])).catch(()=>{})},[page,refresh,user?.id,followingOnly]);
  useEffect(()=>{if(page!=='events'||!user){setEventFavorites([]);return;}void api('event-favorites').then(d=>setEventFavorites((d.items||[]).map((e:Event)=>e.id))).catch(()=>setEventFavorites([]))},[page,user?.id,refresh]);
 
  useEffect(()=>{
@@ -245,7 +246,7 @@ export default function Home(){
   {(page==='events'||page==='community')&&<div className="v3-preview-strip" role="status"><span className="v3-preview-spark"/><strong>VORSCHAU</strong><span>{VORSCHAU_HINWEIS}</span></div>}
    {toast&&<div className="toast" role="status"><Check size={16}/>{toast}<button onClick={()=>setToast('')}><X size={16}/></button></div>}
   {error&&<div className="error">{error}<button onClick={()=>setRefresh(x=>x+1)}>{lang==='de'?'Erneut laden':'Retry'}</button></div>}
-  {page==='home'&&<><AtlasHome lang={lang} places={sichtbareOrte} events={sichtbareVeranstaltungen} news={sichtbareBeitraege} onDiscover={()=>navigate('discover')} onMap={()=>navigate('map')} onEvents={()=>navigate('events')} onCommunity={()=>navigate('community')} onBusiness={()=>navigate('business')} onPlace={selectPlace} onCategory={cat=>{setCategory(cat);setSelectedCategories(cat==='Alle'?[]:[cat]);navigate('discover')}} onSearch={value=>{setQuery(value);setCategory('Alle');setSelectedCategories([]);setDistrict('');navigate('discover')}} onTours={()=>navigate('tours')} /><SmartDiscover onPlace={selectPlace} onDiscover={()=>navigate('discover')} lang={lang} loggedIn={Boolean(user)}/></>}
+  {page==='home'&&<><AtlasHome lang={lang} places={sichtbareOrte} events={sichtbareVeranstaltungen} news={sichtbareBeitraege} onDiscover={()=>navigate('discover')} onMap={()=>navigate('map')} onEvents={()=>navigate('events')} onCommunity={()=>navigate('community')} onBusiness={()=>navigate('business')} onPlace={selectPlace} onCategory={cat=>{setCategory(cat);setSelectedCategories(cat==='Alle'?[]:[cat]);navigate('discover')}} onSearch={value=>{setQuery(value);setCategory('Alle');setSelectedCategories([]);setDistrict('');navigate('discover')}} onTours={()=>navigate('tours')} /><DiscoveryTips onPlace={selectPlace}/><SmartDiscover onPlace={selectPlace} onDiscover={()=>navigate('discover')} lang={lang} loggedIn={Boolean(user)}/></>}
   {page==='discover'&&<main className="ffm-find-page ffm-find-visual" id="entdecken">
  <section className="ffm-find-head">
   <h1>Entdecken<span>.</span></h1>
@@ -375,7 +376,7 @@ export default function Home(){
    <div className="v3-journal-grid">{sichtbareBeitraege.map((n,i)=><article className={'v3-journal-card '+(i===0?'v3-wide':'')} key={n.id}><div className="v3-journal-image"><img src={ortsbild('',n.image_url)} alt="Stimmungsbild aus Frankfurt" loading="lazy"/><span className="v3-image-note">Stimmungsbild</span></div><div className="v3-journal-copy"><span className="v3-eyebrow">{n.demo?'MUSTERBEITRAG':n.category||'STADTGESCHICHTE'} · {date(n.published_at,lang)}</span><h3>{n.title}</h3><p>{n.body_de}</p>{n.source_url&&<a href={n.source_url} rel="noopener noreferrer" target="_blank">Originalquelle ansehen</a>}</div></article>)}</div>
  </section>
  <section className="v3-section v3-offers"><div className="v3-section-head"><div><span className="v3-eyebrow">AUS DEINEM VIERTEL</span><h2>Lokale Angebote.</h2></div><span className="v3-section-trail">Entdecken und vormerken</span></div>
-   <div className="v3-offer-grid">{sichtbareAngebote.map(d=><article className="v3-offer-card" key={d.id}><div className="v3-offer-image"><img src={ortsbild('',d.image_url)} alt="Stimmungsbild zum Angebot" loading="lazy"/><span className="v3-image-note">Stimmungsbild</span></div><div className="v3-offer-copy"><span className="v3-eyebrow">{d.demo?'MUSTERANGEBOT · NICHT EINLÖSBAR':'LOKALES ANGEBOT'}</span><h3>{d.title}</h3><p>{d.details}</p><small>{d.business_name}</small><DealActions deal={d} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/></div></article>)}</div>
+   <div className="v3-offer-grid">{sichtbareAngebote.map(d=><article className="v3-offer-card" id={'angebot-'+d.id} key={d.id}><div className="v3-offer-image"><img src={ortsbild('',d.image_url)} alt="Stimmungsbild zum Angebot" loading="lazy"/><span className="v3-image-note">Stimmungsbild</span></div><div className="v3-offer-copy"><span className="v3-eyebrow">{d.demo?'MUSTERANGEBOT · NICHT EINLÖSBAR':'LOKALES ANGEBOT'}</span><h3>{d.title}</h3><p>{d.details}</p><small>{d.business_name}</small><DealActions deal={d} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/></div></article>)}</div>
  </section>
 </main>}
 {page==='community'&&<main className="inner-page v3-community-page">

@@ -38,6 +38,23 @@ test('push jobs enforce consent, event bookmarks, publication, time windows and 
    const job=jobs[0];assert.equal((await db.query(pushPayloadQuery,[sub,job.source_id,'news',job.source_version])).rows[0].title,'current');
    await db.query('UPDATE user_preferences SET notify_news=false WHERE user_id=$1',[user]);assert.equal((await db.query(pushPayloadQuery,[sub,job.source_id,'news',job.source_version])).rows.length,0);
   });
+  await t.test('offers, followed businesses and matching tips require consent and cancel on withdrawal',async()=>{
+   const business=(await db.query("INSERT INTO businesses(owner_id,name,status) VALUES($1,'Followed business','approved') RETURNING id",[user])).rows[0].id;
+   const place=(await db.query("INSERT INTO places(business_id,name,category,district,status,verification_status,activity_status,verified_at) VALUES($1,'Verified café','Cafés','Nordend','published','verified','operating',now()) RETURNING id",[business])).rows[0].id;
+   await db.query('INSERT INTO business_follows(follower_id,business_id) VALUES($1,$2)',[user,business]);
+   await db.query("INSERT INTO deals(business_id,title,status) VALUES($1,'Real offer','published')",[business]);
+   await db.query("INSERT INTO posts(user_id,place_id,body,status) VALUES($1,$2,'Actual moderated contribution','published')",[user,place]);
+   await db.query("INSERT INTO discovery_tips(place_id,title,body,publish_at,expires_at) VALUES($1,'Verified city idea','A source backed city recommendation',now(),now()+interval '1 day')",[place]);
+   await db.exec(enqueuePushJobs);assert.equal((await db.query("SELECT * FROM push_deliveries WHERE kind IN ('offer','following','tip')")).rows.length,0);
+   await db.query("UPDATE user_preferences SET notify_offers=true,notify_following=true,notify_tips=true,interests=ARRAY['Sport'],districts=ARRAY['Westend'] WHERE user_id=$1",[user]);
+   await db.exec(enqueuePushJobs);assert.equal((await db.query("SELECT * FROM push_deliveries WHERE kind IN ('offer','following')")).rows.length,2);assert.equal((await db.query("SELECT * FROM push_deliveries WHERE kind='tip'")).rows.length,0);
+   await db.query("UPDATE user_preferences SET interests=ARRAY['Cafés'] WHERE user_id=$1",[user]);await db.exec(enqueuePushJobs);await db.exec(enqueuePushJobs);
+   const jobs=(await db.query("SELECT * FROM push_deliveries WHERE kind IN ('offer','following','tip')")).rows;assert.equal(jobs.length,3);
+   for(const job of jobs)assert.equal((await db.query(pushPayloadQuery,[sub,job.source_id,job.kind,job.source_version])).rows.length,1);
+   await db.query('DELETE FROM business_follows WHERE follower_id=$1',[user]);const followed=jobs.find(j=>j.kind==='following');assert.equal((await db.query(pushPayloadQuery,[sub,followed.source_id,followed.kind,followed.source_version])).rows.length,0);
+   await db.query("UPDATE deals SET status='rejected' WHERE business_id=$1",[business]);const offer=jobs.find(j=>j.kind==='offer');assert.equal((await db.query(pushPayloadQuery,[sub,offer.source_id,offer.kind,offer.source_version])).rows.length,0);
+   await db.query("UPDATE places SET verified_at=now()-interval '31 days' WHERE id=$1",[place]);const tip=jobs.find(j=>j.kind==='tip');assert.equal((await db.query(pushPayloadQuery,[sub,tip.source_id,tip.kind,tip.source_version])).rows.length,0);
+  });
   await t.test('deleting the account removes subscriptions and delivery history',async()=>{await db.query('DELETE FROM users WHERE id=$1',[user]);assert.equal((await db.query('SELECT * FROM push_subscriptions')).rows.length,0);assert.equal((await db.query('SELECT * FROM push_deliveries')).rows.length,0)});
  }finally{await db.close()}
 });
