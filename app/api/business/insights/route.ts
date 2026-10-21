@@ -1,5 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {sessionUser} from '@/lib/auth';
+import {entitlements} from '@/lib/entitlements';
 import {query} from '@/lib/db';
 export const runtime='nodejs';export const dynamic='force-dynamic';
 const uuid=/^[a-f0-9-]{36}$/;
@@ -7,8 +8,9 @@ export async function GET(req:NextRequest){
  const u=await sessionUser(req);if(!u)return NextResponse.json({error:'Bitte anmelden'},{status:401});
  const businessId=req.nextUrl.searchParams.get('business_id')||'';
  if(!uuid.test(businessId))return NextResponse.json({error:'Unternehmen auswählen'},{status:400});
- const acl=await query("SELECT b.id,b.name FROM businesses b LEFT JOIN business_team_members tm ON tm.business_id=b.id AND tm.user_id=$2 WHERE b.id=$1 AND b.status='approved' AND (b.owner_id=$2 OR (tm.user_id IS NOT NULL AND tm.all_places)) LIMIT 1",[businessId,u.id]);
+ const acl=await query("SELECT b.id,b.name FROM businesses b LEFT JOIN business_team_members tm ON tm.business_id=b.id AND tm.user_id=$2 WHERE b.id=$1 AND b.status='approved' AND (b.owner_id=$2 OR (tm.user_id IS NOT NULL AND tm.all_places AND business_staff_allowed(b.id,$2))) LIMIT 1",[businessId,u.id]);
  if(!acl.rowCount)return NextResponse.json({error:'Kein Zugriff auf diesen Betrieb'},{status:403});
+ if(!(await entitlements(u.id,businessId)).features.includes('analytics'))return NextResponse.json({error:'Statistiken sind in Business Premium enthalten.'},{status:402});
  const [venues,offers,coupons,posts,followers,ads]=await Promise.all([
   query("SELECT count(*)::int AS n FROM places WHERE business_id=$1 AND status='published'",[businessId]),
   query("SELECT count(*)::int AS n FROM deals WHERE business_id=$1 AND status='published' AND (valid_until IS NULL OR valid_until>now())",[businessId]),

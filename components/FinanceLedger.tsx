@@ -1,0 +1,7 @@
+'use client';
+import {useEffect,useState} from 'react';
+export default function FinanceLedger(){
+ const [data,setData]=useState<{subscriptions:{id:string;snapshot:{title_de:string};status:string}[];invoices:{id:string;currency:string;amount_paid:number;status:string}[];credits:{id:string;currency:string;amount:number;status:string}[]}|null>(null);
+ useEffect(()=>{const c=new AbortController();fetch('/api/admin/billing',{signal:c.signal,cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject()).then(setData).catch(()=>{});return()=>c.abort()},[]);
+ return <section className="ffm-catalog-panel"><h2>Abos, Zahlungen und Gutschriften</h2><p>Bestätigte Daten des Zahlungsdienstes. Jeweils bis zu 100 letzte Einträge. Keine geschätzten Umsätze.</p>{!data?<p>Noch keine Daten geladen.</p>:<><h3>Abos ({data.subscriptions.length})</h3><ul>{data.subscriptions.map(s=><li key={s.id}>{s.snapshot.title_de} · {s.status} · {s.id}</li>)}</ul><h3>Rechnungen ({data.invoices.length})</h3><ul>{data.invoices.map(i=><li key={i.id}>{i.id} · {new Intl.NumberFormat('de-DE',{style:'currency',currency:i.currency.toUpperCase()}).format(i.amount_paid/100)} bezahlt · {i.status}</li>)}</ul><h3>Gutschriften ({data.credits.length})</h3><ul>{data.credits.map(c=><li key={c.id}>{c.id} · {new Intl.NumberFormat('de-DE',{style:'currency',currency:c.currency.toUpperCase()}).format(c.amount/100)} · {c.status}</li>)}</ul></>}</section>;
+}

@@ -2,6 +2,7 @@
 import {useEffect,useState,type FormEvent} from 'react';
 import {BookMarked,CalendarDays,Download,LockKeyhole,MapPin,Save,Trash2} from 'lucide-react';
 import {CouponWallet} from '@/components/CouponPilot';
+import BillingAccount from '@/components/BillingAccount';
 import PushSettings from '@/components/PushSettings';
 import SavedEvents from '@/components/SavedEvents';
 type User={id:string;email:string;display_name:string;role:string};
@@ -59,7 +60,7 @@ export default function ProfileSettings({user,onLogin,onNotice,onDeleted,onSaved
   if(!window.confirm('Dein Konto und deine privaten Daten dauerhaft löschen?'))return;
   setBusy(true);
   try{await request('me/delete',{password,confirmation:'KONTO LÖSCHEN'});setPassword('');setConfirm('');onDeleted();}
-  catch{onNotice('Konto konnte nicht gelöscht werden. Bitte Passwort prüfen oder mit Apple/Google neu anmelden; bestehende Firmenzugänge zuerst übertragen.')}
+  catch(e){onNotice((e as Error).message||'Konto konnte nicht gelöscht werden.')}
   finally{setBusy(false)}
  };
  if(!user)return <main className="ffm-profile-page"><h1>Mein Profil</h1><p>Melde dich an, um deine Einstellungen zu verwalten.</p><button type="button" className="ffm-profile-primary" onClick={onLogin}>Anmelden</button></main>;
@@ -81,6 +82,7 @@ export default function ProfileSettings({user,onLogin,onNotice,onDeleted,onSaved
     <label className="ffm-profile-check" key={key}><input type="checkbox" checked={pref[key]} onChange={e=>setPref(v=>({...v,[key]:e.target.checked}))}/><span>{title}</span></label>)}
    <button type="submit" disabled={busy||!loaded} className="ffm-profile-primary"><Save size={16}/> Speichern</button>
   </form>
+  <BillingAccount/>
   <PushSettings key={user.id+'-push'}/>
   <SavedEvents key={user.id} userId={user.id} onNotice={onNotice}/>
   <CouponWallet onNotice={onNotice}/>

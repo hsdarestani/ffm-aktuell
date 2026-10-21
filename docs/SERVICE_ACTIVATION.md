@@ -32,10 +32,14 @@ Not yet implemented: offer pushes, followed-business/tip pushes, native APNs/FCM
 
 ## Decisions that credentials cannot resolve
 
-Final tariff benefits, approved prices and tax/cancellation rules; verified venue data and licensed images; visit proofs and loyalty rules; legal and visual acceptance remain separate work. The PDF's native applications and email are excluded from this increment. This document is not a claim that the whole PDF is finished.
+Live contractual/tax approval for the editable initial tariff defaults; verified venue data and licensed images; visit proofs and loyalty rules; legal and visual acceptance remain separate work. The PDF's native applications and email are excluded from this increment. This document is not a claim that the whole PDF is finished.
 
 ## Validation
 
 Push SQL tests execute the actual schema and delivery queries in PostgreSQL (PGlite), covering opt-in, deduplication, cancellation, rescheduling, unpublished/future/old news and account deletion. Endpoint validation rejects arbitrary request destinations. Production build, TypeScript, existing browser regressions and CI PostgreSQL HTTP tests must pass before deployment. Actual provider delivery needs a user-consented device and cannot be proven with a mock.
 
 References: https://github.com/web-push-libs/web-push and https://developer.mozilla.org/en-US/docs/Web/API/Push_API .
+
+## Web subscriptions and delegated access
+
+Hosted Stripe Checkout, portal changes/cancellation, invoice/credit/refund synchronization, paid entitlements and editable initial tariff decisions are implemented. Add STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET to the same FFM_SERVICES_JSON object. See [commercial/access decisions and provider acceptance](COMMERCIAL_AND_ACCESS_20261021.md). Live account/tax/contract setup and provider tests remain necessary.

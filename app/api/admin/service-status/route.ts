@@ -1,6 +1,7 @@
 import {canAdmin} from '@/lib/admin-permissions';
 import {NextRequest,NextResponse} from 'next/server';
 import {sessionUser} from '@/lib/auth';
+import {billingConfigured} from '@/lib/billing-policy';
 import {query} from '@/lib/db';
 import {configured} from '@/lib/oauth';
 import {pushConfigured} from '@/lib/push-policy';
@@ -18,7 +19,7 @@ export async function GET(req:NextRequest){
   assistant:{configured:Boolean(process.env.OPENAI_API_KEY)},
   web_push:{configured:pushConfigured(),devices:push.rows[0]?.devices||0},
   media:{configured:Boolean(process.env.CLAMD_HOST),scanner_reachable:scanner},
-  billing:{configured:false,reason:'Zahlungsintegration und Tarifberechtigungen noch nicht implementiert.'},
+  billing:{configured:billingConfigured(),reason:billingConfigured()?'Web Abrechnung konfiguriert; Providerabnahme weiterhin erforderlich.':'Stripe Schlüssel und Webhook fehlen.'},
   inventory:inventory.rows[0],checked_at:new Date().toISOString()
  },{headers:{'Cache-Control':'no-store, private'}});
 }

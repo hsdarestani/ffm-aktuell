@@ -20,7 +20,7 @@ export async function POST(req:NextRequest){
  const hash=createHash('sha256').update(d.token).digest('hex'),tx=await pool.connect();
  try{
   await tx.query('BEGIN');
-  const i=await tx.query("SELECT i.id,i.business_id,i.role,i.all_places,i.place_ids,i.invite_email,b.owner_id,b.status,b.team_seat_limit FROM business_team_invites i JOIN businesses b ON b.id=i.business_id WHERE i.token_hash=$1 AND i.redeemed_at IS NULL AND i.revoked_at IS NULL AND i.expires_at>now() FOR UPDATE OF b,i",[hash]);
+  const i=await tx.query("SELECT i.id,i.business_id,i.role,i.all_places,i.place_ids,i.invite_email,b.owner_id,b.status,business_seat_capacity(b.id) AS team_seat_limit FROM business_team_invites i JOIN businesses b ON b.id=i.business_id WHERE i.token_hash=$1 AND i.redeemed_at IS NULL AND i.revoked_at IS NULL AND i.expires_at>now() FOR UPDATE OF b,i",[hash]);
   const inv=i.rows[0];
   if(!inv||inv.status!=='approved'||inv.owner_id===u.id){await tx.query('ROLLBACK');return fail('Einladung nicht gültig',403)}
   const person=await tx.query('SELECT email,email_verified_at FROM users WHERE id=$1',[u.id]);

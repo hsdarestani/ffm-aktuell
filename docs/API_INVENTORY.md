@@ -5,6 +5,7 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | Method | Route | Handler |
 | --- | --- | --- |
 | POST | `/api/admin/activate` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
+| GET | `/api/admin/billing` | [app/api/admin/billing/route.ts](../app/api/admin/billing/route.ts) |
 | GET | `/api/admin/business-seats` | [app/api/admin/business-seats/route.ts](../app/api/admin/business-seats/route.ts) |
 | POST | `/api/admin/business-seats` | [app/api/admin/business-seats/route.ts](../app/api/admin/business-seats/route.ts) |
 | GET | `/api/admin/campaigns` | [app/api/admin/campaigns/route.ts](../app/api/admin/campaigns/route.ts) |
@@ -24,6 +25,8 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | POST | `/api/admin/review-candidate` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/admin/review-place-change` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/admin/review-report` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
+| GET | `/api/admin/roles` | [app/api/admin/roles/route.ts](../app/api/admin/roles/route.ts) |
+| POST | `/api/admin/roles` | [app/api/admin/roles/route.ts](../app/api/admin/roles/route.ts) |
 | GET | `/api/admin/service-status` | [app/api/admin/service-status/route.ts](../app/api/admin/service-status/route.ts) |
 | GET | `/api/admin/validation` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/admin/verify-place` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
@@ -32,6 +35,10 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | GET | `/api/auth/oauth/[provider]/start` | [app/api/auth/oauth/[provider]/start/route.ts](../app/api/auth/oauth/[provider]/start/route.ts) |
 | GET | `/api/auth/oauth/status` | [app/api/auth/oauth/status/route.ts](../app/api/auth/oauth/status/route.ts) |
 | POST | `/api/auth/register` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
+| POST | `/api/billing/checkout` | [app/api/billing/checkout/route.ts](../app/api/billing/checkout/route.ts) |
+| POST | `/api/billing/portal` | [app/api/billing/portal/route.ts](../app/api/billing/portal/route.ts) |
+| GET | `/api/billing/status` | [app/api/billing/status/route.ts](../app/api/billing/status/route.ts) |
+| POST | `/api/billing/webhook` | [app/api/billing/webhook/route.ts](../app/api/billing/webhook/route.ts) |
 | POST | `/api/business/coupons/redeem` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/business/insights` | [app/api/business/insights/route.ts](../app/api/business/insights/route.ts) |
 | GET | `/api/business/overview` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |

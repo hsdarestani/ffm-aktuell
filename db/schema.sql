@@ -588,5 +588,75 @@ ALTER TABLE business_team_members ADD COLUMN IF NOT EXISTS all_places boolean NO
 ALTER TABLE business_team_members ADD COLUMN IF NOT EXISTS place_ids uuid[] NOT NULL DEFAULT '{}';
 ALTER TABLE business_team_invites ADD COLUMN IF NOT EXISTS all_places boolean NOT NULL DEFAULT true;
 ALTER TABLE business_team_invites ADD COLUMN IF NOT EXISTS place_ids uuid[] NOT NULL DEFAULT '{}';
+-- Editable initial commercial assumptions; never fabricate legal approval or payment.
+ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS staff_seats integer NOT NULL DEFAULT 0 CHECK(staff_seats BETWEEN 0 AND 50);
+ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS branch_limit integer NOT NULL DEFAULT 1 CHECK(branch_limit BETWEEN 1 AND 100);
+CREATE TABLE IF NOT EXISTS product_defaults_versions(version text PRIMARY KEY,applied_at timestamptz NOT NULL DEFAULT now());
+DO $$ BEGIN
+ IF NOT EXISTS(SELECT 1 FROM product_defaults_versions WHERE version='web-tariffs-20261021') THEN
+  UPDATE subscription_plans SET monthly_price_cents=490,annual_price_cents=4900,
+   features=ARRAY['exclusive_deals','personalized_discovery','saved_tours'],trial_days=7 WHERE code='user_premium' AND status='draft' AND monthly_price_cents IS NULL;
+  UPDATE subscription_plans SET monthly_price_cents=1990,annual_price_cents=19900,staff_seats=3,branch_limit=3,
+   features=ARRAY['extended_profile','stories','analytics','additional_staff'] WHERE code='business_premium_1' AND status='draft' AND monthly_price_cents IS NULL;
+  UPDATE subscription_plans SET monthly_price_cents=3990,annual_price_cents=39900,staff_seats=10,branch_limit=20,
+   features=ARRAY['extended_profile','stories','analytics','additional_staff','campaign_tools','priority_support'] WHERE code='business_premium_2' AND status='draft' AND monthly_price_cents IS NULL;
+  INSERT INTO product_defaults_versions(version) VALUES('web-tariffs-20261021');
+ END IF;
+END $$;
+CREATE TABLE IF NOT EXISTS billing_customers (
+ user_id uuid UNIQUE REFERENCES users(id) ON DELETE SET NULL,
+ stripe_id text PRIMARY KEY, created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS billing_prices (
+ id text PRIMARY KEY,product_id text NOT NULL,snapshot_hash text NOT NULL UNIQUE,
+ snapshot jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS billing_checkouts (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+ business_id uuid REFERENCES businesses(id) ON DELETE SET NULL,scope_key text NOT NULL,
+ price_id text NOT NULL REFERENCES billing_prices(id),snapshot jsonb NOT NULL,
+ provider_session_id text UNIQUE,provider_url text,
+ state text NOT NULL DEFAULT 'pending' CHECK(state IN ('pending','completed','expired')),
+ expires_at timestamptz NOT NULL DEFAULT now()+interval '35 minutes',created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS billing_one_pending_checkout ON billing_checkouts(scope_key) WHERE state='pending';
+CREATE TABLE IF NOT EXISTS billing_subscriptions (
+ id text PRIMARY KEY,user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+ business_id uuid REFERENCES businesses(id) ON DELETE SET NULL,customer_id text NOT NULL,
+ scope_key text NOT NULL,price_id text NOT NULL REFERENCES billing_prices(id),snapshot jsonb NOT NULL,
+ status text NOT NULL,current_period_end timestamptz,cancel_at_period_end boolean NOT NULL DEFAULT false,
+ latest_invoice_id text,updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS billing_subscription_scope_idx ON billing_subscriptions(scope_key,status);
+CREATE TABLE IF NOT EXISTS billing_webhook_events (id text PRIMARY KEY,type text NOT NULL,processed_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS billing_invoices (
+ id text PRIMARY KEY,customer_id text NOT NULL,subscription_id text,user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+ status text NOT NULL,amount_due integer NOT NULL,amount_paid integer NOT NULL,currency text NOT NULL,
+ hosted_invoice_url text,invoice_pdf text,created_at timestamptz NOT NULL,updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS billing_credit_notes (
+ id text PRIMARY KEY,invoice_id text NOT NULL,customer_id text NOT NULL,amount integer NOT NULL,
+ currency text NOT NULL,status text NOT NULL,created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE OR REPLACE FUNCTION business_seat_capacity(bid uuid) RETURNS integer LANGUAGE sql STABLE AS $$
+ SELECT greatest(b.team_seat_limit,coalesce((SELECT max((s.snapshot->>'staff_seats')::int) FROM billing_subscriptions s
+ WHERE s.business_id=b.id AND s.status IN ('active','trialing') AND s.current_period_end>now()
+ AND s.snapshot->'features' ? 'additional_staff'),0)) FROM businesses b WHERE b.id=bid
+$$;
+CREATE OR REPLACE FUNCTION business_staff_allowed(bid uuid,uid uuid) RETURNS boolean LANGUAGE sql STABLE AS $$
+ SELECT EXISTS(SELECT 1 FROM business_team_members m WHERE m.business_id=bid AND m.user_id=uid
+ AND (SELECT count(*) FROM business_team_members x WHERE x.business_id=bid AND (x.joined_at,x.user_id)<=(m.joined_at,m.user_id))<=business_seat_capacity(bid))
+$$;
+ALTER TABLE billing_invoices ADD COLUMN IF NOT EXISTS payment_intent_id text;
+CREATE INDEX IF NOT EXISTS billing_invoice_payment_idx ON billing_invoices(payment_intent_id);
+CREATE TABLE IF NOT EXISTS billing_refunds (
+ charge_id text PRIMARY KEY,customer_id text NOT NULL,payment_intent_id text,
+ amount integer NOT NULL,amount_refunded integer NOT NULL,currency text NOT NULL,
+ updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE OR REPLACE FUNCTION business_branch_capacity(bid uuid) RETURNS integer LANGUAGE sql STABLE AS $$
+ SELECT greatest(1,coalesce((SELECT max((s.snapshot->>'branch_limit')::int) FROM billing_subscriptions s
+ WHERE s.business_id=bid AND s.status IN ('active','trialing') AND s.current_period_end>now()),1))
+$$;
 COMMIT;
 

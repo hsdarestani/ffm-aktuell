@@ -25,10 +25,12 @@ export async function POST(req:NextRequest){
       new Set(d.features).size!==d.features.length||!Number.isInteger(d.trial_days)||d.trial_days<0||d.trial_days>30){
     await tx.query('ROLLBACK');return fail('Preise, Vorteile oder Probezeit ungültig');
    }
+   const seats=d.staff_seats??old.rows[0].staff_seats,branches=d.branch_limit??old.rows[0].branch_limit;
+   if(!Number.isInteger(seats)||seats<0||seats>50||!Number.isInteger(branches)||branches<1||branches>100){await tx.query('ROLLBACK');return fail('Mitarbeiter oder Standortlimit ungültig')}
    const terms=typeof d.legal_terms_url==='string'?d.legal_terms_url.trim():'';
    if(terms&&(!terms.startsWith('https://')||terms.length>1000)){await tx.query('ROLLBACK');return fail('Nur HTTPS Vertragsbedingungen erlaubt')}
-   await tx.query("UPDATE subscription_plans SET title_de=$2,title_en=$3,features=$4,monthly_price_cents=$5,annual_price_cents=$6,trial_days=$7,legal_terms_url=$8,status='draft',approval_note=NULL,approved_by=NULL,approved_at=NULL,updated_at=now() WHERE code=$1",
-    [d.code,titleDe,titleEn,d.features,d.monthly_price_cents,d.annual_price_cents,d.trial_days,terms||null]);
+   await tx.query("UPDATE subscription_plans SET title_de=$2,title_en=$3,features=$4,monthly_price_cents=$5,annual_price_cents=$6,trial_days=$7,legal_terms_url=$8,staff_seats=$9,branch_limit=$10,status='draft',approval_note=NULL,approved_by=NULL,approved_at=NULL,updated_at=now() WHERE code=$1",
+    [d.code,titleDe,titleEn,d.features,d.monthly_price_cents,d.annual_price_cents,d.trial_days,terms||null,seats,branches]);
   }else if(d.action==='approve'){
    const note=typeof d.approval_note==='string'?d.approval_note.trim():'';
    if(d.explicit_price_approval!==true||note.length<25||note.length>1000){await tx.query('ROLLBACK');return fail('Offizielle Tarifentscheidung mit Quelle und mindestens 25 Zeichen erforderlich')}

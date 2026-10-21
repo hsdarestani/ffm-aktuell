@@ -544,11 +544,20 @@ try{
  if(outsiderInsights.status!==403)throw Error('Former team member read merchant insights after removal');
  const publicInsights=await get('business/insights?business_id='+createdBusiness.body.id);
  if(publicInsights.status!==401)throw Error('Merchant insights leaked to a guest');
+ const freeInsights=await get('business/insights?business_id='+createdBusiness.body.id,client);
+ if(freeInsights.status!==402)throw Error('Free company bypassed premium analytics entitlement');
+ const testPrice='price_ci_'+randomBytes(6).toString('hex'),testSub='sub_ci_'+randomBytes(6).toString('hex');
+ const testSnapshot={code:'business_premium_1',audience:'business',title_de:'CI Premium',features:['analytics','additional_staff'],staff_seats:3,branch_limit:3,amount:1990,interval:'month',legal_terms_url:'https://example.org/terms'};
+ await pool.query('INSERT INTO billing_prices(id,product_id,snapshot_hash,snapshot) VALUES($1,$2,$3,$4)',[testPrice,'prod_ci',randomBytes(32).toString('hex'),JSON.stringify(testSnapshot)]);
+ await pool.query("INSERT INTO billing_subscriptions(id,user_id,business_id,customer_id,scope_key,price_id,snapshot,status,current_period_end) VALUES($1,$2,$3,'cus_ci',$4,$5,$6,'active',now()+interval '1 day')",[testSub,authorId,createdBusiness.body.id,'business:'+createdBusiness.body.id,testPrice,JSON.stringify(testSnapshot)]);
  const insights=await get('business/insights?business_id='+createdBusiness.body.id,client);
  if(insights.status!==200||insights.body.coupons_claimed!==1||insights.body.coupons_redeemed!==1||
     insights.body.revenue!==null||insights.body.impressions!==null||insights.body.visit_conversions!==null)
     throw Error('Business insights inconsistent or invented revenue/visits: '+JSON.stringify(insights));
  if(insights.body.followers!==null)throw Error('Small follower aggregate ignored disclosure threshold');
+ await pool.query("UPDATE billing_subscriptions SET current_period_end=now()-interval '1 second' WHERE id=$1",[testSub]);
+ if((await get('business/insights?business_id='+createdBusiness.body.id,client)).status!==402)throw Error('Expired subscription retained premium analytics');
+ await pool.query('DELETE FROM billing_subscriptions WHERE id=$1',[testSub]);
  console.log('PASS: authorized merchant aggregate counts, redeemed coupons, revocation and privacy thresholds');
  // Phase 5: proof of media privacy without accepting any unscanned file.
  // Fake media bytes are inserted DIRECTLY into this disposable CI database only.

@@ -1,0 +1,16 @@
+'use client';
+import {useEffect,useState} from 'react';
+type Subscription={id:string;status:string;snapshot:{title_de:string};current_period_end:string|null;cancel_at_period_end:boolean};
+type Invoice={id:string;status:string;amount_paid:number;currency:string;hosted_invoice_url:string|null;invoice_pdf:string|null;created_at:string};
+export default function BillingAccount(){
+ const [data,setData]=useState<{configured:boolean;subscriptions:Subscription[];invoices:Invoice[];refunds:{charge_id:string;amount_refunded:number;currency:string}[];credits:{id:string;amount:number;currency:string;status:string}[]}|null>(null),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
+ useEffect(()=>{const c=new AbortController();fetch('/api/billing/status',{signal:c.signal,cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject()).then(setData).catch(()=>{if(!c.signal.aborted)setMessage('Abostatus derzeit nicht erreichbar.')});return()=>c.abort()},[]);
+ async function manage(id:string){setBusy(true);try{const r=await fetch('/api/billing/portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription_id:id})});const d=await r.json();if(!r.ok)throw Error(d.error);window.location.assign(d.url)}catch(e){setMessage((e as Error).message);setBusy(false)}}
+ if(!data?.subscriptions.length&&!data?.invoices.length)return message?<p role="status">{message}</p>:null;
+ return <section className="ffm-profile-panel"><h2>Abos und Rechnungen</h2><p>Ein Rücksprung von der Zahlung ist noch keine Freischaltung. Der Zahlungsdienst bestätigt den Status unabhängig.</p><p role="status">{message}</p>
+ {data.subscriptions.map(s=><article key={s.id}><h3>{s.snapshot.title_de}</h3><p>{{active:'Aktiv',trialing:'Probezeit',past_due:'Zahlung offen',canceled:'Beendet',incomplete:'Zahlung unvollständig',incomplete_expired:'Buchung abgelaufen',unpaid:'Nicht bezahlt',paused:'Pausiert',refunded:'Aktuelle Zahlung erstattet'}[s.status]||'Wird geprüft'}{s.cancel_at_period_end?' · Zum Laufzeitende gekündigt':''}</p>{s.current_period_end&&<p>Laufzeit bis {new Date(s.current_period_end).toLocaleDateString('de-DE')}</p>}<button type="button" disabled={busy||!data.configured} onClick={()=>void manage(s.id)}>Abo verwalten, wechseln oder kündigen</button></article>)}
+ {data.invoices.length>0&&<><h3>Rechnungen</h3><ul>{data.invoices.map(i=><li key={i.id}>{new Date(i.created_at).toLocaleDateString('de-DE')} · {new Intl.NumberFormat('de-DE',{style:'currency',currency:i.currency.toUpperCase()}).format(i.amount_paid/100)} · {i.status}{i.hosted_invoice_url&&<a href={i.hosted_invoice_url} target="_blank" rel="noopener noreferrer"> Rechnung öffnen</a>}</li>)}</ul></>}
+ {data.refunds?.length>0&&<><h3>Erstattungen</h3><ul>{data.refunds.map(r=><li key={r.charge_id}>{new Intl.NumberFormat('de-DE',{style:'currency',currency:r.currency.toUpperCase()}).format(r.amount_refunded/100)}</li>)}</ul></>}
+ {data.credits.length>0&&<><h3>Gutschriften</h3><ul>{data.credits.map(c=><li key={c.id}>{new Intl.NumberFormat('de-DE',{style:'currency',currency:c.currency.toUpperCase()}).format(c.amount/100)} · {c.status}</li>)}</ul></>}
+ </section>;
+}

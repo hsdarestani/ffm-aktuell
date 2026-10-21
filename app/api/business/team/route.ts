@@ -8,7 +8,7 @@ const uuid=/^[a-f0-9-]{36}$/,emailPattern=/^[^@\s]{1,64}@[^@\s]{1,180}\.[^@\s]{2
 const err=(message:string,status=400)=>NextResponse.json({error:message},{status});
 export async function GET(req:NextRequest){
  const u=await sessionUser(req);if(!u)return err('Anmeldung erforderlich',401);
- const owned=await query("SELECT id,name,status,team_seat_limit FROM businesses WHERE owner_id=$1 ORDER BY created_at LIMIT 1",[u.id]);
+ const owned=await query("SELECT id,name,status,business_seat_capacity(id) AS team_seat_limit FROM businesses WHERE owner_id=$1 ORDER BY created_at LIMIT 1",[u.id]);
  const b=owned.rows[0];if(!b)return NextResponse.json({business:null,members:[],invites:[]});
  const [members,invites,places]=await Promise.all([
   query("SELECT tm.user_id,tm.role,tm.all_places,tm.place_ids,tm.joined_at,u.email,u.display_name FROM business_team_members tm JOIN users u ON u.id=tm.user_id WHERE tm.business_id=$1 ORDER BY tm.joined_at",[b.id]),
@@ -25,7 +25,7 @@ export async function POST(req:NextRequest){
  const tx=await pool.connect();let mailed:{to:string,token:string,inviteId:string,businessName:string}|null=null;
  try{
   await tx.query('BEGIN');
-  const owned=await tx.query("SELECT id,name,status,team_seat_limit FROM businesses WHERE owner_id=$1 ORDER BY created_at LIMIT 1 FOR UPDATE",[u.id]);
+  const owned=await tx.query("SELECT id,name,status,business_seat_capacity(id) AS team_seat_limit FROM businesses WHERE owner_id=$1 ORDER BY created_at LIMIT 1 FOR UPDATE",[u.id]);
   const b=owned.rows[0];if(!b||b.status!=='approved'){await tx.query('ROLLBACK');return err('Unternehmen noch nicht freigegeben',403)}
   let allPlaces=true,placeIds:string[]=[];
   if(d.action==='invite'||d.action==='scope'){

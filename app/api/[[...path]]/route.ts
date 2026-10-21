@@ -137,7 +137,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   }
   if(method==='GET'&&path==='me/export'){
     rate(req,'account-export');const u=need(user);
-    const [prefs,bookmarks,candidateBookmarks,eventMarks,posts,comments,reviews,tours,follows,businesses,media,stories,grants,coupons,memberships,invites,social,verification,push]=await Promise.all([
+    const [prefs,bookmarks,candidateBookmarks,eventMarks,posts,comments,reviews,tours,follows,businesses,media,stories,grants,coupons,memberships,invites,social,verification,push,billingSubs,billingInvoices,adminRoles]=await Promise.all([
       query('SELECT interests,districts,share_activity,notify_events,notify_news,notify_offers,updated_at FROM user_preferences WHERE user_id=$1',[u.id]),
       query('SELECT place_id,created_at FROM favorites WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
       query('SELECT osm_id,created_at FROM candidate_favorites WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
@@ -152,11 +152,14 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       query('SELECT id,media_id,caption,status,created_at,expires_at FROM stories WHERE owner_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
       query('SELECT id,business_id,media_id,created_at,expires_at,revoked_at FROM media_right_grants WHERE owner_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
       query('SELECT c.id,c.deal_id,c.created_at,c.redeemed_at FROM coupon_claims c WHERE c.user_id=$1 ORDER BY c.created_at DESC LIMIT 2000',[u.id]),
-      query('SELECT business_id,role,joined_at FROM business_team_members WHERE user_id=$1',[u.id]),
+      query('SELECT business_id,role,all_places,place_ids,joined_at FROM business_team_members WHERE user_id=$1',[u.id]),
       query('SELECT id,business_id,role,created_at,expires_at,redeemed_at,revoked_at FROM business_team_invites WHERE lower(invite_email)=lower($1) ORDER BY created_at DESC LIMIT 1000',[u.email]),
       query('SELECT provider,email_at_link,linked_at FROM social_identities WHERE user_id=$1',[u.id]),
       query('SELECT email_verified_at FROM users WHERE id=$1',[u.id]),
-      query('SELECT id,created_at,updated_at FROM push_subscriptions WHERE user_id=$1',[u.id])
+      query('SELECT id,created_at,updated_at FROM push_subscriptions WHERE user_id=$1',[u.id]),
+      query('SELECT id,business_id,snapshot,status,current_period_end,cancel_at_period_end FROM billing_subscriptions WHERE user_id=$1',[u.id]),
+      query('SELECT id,status,amount_due,amount_paid,currency,created_at FROM billing_invoices WHERE user_id=$1',[u.id]),
+      query('SELECT role_code,created_at FROM admin_role_assignments WHERE user_id=$1',[u.id])
     ]);
     const response=ok({exported_at:new Date().toISOString(),account:{id:u.id,email:u.email,display_name:u.display_name,language:u.language},
       preferences:prefs.rows[0]||null,favorites:bookmarks.rows,candidate_favorites:candidateBookmarks.rows,
@@ -164,7 +167,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       tours:tours.rows,followed_people:follows.rows,businesses:businesses.rows,
       uploaded_media:media.rows,stories:stories.rows,media_rights:grants.rows,coupon_claims:coupons.rows,
       company_memberships:memberships.rows,team_invitations:invites.rows,linked_social_providers:social.rows,
-      push_devices:push.rows,email_verified_at:verification.rows[0]?.email_verified_at||null});
+      subscriptions:billingSubs.rows,invoices:billingInvoices.rows,administrative_roles:adminRoles.rows,push_devices:push.rows,email_verified_at:verification.rows[0]?.email_verified_at||null});
     response.headers.set('Cache-Control','no-store, private');
     return response;
   }
@@ -181,6 +184,8 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   if(method==='POST'&&path==='me/delete'){
     rate(req,'account-delete');const u=need(user);
     if(u.role==='admin')return bad('Administrators need an editorial handover before deleting their account',403);
+    const activeBilling=await query("SELECT id FROM billing_subscriptions WHERE user_id=$1 AND status NOT IN ('canceled','incomplete_expired') UNION ALL SELECT id::text FROM billing_checkouts WHERE user_id=$1 AND state='pending' AND expires_at>now()",[u.id]);
+    if(activeBilling.rowCount)return bad('Bitte ein laufendes Abo zuerst kündigen und das Ende der Laufzeit abwarten. Offene Buchungen laufen nach 35 Minuten ab.',409);
     const owned=await query("SELECT id FROM businesses WHERE owner_id=$1 AND status IN ('approved','suspended') LIMIT 1",[u.id]);
     if(owned.rowCount)return bad('Transfer or close your verified business with support before deleting your account',409);
     const b=parse(z.object({password:z.string().optional().default(''),confirmation:z.literal('KONTO LÖSCHEN')}),await payload(req));
@@ -831,13 +836,21 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     admin(user,b.type==='business'||b.type==='claim'?'business':b.type==='place'?'editorial':b.type==='deal'?'marketing':'moderation');
     const [table,yes]=map[b.type];const target=b.approve?yes:'rejected';
     if(b.type==='claim'&&b.approve){
-      const claim=await query('SELECT business_id,place_id FROM claims WHERE id=$1',[b.id]);
-      if(!claim.rowCount)return bad('Claim not found',404);
-      const targetPlace=await query('SELECT business_id FROM places WHERE id=$1',[claim.rows[0].place_id]);
-      if(targetPlace.rows[0]?.business_id && targetPlace.rows[0].business_id!==claim.rows[0].business_id)return bad('Already owned',409);
-      const bstatus=await query("SELECT id FROM businesses WHERE id=$1 AND status='approved'",[claim.rows[0].business_id]);
-      if(!bstatus.rowCount)return bad('Approve business first',409);
-      await query('UPDATE places SET business_id=$1 WHERE id=$2',[claim.rows[0].business_id,claim.rows[0].place_id]);
+      const tx=await pool.connect();
+      try{await tx.query('BEGIN');
+       const claim=(await tx.query('SELECT business_id,place_id FROM claims WHERE id=$1 FOR UPDATE',[b.id])).rows[0];
+       if(!claim){await tx.query('ROLLBACK');return bad('Claim not found',404)}
+       const company=await tx.query("SELECT id FROM businesses WHERE id=$1 AND status='approved' FOR UPDATE",[claim.business_id]);
+       if(!company.rowCount){await tx.query('ROLLBACK');return bad('Approve business first',409)}
+       const place=(await tx.query('SELECT business_id FROM places WHERE id=$1 FOR UPDATE',[claim.place_id])).rows[0];
+       if(!place||place.business_id&&place.business_id!==claim.business_id){await tx.query('ROLLBACK');return bad('Already owned',409)}
+       const capacity=await tx.query('SELECT business_branch_capacity($1) AS capacity,(SELECT count(*) FROM places WHERE business_id=$1 AND id<>$2) AS used',[claim.business_id,claim.place_id]);
+       if(Number(capacity.rows[0].used)>=capacity.rows[0].capacity){await tx.query('ROLLBACK');return bad('Standortlimit des Tarifs erreicht',409)}
+       await tx.query('UPDATE places SET business_id=$1 WHERE id=$2',[claim.business_id,claim.place_id]);
+       await tx.query("UPDATE claims SET status='approved' WHERE id=$1",[b.id]);
+       await tx.query("INSERT INTO audit_log(actor_id,action,target_type,target_id) VALUES($1,'review:approved','claim',$2)",[u.id,b.id]);
+       await tx.query('COMMIT');return ok({success:true});
+      }catch(e){await tx.query('ROLLBACK');throw e}finally{tx.release()}
     }
     const r=await query('UPDATE '+table+' SET status=$1 WHERE id=$2 RETURNING id',[target,b.id]);
     if(!r.rowCount)return bad('Not found',404);

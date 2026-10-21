@@ -159,3 +159,7 @@ Combined indoor/outdoor, family-friendly, wheelchair accessibility, relative pri
 ## 21 October 2026 operator handover
 
 Admin service readiness reports only configuration/reachability and actual inventory; no secrets are returned. [Technical handover](TECHNICAL_HANDOVER.md) records architecture, sitemap, domain and role boundaries, actual workflow acceptance, provider prerequisites, operational limitations and a remaining backlog. The generated [API inventory](API_INVENTORY.md) lists 114 literal handlers; full request/response OpenAPI coverage and granular admin roles remain open.
+
+## 21 October 2026 delegated roles and commercial lifecycle
+
+Department permissions and branch-scoped business staff are implemented in both APIs and navigation, with audited editable roles and immediate revocation. Real PostgreSQL HTTP CI passed for 05e14b0395bf81b5dc601c406a7063bc1d2422bb. Hosted web subscriptions, signed provider synchronization, immutable tariff snapshots, cancellation/portal changes, invoices, credits/refunds, expiry and paid analytics/staff/branch checks are now implemented. Editable initial price and capacity defaults are drafts until real contract release. See [decisions, tests and limits](COMMERCIAL_AND_ACCESS_20261021.md). Live provider acceptance, paid ad delivery, loyalty, remaining notification categories, phone authentication and the remaining assistant features are still open.
