@@ -681,5 +681,39 @@ CREATE TABLE IF NOT EXISTS discovery_tips (
 );
 ALTER TABLE push_deliveries DROP CONSTRAINT IF EXISTS push_deliveries_kind_check;
 ALTER TABLE push_deliveries ADD CONSTRAINT push_deliveries_kind_check CHECK(kind IN ('event','news','offer','following','tip'));
+-- Visit evidence is an explicit business confirmation, never inferred from GPS or a click.
+CREATE TABLE IF NOT EXISTS loyalty_programs (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),business_id uuid NOT NULL UNIQUE REFERENCES businesses(id) ON DELETE CASCADE,
+ goal integer NOT NULL DEFAULT 5 CHECK(goal BETWEEN 2 AND 50),
+ minimum_hours integer NOT NULL DEFAULT 24 CHECK(minimum_hours BETWEEN 1 AND 168),
+ reward text NOT NULL CHECK(char_length(reward) BETWEEN 10 AND 500),terms_url text NOT NULL CHECK(terms_url ~ '^https://'),
+ status text NOT NULL DEFAULT 'pending' CHECK(status IN ('draft','pending','published','rejected')),
+ first_active_at timestamptz,updated_at timestamptz NOT NULL DEFAULT now(),review_note text
+);
+CREATE TABLE IF NOT EXISTS confirmed_visits (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ place_id uuid NOT NULL REFERENCES places(id) ON DELETE CASCADE,business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+ confirmed_by uuid REFERENCES users(id) ON DELETE SET NULL,confirmed_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS confirmed_visits_customer_idx ON confirmed_visits(user_id,business_id,confirmed_at DESC);
+CREATE TABLE IF NOT EXISTS loyalty_cards (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),program_id uuid NOT NULL REFERENCES loyalty_programs(id) ON DELETE CASCADE,
+ user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ goal integer NOT NULL CHECK(goal BETWEEN 2 AND 50),minimum_hours integer NOT NULL DEFAULT 24 CHECK(minimum_hours BETWEEN 1 AND 168),reward text NOT NULL,terms_url text NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT now(),redeemed_at timestamptz,redeemed_by uuid REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS loyalty_current_card ON loyalty_cards(user_id,program_id) WHERE redeemed_at IS NULL;
+CREATE TABLE IF NOT EXISTS loyalty_card_visits (
+ card_id uuid NOT NULL REFERENCES loyalty_cards(id) ON DELETE CASCADE,
+ visit_id uuid NOT NULL UNIQUE REFERENCES confirmed_visits(id) ON DELETE CASCADE,PRIMARY KEY(card_id,visit_id)
+);
+CREATE TABLE IF NOT EXISTS visit_confirmation_requests (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),token_hash text NOT NULL UNIQUE,
+ user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,place_id uuid NOT NULL REFERENCES places(id) ON DELETE CASCADE,
+ business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+ kind text NOT NULL CHECK(kind IN ('visit','reward')),card_id uuid REFERENCES loyalty_cards(id) ON DELETE CASCADE,
+ created_at timestamptz NOT NULL DEFAULT now(),expires_at timestamptz NOT NULL DEFAULT now()+interval '10 minutes',used_at timestamptz
+);
+CREATE INDEX IF NOT EXISTS visit_confirmation_rate_idx ON visit_confirmation_requests(user_id,created_at DESC);
 COMMIT;
 

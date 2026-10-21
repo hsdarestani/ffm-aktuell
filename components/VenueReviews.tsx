@@ -3,7 +3,7 @@
 import {useEffect,useState,type FormEvent} from 'react';
 import {Star,Flag,ChevronDown} from 'lucide-react';
 
-type Review={id:string;rating:number;body:string;created_at:string;display_name:string};
+type Review={verified_visit?:boolean;id:string;rating:number;body:string;created_at:string;display_name:string};
 type Response={summary:{count:number;average:number|null};items:Review[]};
 type Props={
  placeId:string;demo?:boolean;loggedIn:boolean;
@@ -63,7 +63,7 @@ export default function VenueReviews({placeId,demo,loggedIn,onLogin,onNotice}:Pr
   {error?<p className="ffm-reviews-error">Bewertungen sind gerade nicht verfügbar.</p>:
    data.items.length?<div className="ffm-review-list">{data.items.map(r=><article className="ffm-review-record" key={r.id}>
     <div className="ffm-review-meta"><span>{'★'.repeat(r.rating)}{'☆'.repeat(5-r.rating)}</span><small>{r.display_name||'Nutzer'} · {new Date(r.created_at).toLocaleDateString('de-DE')}</small></div>
-    <p>{r.body}</p>
+    {r.verified_visit&&<small>Besuch vom Betrieb bestätigt</small>}<p>{r.body}</p>
     <button type="button" disabled={reported.includes(r.id)} onClick={()=>void report(r.id)} aria-label="Bewertung melden">
      <Flag size={13}/> {reported.includes(r.id)?'Gemeldet':'Melden'}</button>
    </article>)}</div>:<p className="ffm-reviews-empty">Noch keine freigegebenen Bewertungen.</p>}
@@ -80,3 +80,4 @@ export default function VenueReviews({placeId,demo,loggedIn,onLogin,onNotice}:Pr
   </details>
  </section>;
 }
+

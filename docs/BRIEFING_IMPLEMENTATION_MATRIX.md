@@ -167,3 +167,7 @@ Department permissions and branch-scoped business staff are implemented in both 
 ## Remaining web notification categories
 
 Offers, new moderated contributions at followed businesses and source-backed editorial city tips now have separate opt-ins and delivery-time eligibility checks. Publication timestamps are recorded on actual status transitions; migration does not manufacture notifications for old content. Unfollowing, unpublishing, expired offers, withdrawn tips and stale venue verification cancel pending deliveries. Tip scheduling/archiving is available to the editorial role and public tips resolve to real verified venue records. A malformed billing status response no longer crashes the surrounding private profile. Browser/HTTP CI must pass on the combined increment before deployment.
+
+## Merchant-confirmed visits and loyalty
+
+One-time private confirmation codes, merchant/branch authorization, interval/rate limits, immutable per-card reward/rule snapshots, marketing approval, one-time reward redemption, subsequent cycles, private profile wallet/export and merchant-confirmed review badges are implemented. Defaults and editable decisions are documented in [loyalty decisions](LOYALTY_DECISIONS_20261021.md). The evidence is specifically business confirmation, not GPS or purchase proof. Real rewards/conditions and live operator acceptance remain external prerequisites.

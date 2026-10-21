@@ -139,7 +139,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   }
   if(method==='GET'&&path==='me/export'){
     rate(req,'account-export');const u=need(user);
-    const [prefs,bookmarks,candidateBookmarks,eventMarks,posts,comments,reviews,tours,follows,businesses,media,stories,grants,coupons,memberships,invites,social,verification,push,billingSubs,billingInvoices,adminRoles]=await Promise.all([
+    const [prefs,bookmarks,candidateBookmarks,eventMarks,posts,comments,reviews,tours,follows,businesses,media,stories,grants,coupons,memberships,invites,social,verification,push,billingSubs,billingInvoices,adminRoles,loyaltyCards,confirmedVisits]=await Promise.all([
       query('SELECT interests,districts,share_activity,notify_events,notify_news,notify_offers,notify_following,notify_tips,updated_at FROM user_preferences WHERE user_id=$1',[u.id]),
       query('SELECT place_id,created_at FROM favorites WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
       query('SELECT osm_id,created_at FROM candidate_favorites WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
@@ -161,7 +161,9 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       query('SELECT id,created_at,updated_at FROM push_subscriptions WHERE user_id=$1',[u.id]),
       query('SELECT id,business_id,snapshot,status,current_period_end,cancel_at_period_end FROM billing_subscriptions WHERE user_id=$1',[u.id]),
       query('SELECT id,status,amount_due,amount_paid,currency,created_at FROM billing_invoices WHERE user_id=$1',[u.id]),
-      query('SELECT role_code,created_at FROM admin_role_assignments WHERE user_id=$1',[u.id])
+      query('SELECT role_code,created_at FROM admin_role_assignments WHERE user_id=$1',[u.id]),
+      query('SELECT id,program_id,goal,reward,terms_url,created_at,redeemed_at FROM loyalty_cards WHERE user_id=$1',[u.id]),
+      query('SELECT id,place_id,business_id,confirmed_at FROM confirmed_visits WHERE user_id=$1',[u.id])
     ]);
     const response=ok({exported_at:new Date().toISOString(),account:{id:u.id,email:u.email,display_name:u.display_name,language:u.language},
       preferences:prefs.rows[0]||null,favorites:bookmarks.rows,candidate_favorites:candidateBookmarks.rows,
@@ -169,7 +171,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       tours:tours.rows,followed_people:follows.rows,businesses:businesses.rows,
       uploaded_media:media.rows,stories:stories.rows,media_rights:grants.rows,coupon_claims:coupons.rows,
       company_memberships:memberships.rows,team_invitations:invites.rows,linked_social_providers:social.rows,
-      subscriptions:billingSubs.rows,invoices:billingInvoices.rows,administrative_roles:adminRoles.rows,push_devices:push.rows,email_verified_at:verification.rows[0]?.email_verified_at||null});
+      loyalty_cards:loyaltyCards.rows,confirmed_visits:confirmedVisits.rows,subscriptions:billingSubs.rows,invoices:billingInvoices.rows,administrative_roles:adminRoles.rows,push_devices:push.rows,email_verified_at:verification.rows[0]?.email_verified_at||null});
     response.headers.set('Cache-Control','no-store, private');
     return response;
   }
@@ -350,7 +352,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     const col=isCandidate?'osm_id':'place_id';
     const [summary,items]=await Promise.all([
       query("SELECT count(*)::int AS count,round(avg(rating)::numeric,1)::float AS average FROM venue_reviews WHERE "+col+"=$1 AND status='published'",[venueId]),
-      query("SELECT r.id,r.rating,r.body,r.created_at,LEFT(u.display_name,1) AS display_name FROM venue_reviews r JOIN users u ON u.id=r.user_id WHERE r."+col+"=$1 AND r.status='published' ORDER BY r.created_at DESC LIMIT 30",[venueId])
+      query("SELECT r.id,r.rating,r.body,r.created_at,EXISTS(SELECT 1 FROM confirmed_visits cv WHERE cv.user_id=r.user_id AND cv.place_id=r.place_id) AS verified_visit,LEFT(u.display_name,1) AS display_name FROM venue_reviews r JOIN users u ON u.id=r.user_id WHERE r."+col+"=$1 AND r.status='published' ORDER BY r.created_at DESC LIMIT 30",[venueId])
     ]);
     return ok({summary:summary.rows[0],items:items.rows});
   }

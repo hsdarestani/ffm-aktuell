@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
+import {LoyaltyConfirm} from '@/components/Loyalty';
 import BusinessBranchEditor from '@/components/BusinessBranchEditor';
 import BusinessInsights from '@/components/BusinessInsights';
 type Place={id:string;business_id:string;name:string;address:string;phone:string|null;website:string|null;opening_hours_text:string|null;verification_status:string;status:string;role:string};
@@ -10,6 +11,7 @@ export default function TeamMemberWorkspace({onNotice}:{onNotice:(message:string
  if(!ready||!teams.length)return null;
  return <section className="ffm-team-workspace"><h2>Meine Unternehmensteams</h2>
   {teams.map(t=><article key={t.business_id}><h3>{t.business_name}</h3><p>{t.role==='editor'?'Du darfst Standortkorrekturen zur Redaktion senden.':'Du darfst die zugewiesenen Standortdaten nur ansehen.'}</p>{t.all_places&&<BusinessInsights businessId={t.business_id}/>}
+    {t.role==='editor'&&<LoyaltyConfirm/>}
     {t.role==='editor'?<BusinessBranchEditor places={places.filter(p=>p.business_id===t.business_id)} changes={[]} businessStatus="approved" onNotice={onNotice} onChanged={()=>onNotice('Änderung zur Redaktion gesendet.')}/>:
     <div>{places.filter(p=>p.business_id===t.business_id).map(p=><div key={p.id} className="ffm-team-viewer-venue"><strong>{p.name}</strong><span>{p.address||'Adresse noch nicht gepflegt'}</span></div>)}</div>}
    </article>)}

@@ -82,6 +82,8 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | POST | `/api/internal/push-tick` | [app/api/internal/push-tick/route.ts](../app/api/internal/push-tick/route.ts) |
 | GET | `/api/location` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/lod2-tile` | [app/api/lod2-tile/route.ts](../app/api/lod2-tile/route.ts) |
+| GET | `/api/loyalty` | [app/api/loyalty/route.ts](../app/api/loyalty/route.ts) |
+| POST | `/api/loyalty` | [app/api/loyalty/route.ts](../app/api/loyalty/route.ts) |
 | GET | `/api/me` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/me/account-security` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/me/delete` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |

@@ -2,6 +2,7 @@
 import {useEffect,useState,type FormEvent} from 'react';
 import {BookMarked,CalendarDays,Download,LockKeyhole,MapPin,Save,Trash2} from 'lucide-react';
 import {CouponWallet} from '@/components/CouponPilot';
+import {LoyaltyWallet} from '@/components/Loyalty';
 import BillingAccount from '@/components/BillingAccount';
 import PushSettings from '@/components/PushSettings';
 import SavedEvents from '@/components/SavedEvents';
@@ -82,6 +83,7 @@ export default function ProfileSettings({user,onLogin,onNotice,onDeleted,onSaved
     <label className="ffm-profile-check" key={key}><input type="checkbox" checked={pref[key]} onChange={e=>setPref(v=>({...v,[key]:e.target.checked}))}/><span>{title}</span></label>)}
    <button type="submit" disabled={busy||!loaded} className="ffm-profile-primary"><Save size={16}/> Speichern</button>
   </form>
+  <LoyaltyWallet/>
   <BillingAccount/>
   <PushSettings key={user.id+'-push'}/>
   <SavedEvents key={user.id} userId={user.id} onNotice={onNotice}/>

@@ -559,6 +559,37 @@ try{
  if((await get('business/insights?business_id='+createdBusiness.body.id,client)).status!==402)throw Error('Expired subscription retained premium analytics');
  await pool.query('DELETE FROM billing_subscriptions WHERE id=$1',[testSub]);
  console.log('PASS: authorized merchant aggregate counts, redeemed coupons, revocation and privacy thresholds');
+ // Merchant-confirmed visits and loyalty: real HTTP + row locks, no production data.
+ const loyaltyCustomer=await signup('loyalty-customer');
+ const loyaltyProgram=await post('loyalty',client,{action:'save_program',business_id:createdBusiness.body.id,goal:2,minimum_hours:1,reward:'CI real test reward with explicit conditions',terms_url:'https://example.org/loyalty'});
+ if(loyaltyProgram.status!==200)throw Error('Loyalty program save failed: '+JSON.stringify(loyaltyProgram));
+ const ownerProgram=await get('loyalty?scope=business&business_id='+createdBusiness.body.id,client),programId=ownerProgram.body.program.id;
+ if((await post('loyalty',cookie,{action:'review_program',id:programId,approve:true,reason:'CI explicit review of real test program'})).status!==200)throw Error('Loyalty moderation failed');
+ const visitCodes=await Promise.all([1,2].map(()=>post('loyalty',loyaltyCustomer,{action:'request_visit',place_id:publicPlace.rows[0].id})));
+ if(visitCodes.some(v=>v.status!==201))throw Error('Private visit code creation failed');
+ if((await post('loyalty',reader,{action:'confirm',code:visitCodes[0].body.code})).status!==403)throw Error('Outsider confirmed a customer visit');
+ const confirmedVisits=await Promise.all(visitCodes.map(v=>post('loyalty',client,{action:'confirm',code:v.body.code})));
+ if(confirmedVisits.filter(v=>v.status===200).length!==1||confirmedVisits.filter(v=>v.status===409).length!==1)throw Error('Parallel visit codes bypassed minimum interval');
+ const loyaltyIdentity=(await get('me',loyaltyCustomer)).body.user;
+ await pool.query("UPDATE confirmed_visits SET confirmed_at=now()-interval '2 hours' WHERE user_id=$1",[loyaltyIdentity.id]);
+ const unusedCode=visitCodes[confirmedVisits.findIndex(v=>v.status===409)].body.code;
+ if((await post('loyalty',client,{action:'confirm',code:unusedCode})).status!==200)throw Error('Valid later visit could not be confirmed');
+ const readyWallet=await get('loyalty',loyaltyCustomer),readyCard=readyWallet.body.cards.find(c=>!c.redeemed_at);
+ if(readyCard.visits!==2||readyCard.goal!==2)throw Error('Loyalty visit allocation incorrect');
+ if((await post('loyalty',client,{action:'save_program',business_id:createdBusiness.body.id,goal:5,minimum_hours:24,reward:'CI changed reward for next card only',terms_url:'https://example.org/loyalty-next'})).status!==200)throw Error('Loyalty rule editing failed');
+ if((await post('loyalty',cookie,{action:'review_program',id:programId,approve:true,reason:'CI new future card terms reviewed'})).status!==200)throw Error('Updated program moderation failed');
+ const rewardCodes=await Promise.all([1,2].map(()=>post('loyalty',loyaltyCustomer,{action:'request_reward',card_id:readyCard.id,place_id:publicPlace.rows[0].id})));
+ if(rewardCodes.some(r=>r.status!==201))throw Error('Ready reward code creation failed');
+ const redeemedRewards=await Promise.all(rewardCodes.map(r=>post('loyalty',client,{action:'confirm',code:r.body.code})));
+ if(redeemedRewards.filter(r=>r.status===200).length!==1||redeemedRewards.filter(r=>r.status===409).length!==1)throw Error('One reward was redeemed twice in parallel');
+ const afterReward=await get('loyalty',loyaltyCustomer);
+ if(afterReward.body.cards.filter(c=>c.redeemed_at).length!==1||afterReward.body.cards.find(c=>!c.redeemed_at)?.goal!==5)throw Error('Reward snapshot/new cycle incorrect');
+ const visitReview=await post('reviews',loyaltyCustomer,{place_id:publicPlace.rows[0].id,rating:2,body:'Actual test review after a merchant confirmed visit.'});
+ if(visitReview.status!==201||(await post('admin/moderate-review',cookie,{id:visitReview.body.id,approve:true})).status!==200)throw Error('Visit-backed review could not be moderated');
+ const proofReviews=await get('reviews?place_id='+publicPlace.rows[0].id);
+ if(!proofReviews.body.items.find(r=>r.id===visitReview.body.id)?.verified_visit)throw Error('Merchant visit evidence was not attached to the review');
+ if((await get('loyalty',reader)).body.cards.length)throw Error('Private loyalty cards leaked to another account');
+ console.log('PASS: merchant-confirmed visits, parallel confirmation limits, immutable reward snapshots, one-time rewards and review evidence');
  // Phase 5: proof of media privacy without accepting any unscanned file.
  // Fake media bytes are inserted DIRECTLY into this disposable CI database only.
  // This does not test or bypass the scanner on any production server.
