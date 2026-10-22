@@ -801,3 +801,33 @@ INSERT INTO ad_rates(placement,daily_cents) VALUES('new_openings',1500) ON CONFL
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended_at timestamptz;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS suspension_reason text;
+
+ALTER TABLE stories ADD COLUMN IF NOT EXISTS business_id uuid REFERENCES businesses(id) ON DELETE CASCADE;
+ALTER TABLE stories ADD COLUMN IF NOT EXISTS place_id uuid REFERENCES places(id) ON DELETE CASCADE;
+CREATE OR REPLACE FUNCTION business_story_access(bid uuid,pid uuid) RETURNS boolean LANGUAGE sql STABLE AS $$
+ SELECT EXISTS(SELECT 1 FROM businesses b JOIN places p ON p.business_id=b.id
+ JOIN billing_subscriptions s ON s.business_id=b.id AND s.scope_key='business:'||b.id::text
+ WHERE b.id=bid AND p.id=pid AND b.status='approved' AND p.status='published'
+ AND s.status IN ('active','trialing') AND s.current_period_end>now() AND s.snapshot->'features' ? 'stories')
+$$;
+
+ALTER TABLE stories DROP CONSTRAINT IF EXISTS stories_business_pair;
+ALTER TABLE stories ADD CONSTRAINT stories_business_pair CHECK((business_id IS NULL)=(place_id IS NULL));
+
+CREATE TABLE IF NOT EXISTS venue_review_replies (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),review_id uuid NOT NULL UNIQUE REFERENCES venue_reviews(id) ON DELETE CASCADE,
+ business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,review_version text NOT NULL,body text NOT NULL CHECK(char_length(body) BETWEEN 20 AND 1000),
+ status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','published','rejected')),
+ created_by uuid REFERENCES users(id) ON DELETE SET NULL,created_at timestamptz NOT NULL DEFAULT now(),
+ reviewed_by uuid REFERENCES users(id) ON DELETE SET NULL,reviewed_at timestamptz
+);
+
+CREATE OR REPLACE FUNCTION business_deal_access(bid uuid,pid uuid) RETURNS boolean LANGUAGE sql STABLE AS $$
+ SELECT EXISTS(SELECT 1 FROM businesses b JOIN billing_subscriptions s ON s.business_id=b.id AND s.scope_key='business:'||b.id::text
+ WHERE b.id=bid AND b.status='approved' AND (pid IS NULL OR EXISTS(SELECT 1 FROM places p WHERE p.id=pid AND p.business_id=bid AND p.status='published'))
+ AND s.status IN ('active','trialing') AND s.current_period_end>now() AND s.snapshot->'features' ? 'extended_profile')
+$$;
+
+CREATE OR REPLACE FUNCTION business_profile_access(bid uuid) RETURNS boolean LANGUAGE sql STABLE AS $$
+ SELECT business_deal_access(bid,NULL::uuid)
+$$;

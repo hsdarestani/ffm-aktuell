@@ -19,8 +19,8 @@ export async function POST(req:NextRequest){
  if(!uuid.test(b?.id||'')||!['story','highlight'].includes(b?.type)||typeof b.approve!=='boolean')return NextResponse.json({error:'Invalid input'},{status:400});
  const status=b.approve?'published':'rejected';
  const sql=b.type==='story'
-  ?"UPDATE stories s SET status=$2,reviewed_by=$3,reviewed_at=now() FROM user_media m WHERE s.id=$1 AND s.status='pending' AND s.media_id=m.id AND s.expires_at>now() AND m.status='approved' RETURNING s.id"
-  :"UPDATE business_highlights h SET status=$2,reviewed_by=$3,reviewed_at=now() FROM media_right_grants g JOIN user_media m ON m.id=g.media_id JOIN businesses b ON b.id=g.business_id WHERE h.id=$1 AND h.status='pending' AND h.grant_id=g.id AND h.business_id=b.id AND g.revoked_at IS NULL AND g.expires_at>now() AND m.status='approved' AND b.status='approved' RETURNING h.id";
+  ?"UPDATE stories s SET status=$2,reviewed_by=$3,reviewed_at=now() FROM user_media m WHERE s.id=$1 AND s.status='pending' AND s.media_id=m.id AND s.expires_at>now() AND m.status='approved' AND ($2='rejected' OR s.business_id IS NULL OR business_story_access(s.business_id,s.place_id)) RETURNING s.id"
+  :"UPDATE business_highlights h SET status=$2,reviewed_by=$3,reviewed_at=now() FROM media_right_grants g JOIN user_media m ON m.id=g.media_id JOIN businesses b ON b.id=g.business_id WHERE h.id=$1 AND h.status='pending' AND h.grant_id=g.id AND h.business_id=b.id AND g.revoked_at IS NULL AND g.expires_at>now() AND m.status='approved' AND b.status='approved' AND ($2='rejected' OR business_profile_access(b.id)) RETURNING h.id";
  const r=await query(sql,[b.id,status,u.id]);
  if(!r.rowCount)return NextResponse.json({error:'Item not active or media approval required'},{status:409});
  await query("INSERT INTO audit_log(actor_id,action,target_type,target_id) VALUES($1,$2,$3,$4)",[u.id,b.type+':'+status,b.type,b.id]);

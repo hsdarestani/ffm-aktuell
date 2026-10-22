@@ -139,7 +139,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   }
   if(method==='GET'&&path==='me/export'){
     rate(req,'account-export');const u=need(user);
-    const [prefs,bookmarks,candidateBookmarks,eventMarks,posts,comments,reviews,tours,follows,businesses,media,stories,grants,coupons,memberships,invites,social,verification,push,billingSubs,billingInvoices,adminRoles,loyaltyCards,confirmedVisits,phoneIdentity]=await Promise.all([
+    const [prefs,bookmarks,candidateBookmarks,eventMarks,posts,comments,reviews,tours,follows,businesses,media,stories,grants,coupons,memberships,invites,social,verification,push,billingSubs,billingInvoices,adminRoles,loyaltyCards,confirmedVisits,phoneIdentity,reviewReplies]=await Promise.all([
       query('SELECT interests,districts,share_activity,notify_events,notify_news,notify_offers,notify_following,notify_tips,updated_at FROM user_preferences WHERE user_id=$1',[u.id]),
       query('SELECT place_id,created_at FROM favorites WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
       query('SELECT osm_id,created_at FROM candidate_favorites WHERE user_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
@@ -151,7 +151,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       query('SELECT followed_id,created_at FROM user_follows WHERE follower_id=$1',[u.id]),
       query('SELECT id,name,status,created_at FROM businesses WHERE owner_id=$1',[u.id]),
       query('SELECT id,media_type,size_bytes,status,license_confirmed,created_at FROM user_media WHERE owner_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
-      query('SELECT id,media_id,caption,status,created_at,expires_at FROM stories WHERE owner_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
+      query('SELECT id,media_id,business_id,place_id,caption,status,created_at,expires_at FROM stories WHERE owner_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
       query('SELECT id,business_id,media_id,created_at,expires_at,revoked_at FROM media_right_grants WHERE owner_id=$1 ORDER BY created_at DESC LIMIT 2000',[u.id]),
       query('SELECT c.id,c.deal_id,c.created_at,c.redeemed_at FROM coupon_claims c WHERE c.user_id=$1 ORDER BY c.created_at DESC LIMIT 2000',[u.id]),
       query('SELECT business_id,role,all_places,place_ids,joined_at FROM business_team_members WHERE user_id=$1',[u.id]),
@@ -164,11 +164,12 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       query('SELECT role_code,created_at FROM admin_role_assignments WHERE user_id=$1',[u.id]),
       query('SELECT id,program_id,goal,reward,terms_url,created_at,redeemed_at FROM loyalty_cards WHERE user_id=$1',[u.id]),
       query('SELECT id,place_id,business_id,confirmed_at FROM confirmed_visits WHERE user_id=$1',[u.id]),
-      query('SELECT phone,linked_at FROM phone_identities WHERE user_id=$1',[u.id])
+      query('SELECT phone,linked_at FROM phone_identities WHERE user_id=$1',[u.id]),
+      query('SELECT id,review_id,business_id,body,status,created_at FROM venue_review_replies WHERE created_by=$1 ORDER BY created_at DESC LIMIT 2000',[u.id])
     ]);
     const response=ok({exported_at:new Date().toISOString(),account:{id:u.id,email:u.email,display_name:u.display_name,language:u.language},
       preferences:prefs.rows[0]||null,favorites:bookmarks.rows,candidate_favorites:candidateBookmarks.rows,
-      event_favorites:eventMarks.rows,posts:posts.rows,comments:comments.rows,reviews:reviews.rows,
+      event_favorites:eventMarks.rows,posts:posts.rows,comments:comments.rows,reviews:reviews.rows,business_review_replies:reviewReplies.rows,
       tours:tours.rows,followed_people:follows.rows,businesses:businesses.rows,
       uploaded_media:media.rows,stories:stories.rows,media_rights:grants.rows,coupon_claims:coupons.rows,
       company_memberships:memberships.rows,team_invitations:invites.rows,linked_social_providers:social.rows,linked_phone:phoneIdentity.rows,
@@ -311,7 +312,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     const order=orders[qs.get('sort')||'newest'];if(!order)return bad('Invalid review sort');
     const [summary,items,own]=await Promise.all([
       query("SELECT count(*)::int AS count,round(avg(rating)::numeric,1)::float AS average FROM venue_reviews WHERE "+col+"=$1 AND status='published'",[venueId]),
-      query("SELECT r.id,r.rating,r.body,r.created_at,EXISTS(SELECT 1 FROM confirmed_visits cv WHERE cv.user_id=r.user_id AND cv.place_id=r.place_id) AS verified_visit,LEFT(u.display_name,1) AS display_name FROM venue_reviews r JOIN users u ON u.id=r.user_id WHERE r."+col+"=$1 AND r.status='published' ORDER BY "+order+" LIMIT 30",[venueId]),
+      query("SELECT r.id,r.rating,r.body,r.created_at,(SELECT jsonb_build_object('body',a.body,'business_name',b.name) FROM venue_review_replies a JOIN businesses b ON b.id=a.business_id JOIN places p ON p.business_id=b.id AND p.id=r.place_id WHERE a.review_id=r.id AND a.status='published' AND a.review_version=md5(r.rating::text||':'||r.body) AND b.status='approved') AS business_reply,EXISTS(SELECT 1 FROM confirmed_visits cv WHERE cv.user_id=r.user_id AND cv.place_id=r.place_id) AS verified_visit,LEFT(u.display_name,1) AS display_name FROM venue_reviews r JOIN users u ON u.id=r.user_id WHERE r."+col+"=$1 AND r.status='published' ORDER BY "+order+" LIMIT 30",[venueId]),
       query("SELECT id,rating,body,status FROM venue_reviews WHERE "+col+"=$1 AND user_id=$2",[venueId,user?.id||null])
     ]);
     const response=ok({summary:summary.rows[0],items:items.rows,own:own.rows[0]||null});response.headers.set('Cache-Control','no-store, private');return response;
@@ -383,19 +384,19 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     const r=await query("SELECT c.id,c.body,c.created_at,LEFT(u.display_name,1) AS display_name FROM post_comments c JOIN users u ON u.id=c.user_id WHERE c.post_id=$1 AND c.status='published' ORDER BY c.created_at ASC LIMIT 60",[postId]);
     return ok({items:r.rows});
   }
-  if(method==='GET'&&path==='deals'){const r=await query("SELECT d.id,d.title,d.details,d.valid_until,d.premium_only,b.name AS business_name,p.name AS place_name FROM deals d JOIN businesses b ON b.id=d.business_id LEFT JOIN places p ON p.id=d.place_id WHERE d.status='published' AND b.status='approved' AND (d.valid_until IS NULL OR d.valid_until>now()) ORDER BY (d.id::text=$1) DESC,d.created_at DESC LIMIT 40",[(qs.get('priority')||'').slice(0,36)]);return ok({items:r.rows});}
+  if(method==='GET'&&path==='deals'){const r=await query("SELECT d.id,d.title,d.details,d.valid_until,d.premium_only,b.name AS business_name,p.name AS place_name FROM deals d JOIN businesses b ON b.id=d.business_id LEFT JOIN places p ON p.id=d.place_id WHERE d.status='published' AND business_deal_access(d.business_id,d.place_id) AND b.status='approved' AND (d.valid_until IS NULL OR d.valid_until>now()) ORDER BY (d.id::text=$1) DESC,d.created_at DESC LIMIT 40",[(qs.get('priority')||'').slice(0,36)]);return ok({items:r.rows});}
   if(method==='GET'&&path==='coupons'){
     const u=need(user);
-    const r=await query("SELECT c.id,c.deal_id,c.code,c.created_at,c.redeemed_at,d.title,d.valid_until,b.name AS business_name, (d.status='published' AND b.status='approved' AND (d.valid_until IS NULL OR d.valid_until>now()) AND (NOT d.premium_only OR personal_deal_access(c.user_id))) AS available FROM coupon_claims c JOIN deals d ON d.id=c.deal_id JOIN businesses b ON b.id=d.business_id WHERE c.user_id=$1 ORDER BY c.created_at DESC LIMIT 100",[u.id]);
+    const r=await query("SELECT c.id,c.deal_id,c.code,c.created_at,c.redeemed_at,d.title,d.valid_until,b.name AS business_name, (d.status='published' AND business_deal_access(d.business_id,d.place_id) AND b.status='approved' AND (d.valid_until IS NULL OR d.valid_until>now()) AND (NOT d.premium_only OR personal_deal_access(c.user_id))) AS available FROM coupon_claims c JOIN deals d ON d.id=c.deal_id JOIN businesses b ON b.id=d.business_id WHERE c.user_id=$1 ORDER BY c.created_at DESC LIMIT 100",[u.id]);
     const response=ok({items:r.rows});response.headers.set('Cache-Control','no-store, private');return response;
   }
   if(method==='POST'&&path==='coupons/claim'){
     rate(req,'coupon-claim');const u=need(user);
     const b=parse(z.object({deal_id:id}),await payload(req));
-    const found=await query("SELECT d.id FROM deals d JOIN businesses b ON b.id=d.business_id WHERE d.id=$1 AND d.status='published' AND b.status='approved' AND b.owner_id!=$2 AND (NOT d.premium_only OR personal_deal_access($2::uuid)) AND (d.valid_until IS NULL OR d.valid_until>now())",[b.deal_id,u.id]);
+    const found=await query("SELECT d.id FROM deals d JOIN businesses b ON b.id=d.business_id WHERE d.id=$1 AND d.status='published' AND business_deal_access(d.business_id,d.place_id) AND b.status='approved' AND b.owner_id!=$2 AND (NOT d.premium_only OR personal_deal_access($2::uuid)) AND (d.valid_until IS NULL OR d.valid_until>now())",[b.deal_id,u.id]);
     if(!found.rowCount)return bad('Coupon not available',404);
     const secret=randomBytes(18).toString('base64url');
-    const r=await query("INSERT INTO coupon_claims(deal_id,user_id,code) SELECT d.id,$2,$3 FROM deals d JOIN businesses b ON b.id=d.business_id WHERE d.id=$1 AND d.status='published' AND b.status='approved' AND b.owner_id!=$2 AND (d.valid_until IS NULL OR d.valid_until>now()) AND (NOT d.premium_only OR personal_deal_access($2::uuid)) ON CONFLICT(deal_id,user_id) DO UPDATE SET deal_id=excluded.deal_id RETURNING code,redeemed_at",
+    const r=await query("INSERT INTO coupon_claims(deal_id,user_id,code) SELECT d.id,$2,$3 FROM deals d JOIN businesses b ON b.id=d.business_id WHERE d.id=$1 AND d.status='published' AND business_deal_access(d.business_id,d.place_id) AND b.status='approved' AND b.owner_id!=$2 AND (d.valid_until IS NULL OR d.valid_until>now()) AND (NOT d.premium_only OR personal_deal_access($2::uuid)) ON CONFLICT(deal_id,user_id) DO UPDATE SET deal_id=excluded.deal_id RETURNING code,redeemed_at",
       [b.deal_id,u.id,secret]);
     if(!r.rowCount)return bad('Coupon not available',403);
     return ok({code:r.rows[0].code,redeemed:Boolean(r.rows[0].redeemed_at)});
@@ -405,7 +406,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     if(business.status!=='approved')return bad('Business verification pending',403);
     const b=parse(z.object({code:z.string().regex(/^[A-Za-z0-9_-]{24}$/)}),await payload(req));
     // Atomic: never allow a second redemption, even on concurrent requests.
-    const r=await query("UPDATE coupon_claims c SET redeemed_at=now(),redeemed_by=$2 FROM deals d WHERE c.code=$1 AND c.deal_id=d.id AND d.business_id=$3 AND d.status='published' AND (d.valid_until IS NULL OR d.valid_until>now()) AND c.redeemed_at IS NULL AND (NOT d.premium_only OR personal_deal_access(c.user_id)) RETURNING c.id,d.title",
+    const r=await query("UPDATE coupon_claims c SET redeemed_at=now(),redeemed_by=$2 FROM deals d WHERE c.code=$1 AND c.deal_id=d.id AND d.business_id=$3 AND d.status='published' AND business_deal_access(d.business_id,d.place_id) AND (d.valid_until IS NULL OR d.valid_until>now()) AND c.redeemed_at IS NULL AND (NOT d.premium_only OR personal_deal_access(c.user_id)) RETURNING c.id,d.title",
       [b.code,u.id,business.id]);
     if(!r.rowCount)return bad('Coupon invalid, expired or already redeemed',409);
     await audit(u,'coupon:redeemed','coupon_claim',r.rows[0].id);
@@ -661,9 +662,12 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     return ok(r.rows[0],201);
   }
   if(method==='POST'&&path==='deals'){
-    const u=need(user),business=await ownBusiness(u);
-    if(business.status!=='approved')return bad('Business verification pending',403);
+    const u=need(user);
     const b=parse(z.object({title:text(150),details:optionalText(1000),place_id:id.nullish(),premium_only:z.union([z.boolean(),z.enum(['true','false'])]).optional().default(false).transform(v=>v===true||v==='true')}),await payload(req));
+    const business=b.place_id?await resolveBusinessEditor(u,b.place_id):await ownBusiness(u);
+    if(!business||business.status!=='approved')return bad('Business verification pending',403);
+    const entitled=await query('SELECT business_deal_access($1::uuid,$2::uuid) AS allowed',[business.id,b.place_id||null]);
+    if(!entitled.rows[0].allowed)return bad('Für Angebote ist aktives Unternehmens Premium erforderlich.',402);
     if(b.place_id){const owned=await query('SELECT id FROM places WHERE id=$1 AND business_id=$2',[b.place_id,business.id]);if(!owned.rowCount)return bad('Place not owned',403);}
     const r=await query('INSERT INTO deals(business_id,place_id,title,details,premium_only) VALUES($1,$2,$3,$4,$5) RETURNING id,status',[business.id,b.place_id||null,b.title,b.details,b.premium_only]);return ok(r.rows[0],201);
   }
@@ -823,6 +827,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
        await tx.query('COMMIT');return ok({success:true});
       }catch(e){await tx.query('ROLLBACK');throw e}finally{tx.release()}
     }
+    if(b.type==='deal'&&b.approve){const allowed=await query('SELECT id FROM deals WHERE id=$1 AND business_deal_access(business_id,place_id)',[b.id]);if(!allowed.rowCount)return bad('Aktives Unternehmens Premium und freigegebener Standort erforderlich',409);}
     const r=await query('UPDATE '+table+' SET status=$1 WHERE id=$2 RETURNING id',[target,b.id]);
     if(!r.rowCount)return bad('Not found',404);
     await audit(u,'review:'+target,b.type,b.id);return ok({success:true});

@@ -49,6 +49,8 @@ test('push jobs enforce consent, event bookmarks, publication, time windows and 
    const business=(await db.query("INSERT INTO businesses(owner_id,name,status) VALUES($1,'Followed business','approved') RETURNING id",[user])).rows[0].id;
    const place=(await db.query("INSERT INTO places(business_id,name,category,district,status,verification_status,activity_status,verified_at) VALUES($1,'Verified café','Cafés','Nordend','published','verified','operating',now()) RETURNING id",[business])).rows[0].id;
    await db.query('INSERT INTO business_follows(follower_id,business_id) VALUES($1,$2)',[user,business]);
+   await db.query("INSERT INTO billing_prices(id,product_id,snapshot_hash,snapshot) VALUES('price-offer','prod-offer','offer','{}')");
+   await db.query("INSERT INTO billing_subscriptions(id,business_id,customer_id,scope_key,price_id,snapshot,status,current_period_end) VALUES('sub-offer',$1::uuid,'cus-offer','business:'||$1::text,'price-offer','{\"features\":[\"extended_profile\"]}','active',now()+interval '1 day')",[business]);
    await db.query("INSERT INTO deals(business_id,title,status) VALUES($1,'Real offer','published')",[business]);
    await db.query("INSERT INTO posts(user_id,place_id,body,status) VALUES($1,$2,'Actual moderated contribution','published')",[user,place]);
    await db.query("INSERT INTO discovery_tips(place_id,title,body,publish_at,expires_at) VALUES($1,'Verified city idea','A source backed city recommendation',now(),now()+interval '1 day')",[place]);

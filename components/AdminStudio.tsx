@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import {KATEGORIEN} from '@/lib/ortskategorien';
 import {EDITORIAL_SOURCE_LEADS} from '@/lib/editorial-source-leads';
+import ReviewReplies from '@/components/ReviewReplies';
 import ContentRecovery from '@/components/ContentRecovery';
 import MediaEditorial from '@/components/MediaEditorial';
 import HomepageStudio from '@/components/HomepageStudio';
@@ -454,7 +455,7 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
        }}>Bewertung entfernen</button>}</div></div></article>):<div className="ffm-studio-mod-empty"><div><CheckCheck size={32}/></div><h3>Alles erledigt.</h3></div>}
      </CityPanel></div>
      <ContentRecovery/>
-     {allowed('moderation')&&<MediaEditorial/>}
+     {allowed('moderation')&&<><ReviewReplies moderation/><MediaEditorial/></>}
     </>}
 
     {view==='publish'&&<>

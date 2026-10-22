@@ -511,6 +511,11 @@ try{
  if(afterReject.body.place.name!=='CI New Name')throw Error('Rejected change overwrote public details');
  // Coupon pilot uses existing editor-approved Deals. Codes are private,
  // random and cannot be redeemed by a different business or twice.
+ const freeOffer=await post('deals',client,{title:'CI Free Offer',details:'Requires publishing entitlement',place_id:publicPlace.rows[0].id});
+ if(freeOffer.status!==402)throw Error('Free business could publish an offer');
+ const offerPrice='price_offer_'+randomBytes(6).toString('hex'),offerSub='sub_offer_'+randomBytes(6).toString('hex');
+ await pool.query("INSERT INTO billing_prices(id,product_id,snapshot_hash,snapshot) VALUES($1,'prod_offer',$2,'{}')",[offerPrice,randomBytes(32).toString('hex')]);
+ await pool.query("INSERT INTO billing_subscriptions(id,business_id,user_id,customer_id,scope_key,price_id,snapshot,status,current_period_end) VALUES($1,$2::uuid,$3,'cus_offer','business:'||$2::text,$4,'{\"features\":[\"extended_profile\"]}','active',now()+interval '1 day')",[offerSub,createdBusiness.body.id,authorId,offerPrice]);
  const proposed=await post('deals',client,{title:'CI Coffee Voucher',details:'10 percent off one drink',place_id:publicPlace.rows[0].id});
  if(proposed.status!==201||proposed.body.status!=='pending')throw Error('New deal was not pending');
  const pendingClaim=await post('coupons/claim',reader,{deal_id:proposed.body.id});

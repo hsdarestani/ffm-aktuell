@@ -13,7 +13,7 @@ export const enqueuePushJobs=`
  UNION ALL
  SELECT s.id,'offer',d.id,d.published_at::text
  FROM push_subscriptions s JOIN users u ON u.id=s.user_id AND u.suspended_at IS NULL JOIN user_preferences p ON p.user_id=s.user_id AND p.notify_offers
- JOIN deals d ON d.status='published' AND d.published_at>=s.created_at
+ JOIN deals d ON business_deal_access(d.business_id,d.place_id) AND (NOT d.premium_only OR personal_deal_access(s.user_id)) AND d.status='published' AND d.published_at>=s.created_at
  JOIN businesses b ON b.id=d.business_id AND b.status='approved'
  WHERE d.published_at<=now() AND d.published_at>now()-interval '15 minutes' AND (d.valid_until IS NULL OR d.valid_until>now())
  UNION ALL
@@ -51,7 +51,7 @@ export const pushPayloadQuery=`
  SELECT d.title,b.name,'/?offer='||d.id::text,u.language
  FROM push_subscriptions s JOIN users u ON u.id=s.user_id AND u.suspended_at IS NULL
  JOIN user_preferences p ON p.user_id=s.user_id AND p.notify_offers
- JOIN deals d ON d.id=$2 AND d.status='published' JOIN businesses b ON b.id=d.business_id AND b.status='approved'
+ JOIN deals d ON business_deal_access(d.business_id,d.place_id) AND (NOT d.premium_only OR personal_deal_access(s.user_id)) AND d.id=$2 AND d.status='published' JOIN businesses b ON b.id=d.business_id AND b.status='approved'
  WHERE s.id=$1 AND $3='offer' AND d.published_at::text=$4 AND d.published_at>=s.created_at
  AND d.published_at<=now() AND d.published_at>now()-interval '15 minutes' AND (d.valid_until IS NULL OR d.valid_until>now())
  UNION ALL
