@@ -21,7 +21,8 @@ try{
  browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  await mkdir('artifacts/map-startup',{recursive:true});
  async function audit(page,name){
-  await page.waitForFunction(()=>Math.abs(window.scrollY)<1);
+  await page.clock.runFor(800);
+  await page.waitForFunction(()=>Math.abs(window.scrollY)<1).catch(async error=>{console.log('AUDIT_SCROLL '+name+': '+JSON.stringify(await page.evaluate(()=>({y:window.scrollY,restoration:history.scrollRestoration,active:document.activeElement?.tagName}))));throw error});
   const report=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa']).analyze();
   await writeFile('artifacts/map-startup/accessibility-'+name+'.json',JSON.stringify(report,null,2));
   console.log('AXE '+name+': '+JSON.stringify(report.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))));
