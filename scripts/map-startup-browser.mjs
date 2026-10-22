@@ -154,7 +154,7 @@ try{
   await ctx.route('**/api/advertising',route=>{receipts.push(route.request().postDataJSON());return route.fulfill({json:{recorded:true}})});
   await ctx.route('**/api/recommendations?*',route=>{asked=new URL(route.request().url()).searchParams;return route.fulfill({json:{items:[],events:[{id:'fixture-event',title:'Passender Eintritt',starts_at:'2026-11-01T16:00:00Z',price_cents:500,price_source_url:'https://example.org/tickets'}],mode:'editorial',notice:'Nur belegte Angaben.',weather:null}})});
   await page.goto(base+'/?page=home',{waitUntil:'domcontentloaded'});
-  await page.locator('.desktop-nav').getByRole('button').first().dispatchEvent('click');
+  await page.locator('.mobile-bottom').getByRole('button',{name:'Start',exact:true}).click();
   const sponsored=page.getByRole('complementary',{name:'Werbung'});await sponsored.waitFor();await sponsored.scrollIntoViewIfNeeded();await page.clock.runFor(1500);
   assert.equal(receipts.filter(r=>r.kind==='impression').length,1);
   await page.locator('#ffm-intent').fill('Ein ruhiger Nachmittag');
