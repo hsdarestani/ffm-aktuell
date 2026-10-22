@@ -233,7 +233,8 @@ export default function Home(){
  const filtered=useMemo(()=>[...discoverPlaces,...previewFiltered],[discoverPlaces,previewFiltered]);
  const toggleCompare=(p:Place)=>setComparePlaces(list=>list.some(x=>x.id===p.id)?list.filter(x=>x.id!==p.id):[...list,p].slice(-3));
  const toggleNearby=()=>{if(nearby){setNearby(null);return;}if(!navigator.geolocation){flash(ui("Standortzugriff nicht verfügbar. Bitte normal suchen."));return;}setFindingNearby(true);navigator.geolocation.getCurrentPosition(pos=>{setFindingNearby(false);const {latitude:lat,longitude:lon}=pos.coords;if(lat<49.7||lat>50.4||lon<8.2||lon>9.1){flash(ui("Der Standort liegt außerhalb des Frankfurter Suchbereichs."));return;}setNearby({lat,lon});},()=>{setFindingNearby(false);flash(ui("Standort nicht freigegeben. Suche ohne Standort bleibt möglich."));},{enableHighAccuracy:false,timeout:10000,maximumAge:60000});};
- const navigate=(p:Page)=>{if(new URLSearchParams(window.location.search).has('tour'))window.history.replaceState(null,'',window.location.pathname);setPage(p);setMenu(false);window.scrollTo({top:0,behavior:'smooth'})};
+ useEffect(()=>{window.scrollTo({top:0,behavior:'instant'})},[page]);
+ const navigate=(p:Page)=>{if(new URLSearchParams(window.location.search).has('tour'))window.history.replaceState(null,'',window.location.pathname);setPage(p);setMenu(false)};
  const selectPlace=useCallback((id:string)=>{
   const cached=[...sichtbareOrte,...candidates].find(p=>p.id===id);
   if(cached){setSelected(cached);return;}
