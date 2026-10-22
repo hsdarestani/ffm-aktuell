@@ -243,12 +243,13 @@ try{
   await page.locator('html[lang="en"]').waitFor({state:'attached'});
   await audit(page,'standalone-map-en');
   const marker=page.locator('.atlas-2d-pin').first();await marker.click();
+  const detailsOpener=page.locator('.atlas-selection-cta');await detailsOpener.click();
   const details=page.getByRole('dialog',{name:'Keyboard venue',exact:true});await details.waitFor();
   assert.equal(await details.evaluate(el=>el.contains(document.activeElement)),true);
   await audit(page,'standalone-details-en');
   await page.keyboard.press('Tab');assert.equal(await details.evaluate(el=>el.contains(document.activeElement)),true);
   await page.keyboard.press('Escape');await details.waitFor({state:'hidden'});
-  assert.equal(await marker.evaluate(el=>el===document.activeElement),true);
+  assert.equal(await detailsOpener.evaluate(el=>el===document.activeElement),true);
   await page.goto(base+'/admin/aktivieren',{waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'Activate editorial access',exact:true}).waitFor();
   await audit(page,'activation-en');
