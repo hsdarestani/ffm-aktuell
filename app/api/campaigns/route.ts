@@ -3,7 +3,7 @@ import {sessionUser,trustedOrigin} from '@/lib/auth';
 import {pool,query} from '@/lib/db';
 export const runtime='nodejs';export const dynamic='force-dynamic';
 const uuid=/^[0-9a-f-]{36}$/,ymd=/^20\d\d-\d\d-\d\d$/;
-const placements=['search','home','feed','stories','events','district','category'] as const;
+const placements=['search','home','feed','stories','events','district','category','new_openings'] as const;
 const fail=(error:string,status=400)=>NextResponse.json({error},{status});
 export async function GET(req:NextRequest){
  const u=await sessionUser(req);if(!u)return fail('Anmeldung erforderlich',401);

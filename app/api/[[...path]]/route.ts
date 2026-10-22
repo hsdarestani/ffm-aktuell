@@ -307,11 +307,14 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       :"SELECT id FROM places WHERE id=$1 AND status='published' AND activity_status!='permanently_closed'",[venueId]);
     if(!exists.rowCount)return bad('Place not found',404);
     const col=isCandidate?'osm_id':'place_id';
-    const [summary,items]=await Promise.all([
+    const orders:Record<string,string>={newest:'r.created_at DESC,r.id',oldest:'r.created_at ASC,r.id',highest:'r.rating DESC,r.created_at DESC,r.id',lowest:'r.rating ASC,r.created_at DESC,r.id'};
+    const order=orders[qs.get('sort')||'newest'];if(!order)return bad('Invalid review sort');
+    const [summary,items,own]=await Promise.all([
       query("SELECT count(*)::int AS count,round(avg(rating)::numeric,1)::float AS average FROM venue_reviews WHERE "+col+"=$1 AND status='published'",[venueId]),
-      query("SELECT r.id,r.rating,r.body,r.created_at,EXISTS(SELECT 1 FROM confirmed_visits cv WHERE cv.user_id=r.user_id AND cv.place_id=r.place_id) AS verified_visit,LEFT(u.display_name,1) AS display_name FROM venue_reviews r JOIN users u ON u.id=r.user_id WHERE r."+col+"=$1 AND r.status='published' ORDER BY r.created_at DESC LIMIT 30",[venueId])
+      query("SELECT r.id,r.rating,r.body,r.created_at,EXISTS(SELECT 1 FROM confirmed_visits cv WHERE cv.user_id=r.user_id AND cv.place_id=r.place_id) AS verified_visit,LEFT(u.display_name,1) AS display_name FROM venue_reviews r JOIN users u ON u.id=r.user_id WHERE r."+col+"=$1 AND r.status='published' ORDER BY "+order+" LIMIT 30",[venueId]),
+      query("SELECT id,rating,body,status FROM venue_reviews WHERE "+col+"=$1 AND user_id=$2",[venueId,user?.id||null])
     ]);
-    return ok({summary:summary.rows[0],items:items.rows});
+    const response=ok({summary:summary.rows[0],items:items.rows,own:own.rows[0]||null});response.headers.set('Cache-Control','no-store, private');return response;
   }
   if(method==='GET'&&path==='posts'){
     const following=qs.get('scope')==='following';
@@ -380,20 +383,21 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     const r=await query("SELECT c.id,c.body,c.created_at,LEFT(u.display_name,1) AS display_name FROM post_comments c JOIN users u ON u.id=c.user_id WHERE c.post_id=$1 AND c.status='published' ORDER BY c.created_at ASC LIMIT 60",[postId]);
     return ok({items:r.rows});
   }
-  if(method==='GET'&&path==='deals'){const r=await query("SELECT d.id,d.title,d.details,d.valid_until,b.name AS business_name,p.name AS place_name FROM deals d JOIN businesses b ON b.id=d.business_id LEFT JOIN places p ON p.id=d.place_id WHERE d.status='published' AND b.status='approved' AND (d.valid_until IS NULL OR d.valid_until>now()) ORDER BY (d.id::text=$1) DESC,d.created_at DESC LIMIT 40",[(qs.get('priority')||'').slice(0,36)]);return ok({items:r.rows});}
+  if(method==='GET'&&path==='deals'){const r=await query("SELECT d.id,d.title,d.details,d.valid_until,d.premium_only,b.name AS business_name,p.name AS place_name FROM deals d JOIN businesses b ON b.id=d.business_id LEFT JOIN places p ON p.id=d.place_id WHERE d.status='published' AND b.status='approved' AND (d.valid_until IS NULL OR d.valid_until>now()) ORDER BY (d.id::text=$1) DESC,d.created_at DESC LIMIT 40",[(qs.get('priority')||'').slice(0,36)]);return ok({items:r.rows});}
   if(method==='GET'&&path==='coupons'){
     const u=need(user);
-    const r=await query("SELECT c.id,c.deal_id,c.code,c.created_at,c.redeemed_at,d.title,d.valid_until,b.name AS business_name, (d.status='published' AND b.status='approved' AND (d.valid_until IS NULL OR d.valid_until>now())) AS available FROM coupon_claims c JOIN deals d ON d.id=c.deal_id JOIN businesses b ON b.id=d.business_id WHERE c.user_id=$1 ORDER BY c.created_at DESC LIMIT 100",[u.id]);
+    const r=await query("SELECT c.id,c.deal_id,c.code,c.created_at,c.redeemed_at,d.title,d.valid_until,b.name AS business_name, (d.status='published' AND b.status='approved' AND (d.valid_until IS NULL OR d.valid_until>now()) AND (NOT d.premium_only OR personal_deal_access(c.user_id))) AS available FROM coupon_claims c JOIN deals d ON d.id=c.deal_id JOIN businesses b ON b.id=d.business_id WHERE c.user_id=$1 ORDER BY c.created_at DESC LIMIT 100",[u.id]);
     const response=ok({items:r.rows});response.headers.set('Cache-Control','no-store, private');return response;
   }
   if(method==='POST'&&path==='coupons/claim'){
     rate(req,'coupon-claim');const u=need(user);
     const b=parse(z.object({deal_id:id}),await payload(req));
-    const found=await query("SELECT d.id FROM deals d JOIN businesses b ON b.id=d.business_id WHERE d.id=$1 AND d.status='published' AND b.status='approved' AND b.owner_id!=$2 AND (d.valid_until IS NULL OR d.valid_until>now())",[b.deal_id,u.id]);
+    const found=await query("SELECT d.id FROM deals d JOIN businesses b ON b.id=d.business_id WHERE d.id=$1 AND d.status='published' AND b.status='approved' AND b.owner_id!=$2 AND (NOT d.premium_only OR personal_deal_access($2::uuid)) AND (d.valid_until IS NULL OR d.valid_until>now())",[b.deal_id,u.id]);
     if(!found.rowCount)return bad('Coupon not available',404);
     const secret=randomBytes(18).toString('base64url');
-    const r=await query("INSERT INTO coupon_claims(deal_id,user_id,code) VALUES($1,$2,$3) ON CONFLICT(deal_id,user_id) DO UPDATE SET deal_id=excluded.deal_id RETURNING code,redeemed_at",
+    const r=await query("INSERT INTO coupon_claims(deal_id,user_id,code) SELECT d.id,$2,$3 FROM deals d JOIN businesses b ON b.id=d.business_id WHERE d.id=$1 AND d.status='published' AND b.status='approved' AND b.owner_id!=$2 AND (d.valid_until IS NULL OR d.valid_until>now()) AND (NOT d.premium_only OR personal_deal_access($2::uuid)) ON CONFLICT(deal_id,user_id) DO UPDATE SET deal_id=excluded.deal_id RETURNING code,redeemed_at",
       [b.deal_id,u.id,secret]);
+    if(!r.rowCount)return bad('Coupon not available',403);
     return ok({code:r.rows[0].code,redeemed:Boolean(r.rows[0].redeemed_at)});
   }
   if(method==='POST'&&path==='business/coupons/redeem'){
@@ -401,7 +405,7 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     if(business.status!=='approved')return bad('Business verification pending',403);
     const b=parse(z.object({code:z.string().regex(/^[A-Za-z0-9_-]{24}$/)}),await payload(req));
     // Atomic: never allow a second redemption, even on concurrent requests.
-    const r=await query("UPDATE coupon_claims c SET redeemed_at=now(),redeemed_by=$2 FROM deals d WHERE c.code=$1 AND c.deal_id=d.id AND d.business_id=$3 AND d.status='published' AND (d.valid_until IS NULL OR d.valid_until>now()) AND c.redeemed_at IS NULL RETURNING c.id,d.title",
+    const r=await query("UPDATE coupon_claims c SET redeemed_at=now(),redeemed_by=$2 FROM deals d WHERE c.code=$1 AND c.deal_id=d.id AND d.business_id=$3 AND d.status='published' AND (d.valid_until IS NULL OR d.valid_until>now()) AND c.redeemed_at IS NULL AND (NOT d.premium_only OR personal_deal_access(c.user_id)) RETURNING c.id,d.title",
       [b.code,u.id,business.id]);
     if(!r.rowCount)return bad('Coupon invalid, expired or already redeemed',409);
     await audit(u,'coupon:redeemed','coupon_claim',r.rows[0].id);
@@ -573,6 +577,12 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
     await audit(u,'review:submitted','venue_review',r.rows[0].id);
     return ok({id:r.rows[0].id,status:'pending'},201);
   }
+  if(method==='POST'&&path==='reviews/remove'){
+    const u=need(user);const b=parse(z.object({id}),await payload(req));
+    const r=await query('DELETE FROM venue_reviews WHERE id=$1 AND user_id=$2 RETURNING id',[b.id,u.id]);
+    if(!r.rowCount)return bad('Review not found',404);
+    await audit(u,'review:author-deleted','venue_review',b.id);return ok({success:true});
+  }
   if(method==='POST'&&path==='review-reports'){
     rate(req,'review-abuse');const u=need(user);
     const b=parse(z.object({review_id:id,reason:z.enum(['spam','abuse','privacy','incorrect','other']),message:optionalText(500)}),await payload(req));
@@ -653,9 +663,9 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
   if(method==='POST'&&path==='deals'){
     const u=need(user),business=await ownBusiness(u);
     if(business.status!=='approved')return bad('Business verification pending',403);
-    const b=parse(z.object({title:text(150),details:optionalText(1000),place_id:id.nullish()}),await payload(req));
+    const b=parse(z.object({title:text(150),details:optionalText(1000),place_id:id.nullish(),premium_only:z.union([z.boolean(),z.enum(['true','false'])]).optional().default(false).transform(v=>v===true||v==='true')}),await payload(req));
     if(b.place_id){const owned=await query('SELECT id FROM places WHERE id=$1 AND business_id=$2',[b.place_id,business.id]);if(!owned.rowCount)return bad('Place not owned',403);}
-    const r=await query('INSERT INTO deals(business_id,place_id,title,details) VALUES($1,$2,$3,$4) RETURNING id,status',[business.id,b.place_id||null,b.title,b.details]);return ok(r.rows[0],201);
+    const r=await query('INSERT INTO deals(business_id,place_id,title,details,premium_only) VALUES($1,$2,$3,$4,$5) RETURNING id,status',[business.id,b.place_id||null,b.title,b.details,b.premium_only]);return ok(r.rows[0],201);
   }
 
   if(method==='GET'&&path==='admin/validation'){

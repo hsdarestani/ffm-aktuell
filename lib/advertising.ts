@@ -1,5 +1,5 @@
 import {createHash,createHmac} from 'node:crypto';
-export const placements=['search','home','feed','stories','events','district','category'] as const;
+export const placements=['search','home','feed','stories','events','district','category','new_openings'] as const;
 export const adHash=(s:string)=>createHash('sha256').update(s).digest('hex');
 export const adIpHash=(ip:string)=>createHmac('sha256',process.env.SESSION_SECRET||'unconfigured').update(new Date().toISOString().slice(0,10)+':'+ip).digest('hex');
 /** Every delivery/receipt rechecks editorial, payment, business, branch and Berlin calendar gates. */

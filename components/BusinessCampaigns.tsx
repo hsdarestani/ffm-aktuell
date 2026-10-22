@@ -1,10 +1,12 @@
 'use client';
+import {adPeriodEnd,nextBerlinDay} from '@/lib/ad-periods';
 import AdBooking from '@/components/AdBooking';
 import {useCallback,useEffect,useState,type FormEvent} from 'react';
 type Place={id:string;name:string;status:string};
 type Campaign={id:string;title:string;copy_de:string;placement:string;start_date:string;end_date:string;status:string;place_name:string;rejection_note:string|null;orders?:{state:string;amount:number;invoice_url:string|null;snapshot:{terms_url:string}}[]|null;impressions?:number;clicks?:number};
-const PLACEMENTS:[string,string][]=[['search','Gesponserte Suche'],['home','Startseite'],['feed','Beiträge'],['stories','Geschichten'],['events','Veranstaltungen'],['district','Stadtteile'],['category','Kategorien']];
+const PLACEMENTS:[string,string][]=[['search','Gesponserte Suche'],['home','Startseite'],['feed','Beiträge'],['stories','Geschichten'],['events','Veranstaltungen'],['district','Stadtteile'],['category','Kategorien'],['new_openings','Neueröffnungen']];
 export default function BusinessCampaigns({approved,places,onNotice}:{approved:boolean;places:Place[];onNotice:(message:string)=>void}){
+ const [start,setStart]=useState(nextBerlinDay),[end,setEnd]=useState(nextBerlinDay);
  const [items,setItems]=useState<Campaign[]>([]),[busy,setBusy]=useState(false),[open,setOpen]=useState(false);
  const reload=useCallback(async()=>{try{const r=await fetch('/api/campaigns',{cache:'no-store'});if(!r.ok)return;const d=await r.json();setItems(d.items||[])}catch{}},[]);
  useEffect(()=>{void reload()},[reload]);
@@ -16,7 +18,7 @@ export default function BusinessCampaigns({approved,places,onNotice}:{approved:b
  async function submitForm(e:FormEvent<HTMLFormElement>){
   e.preventDefault();const form=e.currentTarget;const d=Object.fromEntries(new FormData(form));
   const ok=await action({action:'create',title:d.title,copy_de:d.copy_de,placement:d.placement,place_id:d.place_id,start_date:d.start_date,end_date:d.end_date});
-  if(ok){form.reset();setOpen(false)}
+  if(ok){form.reset();setStart(nextBerlinDay());setEnd(nextBerlinDay());setOpen(false)}
  }
  if(!approved)return null;
  const locations=places.filter(p=>p.status==='published');
@@ -28,8 +30,9 @@ export default function BusinessCampaigns({approved,places,onNotice}:{approved:b
     <label>Anzeigenplatz<select name="placement" required>{PLACEMENTS.map(([key,title])=><option key={key} value={key}>{title}</option>)}</select></label>
     <label>Titel<input name="title" required minLength={4} maxLength={150} placeholder="Zum Beispiel: Herbstangebote im Café"/></label>
     <label>Werbetext<textarea name="copy_de" required minLength={10} maxLength={1500} rows={3}/></label>
-    <label>Gewünschter Start<input type="date" name="start_date" required min={new Date().toISOString().slice(0,10)}/></label>
-    <label>Gewünschtes Ende<input type="date" name="end_date" required min={new Date().toISOString().slice(0,10)}/></label>
+    <label>Gewünschter Start<input type="date" name="start_date" required min={nextBerlinDay()} value={start} onChange={e=>{setStart(e.target.value);if(end<e.target.value)setEnd(e.target.value)}}/></label>
+    <div role="group" aria-label="Laufzeit auswählen">{([1,7,30] as const).map(days=><button key={days} type="button" onClick={()=>setEnd(adPeriodEnd(start,days))}>{days} {days===1?'Tag':'Tage'}</button>)}</div>
+    <label>Gewünschtes Ende<input type="date" name="end_date" required min={start} value={end} onChange={e=>setEnd(e.target.value)}/></label>
     <div className="ffm-campaign-note">Die endgültigen Tarife, Zahlungsart und Freischaltung werden erst nach vertraglicher Preisfreigabe verfügbar.</div>
     <button type="submit" disabled={busy||locations.length===0}>Entwurf speichern</button>
    </form>}

@@ -2,7 +2,7 @@
 import {useEffect,useState,type FormEvent} from 'react';
 import {CheckCircle2,Copy,Gift,ShieldCheck,Ticket,Wallet} from 'lucide-react';
 
-type Deal={id:string;title:string;details:string;business_name:string;demo?:true};
+type Deal={id:string;title:string;details:string;business_name:string;premium_only?:boolean;demo?:true};
 type Coupon={id:string;deal_id:string;code:string;title:string;business_name:string;available:boolean;redeemed_at:string|null;valid_until:string|null};
 type Notice=(message:string)=>void;
 async function req(path:string,data?:unknown){
@@ -24,6 +24,7 @@ export function DealActions({deal,loggedIn,onLogin,onNotice}:{deal:Deal;loggedIn
  return <div className="ffm-coupon-action">
   {!code?<button type="button" onClick={()=>void claim()} disabled={busy}><Ticket size={16}/> Gutschein sichern</button>:
    <div className="ffm-coupon-code"><span>{used?'Bereits eingelöst':'Dein Code'}</span><strong>{code}</strong><button type="button" onClick={()=>void navigator.clipboard.writeText(code).then(()=>onNotice('Code kopiert.')).catch(()=>onNotice('Code bitte manuell kopieren.'))}><Copy size={14}/> Kopieren</button></div>}
+  {deal.premium_only&&<small>Exklusiv mit aktivem persönlichem Premium. Auch bei der Einlösung erforderlich.</small>}
   <small>Einmal pro Person. Nur vor Ort vom Anbieter einlösbar. Kein Kauf.</small>
  </div>;
 }
@@ -67,3 +68,4 @@ export function BusinessCouponRedeem({status,onNotice}:{status:string;onNotice:N
   {status!=='approved'&&<p>Nach der Verifizierung des Unternehmens verfügbar.</p>}
  </section>;
 }
+

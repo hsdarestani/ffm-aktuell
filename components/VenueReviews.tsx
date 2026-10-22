@@ -4,7 +4,7 @@ import {useEffect,useState,type FormEvent} from 'react';
 import {Star,Flag,ChevronDown} from 'lucide-react';
 
 type Review={verified_visit?:boolean;id:string;rating:number;body:string;created_at:string;display_name:string};
-type Response={summary:{count:number;average:number|null};items:Review[]};
+type Response={summary:{count:number;average:number|null};items:Review[];own?:{id:string;rating:number;body:string;status:string}|null};
 type Props={
  placeId:string;demo?:boolean;loggedIn:boolean;
  onLogin:()=>void;onNotice:(message:string)=>void;
@@ -22,15 +22,16 @@ export default function VenueReviews({placeId,demo,loggedIn,onLogin,onNotice}:Pr
  const [data,setData]=useState<Response>(empty);
  const [rating,setRating]=useState(0),[body,setBody]=useState('');
  const [busy,setBusy]=useState(false),[error,setError]=useState(false);
+ const [sort,setSort]=useState('newest'),[refresh,setRefresh]=useState(0);
  const [reported,setReported]=useState<string[]>([]);
  useEffect(()=>{
   if(demo)return;
   let active=true;setError(false);setData(empty);
-  void request('reviews?place_id='+encodeURIComponent(placeId))
-   .then((value:Response)=>{if(active)setData(value)})
+  void request('reviews?place_id='+encodeURIComponent(placeId)+'&sort='+sort)
+   .then((value:Response)=>{if(active){setData(value);setRating(value.own?.rating||0);setBody(value.own?.body||'')}})
    .catch(()=>{if(active)setError(true)});
   return()=>{active=false};
- },[placeId,demo]);
+ },[placeId,demo,sort,refresh,loggedIn]);
  const submit=async(e:FormEvent<HTMLFormElement>)=>{
   e.preventDefault();if(busy)return;
   if(!loggedIn){onLogin();return;}
@@ -39,7 +40,7 @@ export default function VenueReviews({placeId,demo,loggedIn,onLogin,onNotice}:Pr
   setBusy(true);
   try{
    await request('reviews',{place_id:placeId,rating,body:body.trim()});
-   setBody('');setRating(0);
+   setRefresh(v=>v+1);
    onNotice('Danke! Deine Bewertung wird vor der Veröffentlichung geprüft.');
   }catch{onNotice('Bewertung konnte nicht gespeichert werden. Bitte versuche es erneut.')}
   finally{setBusy(false)}
@@ -60,6 +61,8 @@ export default function VenueReviews({placeId,demo,loggedIn,onLogin,onNotice}:Pr
     <strong>{data.summary.average===null?'—':Number(data.summary.average).toLocaleString('de-DE',{maximumFractionDigits:1})}</strong>
     <span>({data.summary.count})</span></div>
   </div>
+  <label>Sortieren<select value={sort} onChange={e=>setSort(e.target.value)}><option value="newest">Neueste zuerst</option><option value="oldest">Älteste zuerst</option><option value="highest">Höchste Bewertung</option><option value="lowest">Niedrigste Bewertung</option></select></label>
+  {data.own&&<div><p>Deine Bewertung: {data.own.status==='published'?'Veröffentlicht':data.own.status==='pending'?'Wird geprüft':'Nicht veröffentlicht'}. Unten kannst du sie bearbeiten.</p><button type="button" disabled={busy} onClick={async()=>{if(!window.confirm('Deine Bewertung dauerhaft löschen?'))return;setBusy(true);try{await request('reviews/remove',{id:data.own!.id});setRefresh(v=>v+1);onNotice('Deine Bewertung wurde gelöscht.')}catch{onNotice('Löschen fehlgeschlagen.')}finally{setBusy(false)}}}>Eigene Bewertung löschen</button></div>}
   {error?<p className="ffm-reviews-error">Bewertungen sind gerade nicht verfügbar.</p>:
    data.items.length?<div className="ffm-review-list">{data.items.map(r=><article className="ffm-review-record" key={r.id}>
     <div className="ffm-review-meta"><span>{'★'.repeat(r.rating)}{'☆'.repeat(5-r.rating)}</span><small>{r.display_name||'Nutzer'} · {new Date(r.created_at).toLocaleDateString('de-DE')}</small></div>
@@ -68,7 +71,7 @@ export default function VenueReviews({placeId,demo,loggedIn,onLogin,onNotice}:Pr
      <Flag size={13}/> {reported.includes(r.id)?'Gemeldet':'Melden'}</button>
    </article>)}</div>:<p className="ffm-reviews-empty">Noch keine freigegebenen Bewertungen.</p>}
   <details className="ffm-review-write">
-   <summary>Ort bewerten <ChevronDown size={17}/></summary>
+   <summary>{data.own?'Bewertung bearbeiten':'Ort bewerten'} <ChevronDown size={17}/></summary>
    <form onSubmit={submit}>
     <fieldset><legend>Deine Bewertung</legend><div className="ffm-review-stars" role="group" aria-label="Sterne vergeben">
      {[1,2,3,4,5].map(v=><button type="button" aria-label={v+' von 5 Sternen'} aria-pressed={rating===v} onClick={()=>setRating(v)} key={v}><Star size={24} fill={v<=rating?'currentColor':'none'}/></button>)}

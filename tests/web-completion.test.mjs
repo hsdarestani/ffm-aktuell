@@ -126,3 +126,14 @@ test('Twilio adapter sends only server-authorized Verify fields and rejects iden
   await assert.rejects(provider.verifyPhone('+4915000000000','123456','VE'+'3'.repeat(32)));
  }finally{globalThis.fetch=oldFetch;keys.forEach((k,i)=>{if(old[i]===undefined)delete process.env[k];else process.env[k]=old[i]})}
 });
+
+test('advertising presets count inclusive calendar days over month and DST boundaries',()=>{
+ const {adPeriodEnd}=compile('lib/ad-periods.ts');
+ assert.equal(adPeriodEnd('2026-10-25',1),'2026-10-25');
+ assert.equal(adPeriodEnd('2026-10-25',7),'2026-10-31');
+ assert.equal(adPeriodEnd('2026-03-28',30),'2026-04-26');
+ assert.equal(adPeriodEnd('2026-12-31',7),'2027-01-06');
+ assert.equal(adPeriodEnd('2026-02-30',7),'');
+ assert.equal(adPeriodEnd('invalid',1),'');
+ assert.ok(compile('lib/advertising.ts').placements.includes('new_openings'));
+});

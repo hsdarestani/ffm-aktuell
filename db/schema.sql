@@ -784,3 +784,17 @@ CREATE TABLE IF NOT EXISTS home_layout (
  id integer PRIMARY KEY CHECK(id=1),modules jsonb NOT NULL,updated_at timestamptz NOT NULL DEFAULT now(),updated_by uuid REFERENCES users(id) ON DELETE SET NULL
 );
 INSERT INTO home_layout(id,modules) VALUES(1,'[{"code":"choices","enabled":true},{"code":"highlights","enabled":true},{"code":"tips","enabled":true},{"code":"assistant","enabled":true},{"code":"community","enabled":true},{"code":"news","enabled":true}]') ON CONFLICT DO NOTHING;
+
+-- Personal offers are checked again at redemption, including after cancellation or expiry.
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS premium_only boolean NOT NULL DEFAULT false;
+CREATE OR REPLACE FUNCTION personal_deal_access(uid uuid) RETURNS boolean LANGUAGE sql STABLE AS $$
+ SELECT EXISTS(SELECT 1 FROM billing_subscriptions s WHERE s.user_id=uid AND s.business_id IS NULL
+ AND s.scope_key='user:'||uid::text AND s.status IN ('active','trialing')
+ AND s.current_period_end>now() AND s.snapshot->'features' ? 'exclusive_deals')
+$$;
+
+ALTER TABLE ad_campaigns DROP CONSTRAINT IF EXISTS ad_campaigns_placement_check;
+ALTER TABLE ad_campaigns ADD CONSTRAINT ad_campaigns_placement_check CHECK(placement IN ('search','home','feed','stories','events','district','category','new_openings'));
+ALTER TABLE ad_rates DROP CONSTRAINT IF EXISTS ad_rates_placement_check;
+ALTER TABLE ad_rates ADD CONSTRAINT ad_rates_placement_check CHECK(placement IN ('search','home','feed','stories','events','district','category','new_openings'));
+INSERT INTO ad_rates(placement,daily_cents) VALUES('new_openings',1500) ON CONFLICT DO NOTHING;

@@ -132,6 +132,7 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | POST | `/api/review-reports` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/reviews` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/reviews` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
+| POST | `/api/reviews/remove` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/stories` | [app/api/stories/route.ts](../app/api/stories/route.ts) |
 | POST | `/api/stories` | [app/api/stories/route.ts](../app/api/stories/route.ts) |
 | GET | `/api/tips` | [app/api/tips/route.ts](../app/api/tips/route.ts) |
