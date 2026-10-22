@@ -113,7 +113,7 @@ export default function TourPlanner({loggedIn,onLogin,onNotice}:Props){
  const copy=async()=>{
   if(!shareUrl)return;
   try{await navigator.clipboard.writeText(shareUrl);onNotice(ui("Tourlink kopiert."))}
-  catch{window.prompt('Tourlink kopieren',shareUrl)}
+  catch{window.prompt(ui("Tourlink kopieren"),shareUrl)}
  };
  if(token)return <main className="ffm-tour-page">
   <div className="ffm-tour-head"><span>{ui("FFM · TOUR")}</span><h1>{shared?.tour.title||ui("Geteilte Tour")}</h1></div>

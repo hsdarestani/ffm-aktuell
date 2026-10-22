@@ -21,7 +21,7 @@ const needs=[
  {id:'Museen',label:'Kultur erleben',icon:Ticket,color:'blue'},
  {id:'Apotheken',label:'Apotheke finden',icon:Pill,color:'sage'}
 ] as const;
-function germanDate(value:string){const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'});}
+function germanDate(value:string,locale:'de'|'en'){const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toLocaleDateString(locale==='de'?'de-DE':'en-GB',{day:'2-digit',month:'short'});}
 export default function AtlasHome({tips,assistant,lang,places,events,news,onDiscover,onMap,onEvents,onCommunity,onBusiness,onPlace,onCategory,onSearch,onTours}:Props){
  const ui=useUiText();
  const [query,setQuery]=useState('');
@@ -54,7 +54,7 @@ export default function AtlasHome({tips,assistant,lang,places,events,news,onDisc
     </div>
     <div className="ffm-quick-feature-block">
      <div className="ffm-quick-feature-heading"><CalendarDays size={18}/><h3>{lang==='de'?ui("Veranstaltungen"):ui("Events")}</h3></div>
-     {upcoming.length?<div className="ffm-quick-item-list">{upcoming.slice(0,3).map(ev=><button key={ev.id} type="button" onClick={onEvents} className="ffm-quick-list-item"><span><strong>{ev.title}</strong><small>{germanDate(ev.starts_at)} · {ev.venue}</small></span><ChevronRight size={18}/></button>)}</div>:
+     {upcoming.length?<div className="ffm-quick-item-list">{upcoming.slice(0,3).map(ev=><button key={ev.id} type="button" onClick={onEvents} className="ffm-quick-list-item"><span><strong>{ev.title}</strong><small>{germanDate(ev.starts_at,ui.locale)} · {ev.venue}</small></span><ChevronRight size={18}/></button>)}</div>:
       <div className="ffm-quick-empty"><p>{lang==='de'?ui("Hier erscheinen bestätigte Veranstaltungen."):ui("Confirmed events will appear here.")}</p><button onClick={onEvents}>{lang==='de'?ui("Zu den Veranstaltungen"):ui("View events")} <ChevronRight size={16}/></button><small>{lang==='de'?ui("Beispieltermine sind keine buchbaren Events."):ui("Sample dates are not bookable events.")}</small></div>}
     </div>
    </div>

@@ -29,6 +29,8 @@ jobs:
           node-version: 22
       - name: Install
         run: npm install --no-audit --no-fund
+      - name: Validate operational scripts
+        run: bash scripts/validate-operations.sh
       - name: Tests
         run: npm test
       - name: TypeScript

@@ -1,57 +1,37 @@
-# FFM Aktuell — actual implementation vs 17 October 2026 briefing
+# FFM Aktuell web delivery ledger
 
-This is a **feature-branch development ledger**, not production acceptance. Do not treat GitHub CI success as real store, server or user testing. The full 7-page product brief plus requested 13 deliverables still contain substantial work.
+Updated 22 October 2026 against the seven-page briefing. Native iOS/Android clients and email are excluded by the owner. This ledger distinguishes implemented web engineering from real external service/content acceptance. Deployment evidence belongs to the PR and deployment workflow for the exact source SHA.
 
-## Implemented in repository / PR #48 (not necessarily deployed)
-- Responsive multilingual first-party Next.js web/PWA, moderated location and OSM discovery, location actions, user accounts and private favourites.
-- MapLibre 3D (default), genuine editable location markers, OSM raster fallback and tile-data readiness detection. Live grey-map fix still awaits deployed browser QA.
-- User tour planner and limited ready-made editorial/previews; transparent unverified stop labels, route sharing and revocation.
-- Community posts, likes, moderated comments, follows, reviews, reporting, optional stories, media upload & business highlights with consent, 24-hour expiry, moderation and owner deletion. Actual upload remains scanner-dependent.
-- Optional private user interests, conservative AI suggestions, Google/Apple web OAuth code paths (only usable after provider configuration).
-- Category taxonomy: create/edit/disable, one-level subcategory, German/English labels, audited admin assignment up to 8 tags per published place; data-backed filters. Comparative side-by-side venue panel limited to three actual records with unverified flags.
-- Approved business basic profile/corrections, one-use approved deal coupons, business media/highlight requests.
-- Business advertising **draft proposals only**, owner creation/review/cancel, editor approval/reject with audit, no payment/price/advertising delivery.
-- Admin editorial flow, pending queues, category and ad review modules, sourced event pricing/categories/organizers and future scheduled local news.
-- CI covers tests, TypeScript, build, disposable PostgreSQL E2E and compose validation.
+## Delivered web implementation
 
-## Remaining from mandatory brief, no implementation-complete claim
-### Content and discovery
-- Independently source-check and editorially verify thousands of venue candidates, opening status, attributes, geo-distance and event/news availability; populate real content lawfully, no fake inventory.
-- Combine trusted price, accessibility, occasion, indoor/outdoor, family status, hours, rating and open-now filters, plus event, sentiment, budget, weather and real local trend signals.
-- Full bilingual UI and clearly tagged opt-in UGC translations; comprehensive managed homepage modules and rich place/event/news detail content.
+- Responsive German/English public, account, merchant and department administration UI; persisted language, source-preserving content, keyboard modal support and automated accessibility regression checks.
+- MapLibre 3D, bounded startup/recovery and DOM fallback, sourced discovery, categories, comparison, dated opening plans, location/radius and source-backed factual/contextual filters, events/news, editorial homepage modules and private/shared tours.
+- Accounts, consent/preferences, optional Google/Apple and linked phone access, export/deletion, session revocation, departmental grants, scoped staff, suspension, reports, moderation/recovery, media rights, mandatory scanning gates and business publishing entitlements.
+- Community posts/comments/likes/follows, optional translated public posts, consent-based local activity, private saved events/calendar, author-managed reviews, independently moderated business replies, stories and licensed highlights.
+- Editable personal/business plans, trial/monthly/annual snapshots, paid staff/branch/analytics capabilities, signed provider lifecycle, invoices/credits/refunds/portal, personal exclusive coupons, merchant redemption and confirmed-visit loyalty with single-use rewards.
+- Eight fixed-price advertising placements, editable draft rates/terms, inclusive day presets, hosted checkout, independent approval/payment/current-status gates, viewable deduplicated receipts and genuine aggregate analytics.
+- Web Push categories and bounded private scheduler, optional constrained AI ranking, weather and translation adapters, phone abuse limits, service-readiness panel and allowlisted private configuration activation.
+- Documented sitemap, domain/rights model, technical decisions, acceptance journeys, incident/deployment/rollback procedures, vendor/prerequisite register, costed external acceptance backlog and all 149 API operation contracts with live read-only reference.
+- Installed daily private backups with bounded seven-day retention, five-minute host health/freshness checks, independent public monitoring and an incident/restore runbook; off-host destination remains an operator input.
+- Automated source/behavioral tests, TypeScript and production build; real Chromium map, localization, keyboard and axe regressions; actual PostgreSQL HTTP isolation/concurrency tests, idempotent schema and 75-table/128-foreign-key backup/restore rehearsal; Compose validation.
 
-### Social and identity
-- Deploy scanner/storage/backup & content takedown/appeal/retention process, upload tests on iOS/Android, security review, staff permission model and automatic moderation (currently human review gate).
-- Verified visit policy, visit proofs, business responses to reviews and abuse disputes.
-- Google/Apple live provider keys, safe social-account linking to existing email users, phone/SMS login, granular real APNs/FCM notifications.
+Detailed decisions, gates and limits are in [web completion](WEB_COMPLETION_20261021.md), [technical handover](TECHNICAL_HANDOVER.md), [A–I acceptance](ACCEPTANCE_A_TO_I.md), [requirements history](BRIEFING_IMPLEMENTATION_MATRIX.md) and [API contracts](API_CONTRACTS.md). No public venue, image licence, payment or popularity is fabricated to make an empty live system appear accepted.
 
-### Business, subscriptions, billing and advertising
-- Commission/pricing decisions, entitlement matrices, premium trial and annual subscription, invoice/tax/SEPA/card payment and cancellation/renewal logic.
-- Multi-branch employee permissions, trusted ownership verification documents, separate staff support/moderation/finance roles.
-- Actual fixed-price ad inventory, authorized transactions, sponsored placement with transparent labelling and permissioned analytics, legitimate impression/click/coupon tracking.
-- Digital loyalty cards with privacy-preserving repeat visit proof; depends on formal visit verification rules.
+## External inputs and acceptance
 
-### Apps and operational acceptance
-- Proper Android/iOS production clients and store-compliant sign-in/payment/privacy, realistic device performance QA, push permissions, release builds and App Store / Play submission.
-- Development/staging and production isolation, real browser/mobile map QA, accessibility audits, threat modelling, DSA/GDPR audit and takedown documentation, backups/restore and monitoring, incident response, reliability tests and scale-out/multi-city.
-- Deliverable matrix: full sitemap, diagrams and journeys, screen specifications, rights/tier matrix, ERD, OpenAPI specifications, vendor/license register, costed backlog, test cases and live release handbook. Baseline implementation notes and unit/E2E tests are not substitutes for a fully approved technical specification.
+| Input | Implemented behavior awaiting it | What actually completes acceptance |
+| --- | --- | --- |
+| Google/Apple provider credentials | Server-side web OAuth, safe account linking and fresh-auth controls | Configured provider app/redirects and real consenting accounts |
+| Stripe account/webhook and released commercial terms | Web subscriptions, advertising checkout, synchronization and financial controls | Actual tax/contract/rate approval plus real provider payment, renewal and refund acceptance |
+| Twilio funded Verify service and real numbers | Linked telephone verification/login and abuse controls | Permitted countries and real SMS verification |
+| OpenAI/OpenWeather access | Optional translation/ranking/weather with consent and cost/source gates | Actual budget/model/licence selection and provider acceptance |
+| Private malware scanner capacity | Fail-closed media intake and independent rights/moderation checks | Private reachable scanner and real allowed/rejected upload acceptance; shared host has insufficient room for local ClamAV |
+| Actual editorial evidence and media rights | Place/event/news/attribute/opening/content publishing workflows | Lawful source review, licences, real operating checks and accountable editors |
+| Consenting devices and operational owners | Web Push, private scheduler, isolated backups/restore, runbooks | Actual device delivery, alert recipient/destination, off-host backup destination and retention approval |
+| Qualified independent reviewers | Audited controls, accessibility fixes and automated checks | Legal/privacy/DSA and assistive-technology acceptance on real operational content |
 
-## Blocking decisions held for owner approval (never fabricate)
-- Final app name/trademark, premium user fee, second business tier fee/staff limits, ad fixed-price schedule, payments & tax setup, verified-visit and loyalty entitlement rules, attribution and licensed sources, moderation/appeals, privacy/translation/AI usage budgets, final visual and user acceptance.
+These inputs are not all secrets. Keys alone do not create licensed content, prove live delivery or approve business terms. Engineering defaults remain editable and draft where financial/legal approval is required. No new permission pause is required for completing already authorized engineering work.
 
-## Non-mandatory in v1
-- General points and rewards engine, internal restaurant reservation/ticket checkout, private DMs, unsolicited merchant DMs, public personal profiles and publicly authored recommendation lists.
+## Outside the agreed web scope
 
-## Further development increment — accounts, staff and real analytics (19 October 2026)
-- Business staff: per-business `viewer` and `editor` roles, hashed single-use 7-day emailed invites, independently verified recipient email, owner-controlled revocation and admin-approved seat caps. Default staff seats are zero. No auto-awarded premium entitlement.
-- Email identity: optional transactional email provider, hashed 20-minute proof, 3 requests/hour and no pretend delivery when unconfigured. Verified Google/Apple emails also get trusted status.
-- Staff editors may only submit branch corrections for their business; independent admin approval is still required. Viewers cannot change locations.
-- Genuine business aggregates: approved venues, current deals, 30-day coupon claims/redemptions/posts and minimum-five follower privacy threshold. Ad impressions, earnings and proven visits remain null until independently instrumented.
-- Premium catalogue: `user_premium`, `business_premium_1`, `business_premium_2`; all initially draft, monthly/annual prices empty and checkout disabled. Publishing an approved price requires documentary consent and HTTPS terms. Public display does **not** activate entitlement, trial, invoice, or payment.
-- Privacy: email provider + staff + consent/media/coupons now present in user data export; social-only users may delete after fresh authenticated login (within 5 minutes) rather than needing a password they were never given.
-- Remaining blockers: real verified sender domain, agreed team seat/trial/tariff terms and approved prices, mobile OAuth and live registration providers, functioning PSP, Apple/Google stores, staging deployment/device QA, privacy/legal operations and real local sources.
-
-
-## 21 October 2026 increment
-
-Default 3D landing, bounded startup/recovery, complete editorial pagination and distance sorting, cancellation-safe load-more, private saved-event list and organizer-end-aware RFC 5545 export are implemented. See [increment and validation](INCREMENT_20261021.md). This does not complete media/OAuth/push/payment/native operational requirements.
+Native apps/store submission and email. Private messages, reservations/ticket checkout and a general-purpose points engine are not mandatory v1 features. Multi-city or separate native expansion requires its own scope and operational acceptance.

@@ -1,0 +1,9 @@
+[Unit]
+Description=FFM Aktuell internal health and snapshot freshness
+After=docker.service
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/ffm-aktuell
+ExecStart=/bin/bash /opt/ffm-aktuell/scripts/check-server-health.sh
+TimeoutStartSec=45

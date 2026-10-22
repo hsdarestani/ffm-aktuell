@@ -9,11 +9,14 @@ test('English UI catalog covers explicit literals and leaves original German and
  assert.equal(m.exports.uiText('en','  Öffnungszeiten '),'  Opening hours ');
  assert.equal(m.exports.uiText('de','Öffnungszeiten'),'Öffnungszeiten');
  assert.equal(m.exports.uiText('en','A business or customer supplied this unique text'),'A business or customer supplied this unique text');
- const files=['app/page.tsx','app/admin/page.tsx',...readdirSync('components').filter(x=>x.endsWith('.tsx')).map(x=>'components/'+x)];let checked=0;
+ const files=['app/page.tsx','app/admin/page.tsx','app/not-found.tsx',...readdirSync('components').filter(x=>x.endsWith('.tsx')).map(x=>'components/'+x)];let checked=0;
  for(const path of files){const source=readFileSync(path,'utf8'),file=ts.createSourceFile(path,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
   function visit(n){if(ts.isCallExpression(n)&&n.expression.getText(file)==='ui'&&ts.isStringLiteral(n.arguments[0])){assert.ok(Object.hasOwn(dict,n.arguments[0].text.trim()),path+': missing '+n.arguments[0].text);checked++}ts.forEachChild(n,visit)}visit(file);
   assert.doesNotMatch(source,/ui\((?:r\.body|p\.name|post\.body|selected\.name|s\.caption)\)/,'User content must not enter the automatic UI translator');
  }assert.ok(checked>1500);
+});
+test('Every literal API error and notice has an explicit UI translation',()=>{
+ let count=0;function scan(dir){for(const entry of readdirSync(dir,{withFileTypes:true})){const path=dir+'/'+entry.name;if(entry.isDirectory()){scan(path);continue}if(!path.endsWith('.ts'))continue;const file=ts.createSourceFile(path,readFileSync(path,'utf8'),ts.ScriptTarget.Latest,true);function visit(n){if(ts.isPropertyAssignment(n)&&['error','notice'].includes(n.name.getText(file))&&ts.isStringLiteral(n.initializer)){assert.ok(Object.hasOwn(dict,n.initializer.text.trim()),path+': '+n.initializer.text);count++}ts.forEachChild(n,visit)}visit(file)}}scan('app/api');assert.ok(count>150);
 });
 test('API contracts cover every published route including OAuth callbacks, binary media and multipart upload',()=>{
  const spec=JSON.parse(readFileSync('docs/openapi.json','utf8')),inventory=readFileSync('docs/API_INVENTORY.md','utf8');

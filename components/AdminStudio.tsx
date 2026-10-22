@@ -72,7 +72,7 @@ const queueNames:{key:keyof Queue;title:string;singular:string}[]=[
 ];
 const fmt=(value:number|undefined)=>new Intl.NumberFormat('de-DE').format(value||0);
 const safeLink=(value:string|null|undefined)=>{try{const u=new URL(value||'');return ['http:','https:'].includes(u.protocol)?u.toString():null}catch{return null}};
-const today=()=>new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'numeric',month:'long'}).format(new Date());
+const today=(locale:'de'|'en')=>new Intl.DateTimeFormat(locale==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',weekday:'long',day:'numeric',month:'long'}).format(new Date());
 async function request<T>(path:string,payload?:unknown):Promise<T>{
  const result=await fetch('/api/'+path,{method:payload===undefined?'GET':'POST',
   credentials:'same-origin',cache:'no-store',headers:payload===undefined?undefined:{'Content-Type':'application/json'},
@@ -97,7 +97,7 @@ function Mark(){return <svg aria-hidden="true" className="ffm-studio-mark" viewB
  </svg>}
 function Caption({children}:{children:React.ReactNode}){return <span className="ffm-studio-overline">{children}</span>}
 function DateStamp(){
- const ui=useUiText();return <span className="ffm-studio-date"><span className="ffm-studio-status-dot"/> {today()} {ui(" · Frankfurt am Main")}</span>}
+ const ui=useUiText();return <span className="ffm-studio-date"><span className="ffm-studio-status-dot"/> {today(ui.locale)} {ui(" · Frankfurt am Main")}</span>}
 function CityPanel({children,className=''}:{children:React.ReactNode;className?:string}){return <section className={'ffm-studio-panel '+className}>{children}</section>}
 function Field({label,children,hint}:{label:string;children:React.ReactNode;hint?:string}){const ui=useUiText();return <label className="ffm-studio-field"><span>{ui(label)}</span>{children}{hint&&<small>{ui(hint)}</small>}</label>}
 
@@ -297,7 +297,7 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
   </div>
  ):selected?(
   <div key={selected.osm_id} className="ffm-studio-detail">
-   <div className="ffm-studio-detail-top"><Caption>ORTSDATEN</Caption><span className="ffm-studio-pill warn">{ui("Ungeprüft")}</span></div>
+   <div className="ffm-studio-detail-top"><Caption>{ui("ORTSDATEN")}</Caption><span className="ffm-studio-pill warn">{ui("Ungeprüft")}</span></div>
    <div className="ffm-studio-detail-name"><h2>{selected.name}</h2><div className="ffm-studio-location-mark"><MapPin size={20}/></div></div>
    <p className="ffm-studio-muted">{selected.category} · {selected.address||ui("Noch keine Adresse hinterlegt")}</p>
    <details className="ffm-simple-geo"><summary>{ui("Weitere Ortsdaten ")}<ChevronRight size={15}/></summary><div className="ffm-studio-geo-line"><span><MapPin size={14}/> {Number(selected.latitude).toFixed(4)}{ui("° N, ")}{Number(selected.longitude).toFixed(4)}{ui("° O")}</span><span><Clock3 size={14}/> OSM {selected.last_osm_check||ui("Datum unbekannt")}</span></div></details>
@@ -346,7 +346,7 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
   <div className="ffm-studio-work">
    <header className="ffm-studio-top">
     <div className="ffm-studio-mobile-brand"><Mark/><span>{ui("ffm")}<span>.</span>{ui("stadtstudio")}</span></div>
-    <div className="ffm-studio-breadcrumb"><strong>FFM</strong> <span>/</span> {NAV.find(n=>n.view===view)?.label}</div>
+    <div className="ffm-studio-breadcrumb"><strong>FFM</strong> <span>/</span> {ui(NAV.find(n=>n.view===view)?.label||"")}</div>
     <div className="ffm-studio-top-end"><button type="button" title={ui("Aktualisieren")} aria-label={ui("Daten aktualisieren")} className="ffm-studio-refresh" onClick={refresh}><RefreshCw size={18}/></button><span className="ffm-studio-avatar">{ui("R")}</span></div>
     <button type="button" className="ffm-studio-menubutton" aria-label={ui("Menü öffnen")} aria-expanded={mobileMenu} onClick={()=>setMobileMenu(v=>!v)}><Menu size={23}/></button>
    </header>
@@ -369,7 +369,7 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
     {view==='overview'&&<>
  <section className="ffm-simple-intro" aria-labelledby="ffm-simple-today">
   <div><span className="ffm-simple-kicker"><span className="ffm-studio-status-dot"/> {ui(" FFM REDAKTION")}</span><h1 id="ffm-simple-today">{ui("Was steht ")}<em>{ui("an?")}</em></h1></div>
-  <span className="ffm-simple-todaydate">{today()}</span>
+  <span className="ffm-simple-todaydate">{today(ui.locale)}</span>
  </section>
  <section className="ffm-simple-actions" aria-label={ui("Womit möchtest du beginnen?")}>
   <button type="button" className="ffm-simple-action mint" onClick={()=>{setReviewMode('unverified');navigate('review')}}>
@@ -414,14 +414,14 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
       </article>)}</div>
      </details>
      <div className="ffm-studio-review-tabs" role="tablist" aria-label={ui("Prüfbereiche")}>
-      {[{id:'unverified',label:'Noch ungeprüft',count:stats?.kandidaten},{id:'needs_review',label:'Rückfragen',count:stats?.rueckfragen},{id:'existing',label:'Erneut prüfen',count:stats?.offen_zur_pruefung}].map(r=><button key={r.id} type="button" role="tab" aria-selected={reviewMode===r.id} className={reviewMode===r.id?'active':''} onClick={()=>{setReviewMode(r.id as ReviewMode);setPage(0);setDrawer(false);setSelectedDue(null)}}>{r.label}<span>{fmt(r.count)}</span></button>)}
+      {[{id:'unverified',label:'Noch ungeprüft',count:stats?.kandidaten},{id:'needs_review',label:'Rückfragen',count:stats?.rueckfragen},{id:'existing',label:'Erneut prüfen',count:stats?.offen_zur_pruefung}].map(r=><button key={r.id} type="button" role="tab" aria-selected={reviewMode===r.id} className={reviewMode===r.id?'active':''} onClick={()=>{setReviewMode(r.id as ReviewMode);setPage(0);setDrawer(false);setSelectedDue(null)}}>{ui(r.label)}<span>{fmt(r.count)}</span></button>)}
      </div>
      <div className="ffm-studio-review-layout">
       <CityPanel className="ffm-studio-queue-panel">
        <div className="ffm-studio-queue-top"><strong>{reviewMode==='existing'?ui("Erneut prüfen"):ui("Orte")}</strong><span>{reviewMode==='existing'?fmt(due.length):fmt(total)}</span></div>
        {reviewMode!=='existing'&&<>
         <div className="ffm-studio-filterrow"><div className="ffm-studio-search"><Search size={18}/><input aria-label={ui("Orte suchen")} placeholder={ui("Name oder Adresse suchen")} value={search} onChange={e=>setSearch(e.target.value)}/>{search&&<button type="button" onClick={()=>setSearch('')} aria-label={ui("Suche leeren")}><X size={15}/></button>}</div>
-        <label className="ffm-studio-categoryfilter"><Filter size={17}/><select aria-label={ui("Kategorie")} value={category} onChange={e=>{setCategory(e.target.value);setPage(0)}}><option value="">{ui("Alle Kategorien")}</option>{KATEGORIEN.filter(c=>c.id!=='Alle').map(c=><option value={c.id} key={c.id}>{c.label}</option>)}</select></label></div>
+        <label className="ffm-studio-categoryfilter"><Filter size={17}/><select aria-label={ui("Kategorie")} value={category} onChange={e=>{setCategory(e.target.value);setPage(0)}}><option value="">{ui("Alle Kategorien")}</option>{KATEGORIEN.filter(c=>c.id!=='Alle').map(c=><option value={c.id} key={c.id}>{ui(c.label)}</option>)}</select></label></div>
        </>}
        <div className="ffm-studio-queue-list">
         {reviewMode==='existing'?(
@@ -443,14 +443,14 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
 
     {view==='moderation'&&<>
      <div className="ffm-studio-page-heading"><div><h1>{ui("Freigaben")}<span>.</span></h1></div></div>
-     <div className="ffm-studio-mod-layout"><CityPanel className="ffm-studio-mod-left"><h2>{fmt(currentCount)} {ui(" offen")}</h2><div className="ffm-studio-mod-menu">{visibleQueues.map(q=><button type="button" key={q.key} className={queueSection===q.key?'active':''} onClick={()=>setQueueSection(q.key)}><span>{q.title}</span><b>{fmt(queue[q.key]?.length)}</b><ChevronRight size={17}/></button>)}</div></CityPanel>
+     <div className="ffm-studio-mod-layout"><CityPanel className="ffm-studio-mod-left"><h2>{fmt(currentCount)} {ui(" offen")}</h2><div className="ffm-studio-mod-menu">{visibleQueues.map(q=><button type="button" key={q.key} className={queueSection===q.key?'active':''} onClick={()=>setQueueSection(q.key)}><span>{ui(q.title)}</span><b>{fmt(queue[q.key]?.length)}</b><ChevronRight size={17}/></button>)}</div></CityPanel>
      <CityPanel className="ffm-studio-mod-right"><div className="ffm-studio-panel-heading"><h2>{visibleQueues.find(q=>q.key===queueSection)?.title}</h2></div>
       {queue[queueSection]?.length?queue[queueSection].map((item,i)=><article key={item.id} className="ffm-studio-mod-record"><span className="ffm-studio-item-index">{String(i+1).padStart(2,'0')}</span><div><strong>{item.name||item.title||item.body||[item.business_name,item.place_name].filter(Boolean).join(' · ')||ui("Eintrag")}</strong>
        {item.rating&&<p>{'★'.repeat(item.rating)}{'☆'.repeat(5-item.rating)}</p>}
        {item.note&&<p>{item.note}</p>}{queueSection==='branchChanges'&&<p>{ui("Neue Angaben: ")}{String((item as any).address||'')} · {String((item as any).phone||'')} · {String((item as any).opening_hours_text||'')}</p>}
        {item.place_name&&<small>{ui("Ort: ")}{item.place_name}</small>}<div className="ffm-studio-mod-actions"><button disabled={busy} type="button" className="ffm-studio-approve" onClick={()=>void moderation(queueSection,item,true)}><Check size={16}/> {queueSection==='reports'||queueSection==='reviewReports'?ui("Geprüft"):ui("Freigeben")}</button><button disabled={busy} type="button" className="ffm-studio-quiet-danger" onClick={()=>void moderation(queueSection,item,false)}><X size={16}/> {queueSection==='reports'||queueSection==='reviewReports'?ui("Unbegründet"):ui("Ablehnen")}</button>{queueSection==='reviewReports'&&item.review_id&&<button
        disabled={busy} className="ffm-studio-quiet-danger" type="button" onClick={()=>{
-        const reason=window.prompt('Grund für die Entfernung (mind. 10 Zeichen):');
+        const reason=window.prompt(ui("Grund für die Entfernung (mind. 10 Zeichen):"));
         if(!reason||reason.trim().length<10)return;
         if(window.confirm(ui("Diese veröffentlichte Bewertung wirklich entfernen?"))){
          void action('admin/remove-review',{id:item.review_id,reason:reason.trim()},'Bewertung entfernt.');
@@ -470,7 +470,7 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
       <form key={publishMode+'-'+newPlaceId} className="ffm-studio-form" onSubmit={publish}>
        {publishMode==='place'?<>
         <Field label="Name des Orts"><input name="name" required maxLength={150} placeholder={ui("Zum Beispiel: Stadtteilcafé ...")}/></Field>
-        <Field label="Kategorie"><select name="category">{KATEGORIEN.filter(c=>c.id!=='Alle').map(c=><option key={c.id} value={c.id}>{c.label}</option>)}</select></Field>
+        <Field label="Kategorie"><select name="category">{KATEGORIEN.filter(c=>c.id!=='Alle').map(c=><option key={c.id} value={c.id}>{ui(c.label)}</option>)}</select></Field>
         <Field label="Adresse"><input name="address" maxLength={200} placeholder={ui("Straße und Hausnummer")}/></Field>
         <details className="ffm-simple-more-fields"><summary><Plus size={17}/> {ui(" Weitere Angaben")}</summary><div className="ffm-simple-more-content">
         <Field label="Stadtteil"><input name="district" maxLength={100} placeholder={ui("z. B. Bornheim")}/></Field>

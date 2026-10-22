@@ -1,6 +1,6 @@
 # FFM web technical handover
 
-21 October 2026. Grounded in `Frankfurt_App_Vollstaendiges_IT_Briefing.pdf`, version 1.0, 17 October 2026, and the current branch. Native iOS/Android applications and email are outside this increment. This is an implementation handover, not a declaration of complete PDF acceptance.
+22 October 2026. Grounded in `Frankfurt_App_Vollstaendiges_IT_Briefing.pdf`, version 1.0, 17 October 2026, and the current branch. Native iOS/Android applications and email are outside this increment. This is an implementation handover, not a declaration of complete PDF acceptance.
 
 ## Architecture decision
 
@@ -52,7 +52,7 @@ Editable department roles and branch-scoped staff delegation are implemented. Pe
 
 ## API design and workflow contracts
 
-See [generated API inventory](API_INVENTORY.md) for actual handlers and [requirements implementation ledger](BRIEFING_IMPLEMENTATION_MATRIX.md) for workflow state. JSON errors use non-success HTTP statuses. Server-side authentication, origin checks and parameterized queries protect writes. Dedicated handler implementations are authoritative where validation differs. The source inventory is not yet a complete OpenAPI request/response schema.
+See [generated API inventory](API_INVENTORY.md) for actual handlers and [requirements implementation ledger](BRIEFING_IMPLEMENTATION_MATRIX.md) for workflow state. JSON errors use non-success HTTP statuses. Server-side authentication, origin checks and parameterized queries protect writes. Dedicated handler implementations are authoritative where validation differs. The generated [OpenAPI contract](openapi.json) and [operation handbook](API_CONTRACTS.md) cover all 149 implemented operations, including input structures, query parameters, actual authorization/validation expressions and response shapes. The live read-only reference is `/api-docs` and the machine-readable contract is `/api/openapi`. Imperative action/state validation remains authoritative; the documentation does not execute source expressions.
 
 | Workflow | Trigger and preconditions | Result and failure behavior | Acceptance evidence |
 | --- | --- | --- | --- |
@@ -88,7 +88,7 @@ Direct dependency versions are locked in `package-lock.json`. Provider/data/imag
 
 CI runs behavioral/source tests, TypeScript, production build, real Chromium recovery/filter/profile regressions, disposable PostgreSQL HTTP acceptance and Compose validation. Deployment pins an exact tested commit, backs up isolated source/database/media, applies additive idempotent schema changes, builds the container, initializes missing Push keys privately, updates only FFM web and validates both FFM and Publisher health. Failure restores prior isolated source/image/environment where available. A successful deployment is not proof that provider logins, malware scanning or billing were accepted.
 
-Use [service activation](SERVICE_ACTIVATION.md) for the one optional secret and external prerequisites. Admin → Dienste shows configuration booleans, scanner reachability and actual verified inventory without exposing keys. Never print `.env`, OAuth keys, push endpoint credentials or worker authorization headers. Backups containing credentials stay private. Restore rehearsals, off-host backup retention/erasure policies, production alerting and incident runbooks require further operational acceptance.
+Use [service activation](SERVICE_ACTIVATION.md) for the one optional secret and external prerequisites. Admin → Dienste shows configuration booleans, scanner reachability and actual verified inventory without exposing keys. Never print `.env`, OAuth keys, push endpoint credentials or worker authorization headers. Backups containing credentials stay private. [Operations](OPERATIONS.md) defines installed daily private snapshots, seven-day bounded retention, five-minute internal health/freshness checks, an independent public monitor and incident/restore procedures. CI rehearses actual archive restore. Off-host destination, alert recipient/on-call ownership and qualified operational acceptance still require operator inputs.
 
 ## Remaining backlog and dependencies
 
@@ -104,8 +104,8 @@ Estimates below are engineering planning ranges in person-days, not committed da
 | Live ad checkout/payment/refund acceptance | 1–3 | Stripe account, released actual advertising terms/rates and funded test account; booking/delivery/measurements are implemented |
 | Real device Push acceptance and delivery monitoring | 1–3 | Consenting test devices and volume targets; web categories are implemented |
 | Editorial inventory and licensed media | Ongoing | Real source review, copyright grants and content owner |
-| Complete OpenAPI, approved wireframes and all A–I acceptance cases | 4–8 | Remaining implemented contracts and stakeholder acceptance |
-| Legal review, vendor ownership, off-host backup/restore and accessibility audit | 5–10 | Operator and qualified reviewers |
+| Stakeholder acceptance of implemented screen flows and A–I cases | 2–4 | Actual content, operational owners and consenting test users; API contracts and executable regression cases are delivered |
+| Independent legal/accessibility acceptance, vendor ownership and off-host backup destination | 5–10 | Operator, qualified reviewers and a private destination/retention policy; keyboard/automated accessibility checks and isolated restore rehearsal are delivered |
 
 No secret alone completes these open items. Native apps and email are excluded as instructed. Follow the remaining backlog rather than treating the existence of a database table or a green CI run as completed product behavior.
 

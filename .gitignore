@@ -7,3 +7,6 @@ node_modules
 .DS_Store
 
 service-config.json
+
+artifacts/
+__pycache__/

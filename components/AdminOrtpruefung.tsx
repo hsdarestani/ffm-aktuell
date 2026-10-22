@@ -104,7 +104,7 @@ export default function AdminOrtpruefung({onChanged}:{onChanged:()=>void}){
    <div className="v6-review-tabs"><button className="secondary-btn" type="button" disabled={busy} onClick={()=>void decide('needs_review')}>{ui("Rückfrage markieren")}</button><button className="secondary-btn" type="button" disabled={busy} onClick={()=>void decide('hide')}>{ui("Ausblenden")}</button></div>
   </div>}
   {error&&<p role="alert" className="v6-review-error">{ui(error)}</p>}
-  {info&&<p role="status">{info}</p>}
+  {info&&<p role="status">{ui(info)}</p>}
  </div>;
 }
 

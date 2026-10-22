@@ -40,10 +40,10 @@ export default function PlaceActions({venue,saved,loggedIn,onSave,onLogin,onRepo
    if(navigator.clipboard&&window.isSecureContext){
     await navigator.clipboard.writeText(url);onNotice(ui("Link kopiert."));return;
    }
-   window.prompt('Link zum Ort kopieren',url);
+   window.prompt(ui("Link zum Ort kopieren"),url);
   }catch(e){
    if((e as DOMException).name==='AbortError')return;
-   window.prompt('Link zum Ort kopieren',url);
+   window.prompt(ui("Link zum Ort kopieren"),url);
   }
  };
  const submitReport=async(e:FormEvent<HTMLFormElement>)=>{
