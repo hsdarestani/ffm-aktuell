@@ -48,3 +48,11 @@ Behavioral PostgreSQL-compatible tests cover real route execution and persisted 
 Actual PostgreSQL HTTP CI additionally races three receipts for one ad token and proves one impression/click, owner stop, outsider isolation and immediate receipt withdrawal. Chromium mobile regression exercises the optional date/budget/occasion fields, event results and sponsored viewability. These tests use isolated fixtures, not production customers or paid services.
 
 Primary provider references: [Twilio start](https://www.twilio.com/docs/verify/api/verification), [Twilio check](https://www.twilio.com/docs/verify/api/verification-check), [Stripe Checkout](https://docs.stripe.com/api/checkout/sessions/create), [OpenWeather forecast](https://openweathermap.org/api/forecast5).
+
+## 22 October: daily opening status and homepage CMS
+
+The public current-opening filter now uses explicit, source-backed calendar-day plans in Europe/Berlin. Up to six nonoverlapping half-open minute intervals are accepted per day; holiday exceptions require their own dated plan. Unknown dates, stale evidence, stale operating verification and unverified OSM data never match. Overnight hours must be split over the two actual dates. Editors can publish a dated plan or closure for up to 30 days ahead, withdraw it and inspect before/after history. No weekly/OSM text is silently converted into a current opening claim. Venue details explicitly label the result as the confirmed plan and link the source; this is not live physical occupancy/availability.
+
+Editors can reorder/show/hide six homepage modules: categories, verified places/events, sourced tips, personal ideas, community/business and city stories. Hero/search/navigation remain reachable. Configuration is validated and audited, persists across migrations and falls back to the default layout if malformed.
+
+Additional tests cover actual SQL opening filters, unknown/stale/closed states, Europe/Berlin DST and boundary minutes, write permissions/evidence, withdrawal history and non-resetting homepage configuration. Actual PostgreSQL HTTP CI exercises these endpoints as well as public reads and unauthorized writes.

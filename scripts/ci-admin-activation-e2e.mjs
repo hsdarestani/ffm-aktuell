@@ -557,7 +557,7 @@ try{
  if(insights.body.followers!==null)throw Error('Small follower aggregate ignored disclosure threshold');
  await pool.query("UPDATE billing_subscriptions SET current_period_end=now()-interval '1 second' WHERE id=$1",[testSub]);
  if((await get('business/insights?business_id='+createdBusiness.body.id,client)).status!==402)throw Error('Expired subscription retained premium analytics');
- await pool.query('DELETE FROM billing_subscriptions WHERE id=$1',[testSub]);
+
  console.log('PASS: authorized merchant aggregate counts, redeemed coupons, revocation and privacy thresholds');
  // Merchant-confirmed visits and loyalty: real HTTP + row locks, no production data.
  const loyaltyCustomer=await signup('loyalty-customer');
@@ -590,6 +590,26 @@ try{
  if(!proofReviews.body.items.find(r=>r.id===visitReview.body.id)?.verified_visit)throw Error('Merchant visit evidence was not attached to the review');
  if((await get('loyalty',reader)).body.cards.length)throw Error('Private loyalty cards leaked to another account');
  console.log('PASS: merchant-confirmed visits, parallel confirmation limits, immutable reward snapshots, one-time rewards and review evidence');
+ // Editorial homepage controls and explicit daily opening plans, using disposable fixtures.
+ const initialLayout=(await get('home-layout')).body.modules;
+ const rearranged=initialLayout.toReversed().map((m,i)=>({...m,enabled:i!==0}));
+ if((await post('home-layout',reader,{modules:rearranged})).status!==403)throw Error('Ordinary user changed homepage');
+ if((await post('home-layout',cookie,{modules:rearranged})).status!==200)throw Error('Editorial homepage save failed');
+ if(JSON.stringify((await get('home-layout')).body.modules)!==JSON.stringify(rearranged))throw Error('Public homepage layout did not match editorial configuration');
+ await post('home-layout',cookie,{modules:initialLayout});
+ const hoursPlace=(await pool.query("INSERT INTO places(name,status,verification_status,activity_status,verified_at,latitude,longitude) VALUES('CI Daily Hours Fixture','published','verified','operating',now(),50.11,8.68) RETURNING id")).rows[0].id;
+ const hoursDay=(await pool.query("SELECT (now() AT TIME ZONE 'Europe/Berlin')::date::text AS day")).rows[0].day;
+ const dailyHours={place_id:hoursPlace,day:hoursDay,state:'open',periods:[{start:0,end:1440}],source_url:'https://example.org/actual-daily-plan',checked_at:new Date(Date.now()-1000).toISOString(),note:'Actual daily hours fixture checked for CI only.'};
+ if((await post('opening-hours',reader,dailyHours)).status!==403)throw Error('Ordinary user certified opening hours');
+ if((await post('opening-hours',cookie,dailyHours)).status!==200)throw Error('Daily hours API save failed');
+ const openOnly=await get('explore?open_now=1&q=CI%20Daily%20Hours%20Fixture');
+ if(openOnly.status!==200||openOnly.body.places_total!==1||openOnly.body.candidates_total!==0)throw Error('Current opening filter did not use real daily evidence');
+ if((await get('opening-hours?place_id='+hoursPlace)).body.state!=='open')throw Error('Published daily hours state not open');
+ await post('opening-hours',cookie,{...dailyHours,state:'closed',periods:[]});
+ if((await get('explore?open_now=1&q=CI%20Daily%20Hours%20Fixture')).body.places_total!==0)throw Error('Closed venue remained in opening filter');
+ await post('opening-hours',cookie,{...dailyHours,state:'withdraw',periods:[]});
+ if((await get('opening-hours?place_id='+hoursPlace)).body.state!=='unknown')throw Error('Withdrawn hours still make an opening claim');
+ console.log('PASS: editorial homepage configuration, current daily opening evidence, closed/withdrawn plans and authorization');
  // Real PostgreSQL races for public advertising receipts. Payments are fixtures in this disposable database only.
  const adToday=(await pool.query("SELECT (now() AT TIME ZONE 'Europe/Berlin')::date::text AS day")).rows[0].day;
  const adCampaign=(await pool.query("INSERT INTO ad_campaigns(business_id,created_by,place_id,title,copy_de,placement,start_date,end_date,status) VALUES($1,$2,$3,'CI Paid ad','Actual CI advertising text','home',$4,$4,'awaiting_commercial_setup') RETURNING id",[createdBusiness.body.id,authorId,publicPlace.rows[0].id,adToday])).rows[0].id;
@@ -609,6 +629,7 @@ try{
  if((await post('ad-booking',reader,{campaign_id:adCampaign,action:'stop'})).status!==409)throw Error('Outsider could stop ad');
  if((await post('ad-booking',client,{campaign_id:adCampaign,action:'stop'})).status!==200)throw Error('Owner could not stop ad');
  if((await get('advertising?placement=home')).body.items.length)throw Error('Stopped ad remained public');
+ await pool.query('DELETE FROM billing_subscriptions WHERE id=$1',[testSub]);
  if((await post('advertising',client,{token:adToken,kind:'impression'})).status!==409)throw Error('Stopped ad token still accepted');
  const phoneReady=await get('auth/phone',client);
  if(phoneReady.status!==200||phoneReady.body.configured)throw Error('Unconfigured phone login was not fail closed');

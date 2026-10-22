@@ -9,6 +9,7 @@ import {
 import {KATEGORIEN} from '@/lib/ortskategorien';
 import {EDITORIAL_SOURCE_LEADS} from '@/lib/editorial-source-leads';
 import MediaEditorial from '@/components/MediaEditorial';
+import HomepageStudio from '@/components/HomepageStudio';
 import CatalogStudio from '@/components/CatalogStudio';
 import CampaignStudio from '@/components/CampaignStudio';
 import AdminTeamSeats from '@/components/AdminTeamSeats';
@@ -24,7 +25,7 @@ import '@/app/team-management.css';
 import '@/app/campaigns.css';
 import '@/app/catalog-studio.css';
 
-type View='overview'|'review'|'moderation'|'publish'|'catalog'|'ads'|'team'|'tariffs'|'quality'|'services'|'roles'|'notifications'|'loyalty';
+type View='home'|'overview'|'review'|'moderation'|'publish'|'catalog'|'ads'|'team'|'tariffs'|'quality'|'services'|'roles'|'notifications'|'loyalty';
 type PublishMode='place'|'news'|'event';
 type ReviewMode='unverified'|'needs_review'|'existing';
 type Candidate={osm_id:string;name:string;category:string;address:string|null;website:string|null;phone:string|null;opening_hours:string|null;last_osm_check:string|null;osm_url:string;latitude:number;longitude:number};
@@ -37,6 +38,7 @@ type Notice={kind:'success'|'error';text:string};
 type IconComponent=typeof LayoutDashboard;
 const emptyQueue:Queue={businesses:[],claims:[],places:[],deals:[],posts:[],reports:[],reviews:[],reviewReports:[],comments:[],branchChanges:[]};
 const NAV:{view:View;label:string;small:string;icon:IconComponent;index:string}[]=[
+ {view:'home',label:'Startseite',small:'Startseite',icon:LayoutDashboard,index:'14'},
  {view:'overview',label:'Heute',small:'Heute',icon:LayoutDashboard,index:'01'},
  {view:'review',label:'Orte prüfen',small:'Prüfen',icon:MapPinned,index:'02'},
  {view:'moderation',label:'Freigaben',small:'Freigaben',icon:ShieldCheck,index:'03'},
@@ -96,7 +98,7 @@ function Field({label,children,hint}:{label:string;children:React.ReactNode;hint
 export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=>void;permissions?:string[]}){
  const root=permissions.includes('*');
  const allowed=(cap:string)=>root||permissions.includes(cap);
- const navPermission:Record<View,string>={overview:'root',review:'editorial',moderation:'access',publish:'editorial',catalog:'editorial',ads:'marketing',team:'business',tariffs:'finance',quality:'editorial',services:'operations',roles:'root',notifications:'editorial',loyalty:'marketing'};
+ const navPermission:Record<View,string>={overview:'root',review:'editorial',moderation:'access',publish:'editorial',home:'editorial',catalog:'editorial',ads:'marketing',team:'business',tariffs:'finance',quality:'editorial',services:'operations',roles:'root',notifications:'editorial',loyalty:'marketing'};
  const availableNav=NAV.filter(n=>root||navPermission[n.view]==='access'&&permissions.some(p=>['editorial','moderation','business','marketing'].includes(p))||allowed(navPermission[n.view]));
  const queuePermission:Record<keyof Queue,string>={businesses:'business',claims:'business',places:'editorial',deals:'marketing',posts:'moderation',reports:'moderation',reviews:'moderation',reviewReports:'moderation',comments:'moderation',branchChanges:'business'};
  const visibleQueues=queueNames.filter(q=>allowed(queuePermission[q.key]));
@@ -344,6 +346,7 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
    <div className="ffm-studio-mobile-tabs">{availableNav.map(n=><button type="button" key={n.view} onClick={()=>navigate(n.view)} aria-current={view===n.view?'page':undefined} className={view===n.view?'active':''}><n.icon size={17}/>{n.small}</button>)}</div>
 
    <div className="ffm-studio-content">
+    {view==='home'&&<HomepageStudio/>}
     {view==='catalog'&&<CatalogStudio onNotice={(msg,success)=>setNotice({kind:success?'success':'error',text:msg})}/>}
     {view==='ads'&&<CampaignStudio onNotice={(msg,success)=>setNotice({kind:success?'success':'error',text:msg})}/>}
     {view==='team'&&<AdminTeamSeats onNotice={(msg,success)=>setNotice({kind:success?'success':'error',text:msg})}/>}

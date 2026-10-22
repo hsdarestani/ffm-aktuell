@@ -771,3 +771,16 @@ CREATE TABLE IF NOT EXISTS ad_daily_stats (
  campaign_id uuid NOT NULL REFERENCES ad_campaigns(id) ON DELETE CASCADE,day date NOT NULL,
  impressions integer NOT NULL DEFAULT 0,clicks integer NOT NULL DEFAULT 0,PRIMARY KEY(campaign_id,day)
 );
+
+CREATE TABLE IF NOT EXISTS place_opening_days (
+ place_id uuid NOT NULL REFERENCES places(id) ON DELETE CASCADE,day date NOT NULL,
+ state text NOT NULL CHECK(state IN ('open','closed')),periods jsonb NOT NULL CHECK(jsonb_typeof(periods)='array' AND jsonb_array_length(periods)<=6),
+ source_url text NOT NULL CHECK(source_url ~ '^https://'),checked_at timestamptz NOT NULL,
+ note text NOT NULL CHECK(char_length(note) BETWEEN 10 AND 500),checked_by uuid REFERENCES users(id) ON DELETE SET NULL,
+ PRIMARY KEY(place_id,day)
+);
+CREATE INDEX IF NOT EXISTS place_opening_days_current ON place_opening_days(day,checked_at);
+CREATE TABLE IF NOT EXISTS home_layout (
+ id integer PRIMARY KEY CHECK(id=1),modules jsonb NOT NULL,updated_at timestamptz NOT NULL DEFAULT now(),updated_by uuid REFERENCES users(id) ON DELETE SET NULL
+);
+INSERT INTO home_layout(id,modules) VALUES(1,'[{"code":"choices","enabled":true},{"code":"highlights","enabled":true},{"code":"tips","enabled":true},{"code":"assistant","enabled":true},{"code":"community","enabled":true},{"code":"news","enabled":true}]') ON CONFLICT DO NOTHING;

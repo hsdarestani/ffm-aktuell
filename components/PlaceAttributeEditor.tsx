@@ -1,4 +1,5 @@
 'use client';
+import {OpeningEditor} from '@/components/OpeningHours';
 import {useEffect,useState,type FormEvent} from 'react';
 import {factLabels,type Fact} from '@/components/PlaceFacts';
 export default function PlaceAttributeEditor({placeId}:{placeId:string}){
@@ -15,5 +16,5 @@ export default function PlaceAttributeEditor({placeId}:{placeId:string}){
  <label>HTTPS Quelle<input type="url" required maxLength={1500} value={source} onChange={e=>setSource(e.target.value)}/></label>
  <label>Geprüft am (lokale Zeit)<input type="datetime-local" required value={stamp} onChange={e=>setStamp(e.target.value)}/></label>
  <label>Beleg oder Grund<textarea required minLength={10} maxLength={500} value={note} onChange={e=>setNote(e.target.value)}/></label>
- <button disabled={busy} type="submit">{busy?'Wird gespeichert …':'Beleg speichern'}</button><p role="status">{message}</p></form></section>;
+ <button disabled={busy} type="submit">{busy?'Wird gespeichert …':'Beleg speichern'}</button><p role="status">{message}</p></form><OpeningEditor key={placeId} placeId={placeId}/></section>;
 }

@@ -6,6 +6,7 @@ import ts from 'typescript';
 import {PGlite} from '@electric-sql/pglite';
 import {pgcrypto} from '@electric-sql/pglite/contrib/pgcrypto';
 const require=createRequire(import.meta.url);
+const opening=await import('data:text/javascript;base64,'+Buffer.from(ts.transpileModule(readFileSync('lib/opening-hours.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.ES2022}}).outputText).toString('base64'));
 
 test('public discovery executes pagination and distance ordering against PostgreSQL',async t=>{
  const db=new PGlite({extensions:{pgcrypto}});
@@ -21,7 +22,7 @@ test('public discovery executes pagination and distance ordering against Postgre
           ('node/99002','Z nearest OSM','Bars',50.11001,8.68,'Test','https://www.openstreetmap.org/node/99002');`);
   const compiled=ts.transpileModule(readFileSync('app/api/explore/route.ts','utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
   const module={exports:{}};
-  new Function('require','module','exports',compiled)(id=>id==='@/lib/db'?{query:(sql,args)=>db.query(sql,args)}:require(id),module,module.exports);
+  new Function('require','module','exports',compiled)(id=>id==='@/lib/opening-hours'?opening:id==='@/lib/db'?{query:(sql,args)=>db.query(sql,args)}:require(id),module,module.exports);
   const get=async params=>{const response=await module.exports.GET({nextUrl:new URL('http://localhost/api/explore?'+params)});return {status:response.status,body:await response.json()}};
   await t.test('all editorial records are reachable beyond the first page without overlap',async()=>{
    const first=await get('q=Pagination&place_offset=0'),second=await get('q=Pagination&place_offset=18');
@@ -54,6 +55,22 @@ test('public discovery executes pagination and distance ordering against Postgre
    for(const value of ['-1','0.5','Infinity','10001','bad'])assert.equal((await get('place_offset='+value)).status,400);
    const result=await get('category=Bars&place_offset=18');
    assert.equal(result.body.places.length,0);assert.equal(result.body.candidates.length,2);
+  });
+  await t.test('current opening filter excludes unknown, stale, closed and unverified plans',async()=>{
+   const ids=(await db.query("SELECT id FROM places ORDER BY name LIMIT 4")).rows.map(x=>x.id);
+   await db.query("UPDATE places SET verification_status='verified',activity_status='operating',verified_at=now() WHERE id=ANY($1::uuid[])",[ids.slice(0,3)]);
+   for(let n=0;n<4;n++)await db.query("INSERT INTO place_opening_days(place_id,day,state,periods,source_url,checked_at,note) VALUES($1,(now() AT TIME ZONE 'Europe/Berlin')::date,$2,$3,'https://example.org/daily-hours',now()-($4::int*interval '1 day'),'Actual daily source checked')",[ids[n],n===1?'closed':'open',JSON.stringify(n===1?[]:[{start:0,end:1440}]),n===2?31:0]);
+   const result=await get('open_now=1');assert.equal(result.status,200);assert.equal(result.body.places_total,1);assert.equal(result.body.places[0].id,ids[0]);assert.equal(result.body.candidates_total,0);assert.equal(result.body.openingNowAvailable,true);
+   assert.equal((await get('open_now=maybe')).status,400);
+  });
+  await t.test('daily clock uses Frankfurt DST and half-open opening boundaries',async()=>{
+   const id=(await db.query("SELECT id FROM places ORDER BY name LIMIT 1")).rows[0].id;
+   await db.query("UPDATE places SET verified_at='2026-10-24T12:00:00Z' WHERE id=$1",[id]);
+   await db.query("INSERT INTO place_opening_days(place_id,day,state,periods,source_url,checked_at,note) VALUES($1,'2026-10-25','open','[{\"start\":120,\"end\":180}]','https://example.org/holiday-hours','2026-10-24T12:00:00Z','Actual exceptional hours checked') ON CONFLICT(place_id,day) DO UPDATE SET periods=excluded.periods,checked_at=excluded.checked_at",[id]);
+   const sql='SELECT '+opening.openNowSQL('p','$1::timestamptz')+' AS open FROM places p WHERE p.id=$2';
+   for(const stamp of ['2026-10-25T00:00:00Z','2026-10-25T01:30:00Z'])assert.equal((await db.query(sql,[stamp,id])).rows[0].open,true);
+   assert.equal((await db.query(sql,['2026-10-25T02:00:00Z',id])).rows[0].open,false);
+   assert.equal(opening.validPeriods([{start:600,end:700},{start:650,end:800}],'open'),false);assert.equal(opening.validPeriods([{start:1200,end:120}],'open'),false);assert.equal(opening.validPeriods([],'closed'),true);
   });
  }finally{await db.close()}
 });

@@ -1,4 +1,5 @@
 import {NextRequest,NextResponse} from 'next/server';
+import {openNowSQL} from '@/lib/opening-hours';
 import {query} from '@/lib/db';
 
 export const runtime='nodejs';
@@ -17,6 +18,7 @@ export async function GET(req:NextRequest){
  if(categories.length>6||categories.some(v=>v.length>70))return fail('Maximal sechs Kategorien wählen');
  const search=(qs.get('q')||'').trim(),district=(qs.get('district')||'').trim();
  if(search.length>90||district.length>60)return fail('Filter zu lang');
+ const openNow=qs.get('open_now')==='1';if(qs.has('open_now')&&!['0','1'].includes(qs.get('open_now')||''))return fail('Öffnungsfilter ungültig');
  const verified=qs.get('verified')==='1';
  if(qs.has('verified')&&!['0','1'].includes(qs.get('verified')||''))return fail('Ungültiger Bestätigungsfilter');
  const radius=Number(qs.get('radius')||3),nearby=qs.has('lat')||qs.has('lon');
@@ -36,7 +38,7 @@ export async function GET(req:NextRequest){
  COS(RADIANS(latitude))*COS(RADIANS($5::float8))*COS(RADIANS(longitude-$6::float8))
  +SIN(RADIANS(latitude))*SIN(RADIANS($5::float8)))))`;
  const distance=`CASE WHEN $5::float8 IS NULL OR latitude IS NULL OR longitude IS NULL THEN NULL ELSE ROUND((${dist})::numeric,2)::float8 END AS distance_km`;
- const where=`status='published' AND activity_status!='permanently_closed'
+ const where=`${openNow?openNowSQL():'true'} AND status='published' AND activity_status!='permanently_closed'
   AND (cardinality($1::text[])=0 OR category=ANY($1::text[]) OR EXISTS(
     SELECT 1 FROM place_categories pc WHERE pc.place_id=places.id AND pc.category_slug=ANY($1::text[])))
   AND ($2::text='' OR (name||' '||coalesce(description_de,'')||' '||coalesce(description_en,'')||' '||district||' '||address) ILIKE '%'||$2||'%')
@@ -64,7 +66,7 @@ export async function GET(req:NextRequest){
    AND verified_at>now()-interval '30 days' THEN 0 ELSE 1 END,editorial_rank DESC,name,id LIMIT 18 OFFSET $8`;
  // OSM entries contain no authoritative district column; no guess from address.
  // An explicit district filter therefore omits them rather than lying to users.
- const candidatesAllowed=!verified&&!district&&!features.length&&!price&&!rating;
+ const candidatesAllowed=!openNow&&!verified&&!district&&!features.length&&!price&&!rating;
  const candidateWhere=`reviewed_status='unverified' AND activity_status!='permanently_closed'
   AND ($3::text='' AND NOT $4::boolean)
   AND (cardinality($1::text[])=0 OR category=ANY($1::text[]))
@@ -85,7 +87,7 @@ export async function GET(req:NextRequest){
    places:editor.rows,places_total:editorCount.rows[0]?.n||0,
    candidates:osm.rows,candidates_total:osmCount.rows[0]?.n||0,
    limit:18,offset,places_limit:18,places_offset:placeOffset,candidate_district_unsupported:Boolean(district),
-   openingNowAvailable:false,pricesAvailable:false,priceLevelFilterAvailable:true,attribute_filters_supported:true,unknown_attributes_excluded:Boolean(features.length||price||rating),
+   openingNowAvailable:true,pricesAvailable:false,priceLevelFilterAvailable:true,attribute_filters_supported:true,unknown_attributes_excluded:Boolean(openNow||features.length||price||rating),
    source:'© OpenStreetMap-Mitwirkende · ODbL'
   },{headers:{'Cache-Control':'public, max-age=0, s-maxage=15'}});
  }catch(e){console.error('Public filtered discovery failed',e);
