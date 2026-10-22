@@ -41,6 +41,15 @@ jobs:
         run: npm run build
       - name: Install Chromium for map recovery checks
         run: npx playwright install --with-deps chromium
+      - name: Admin workspace desktop and mobile browser checks
+        run: node scripts/admin-workspace-browser.mjs
+      - name: Admin workspace screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-workspace-browser
+          path: artifacts/admin-workspace
+          if-no-files-found: ignore
       - name: Mobile map startup and stalled-network recovery
         run: npm run test:map-browser
       - name: Map recovery screenshots

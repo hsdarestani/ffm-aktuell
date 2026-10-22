@@ -1,4 +1,5 @@
 'use client';
+import {useModalFocus} from '@/lib/use-modal-focus';
 import {useUiText,UiLanguageSwitch} from '@/lib/ui-locale';
 import {useCallback,useEffect,useState,type FormEvent} from 'react';
 import {
@@ -42,21 +43,27 @@ type Notice={kind:'success'|'error';text:string};
 type IconComponent=typeof LayoutDashboard;
 const emptyQueue:Queue={businesses:[],claims:[],places:[],deals:[],posts:[],reports:[],reviews:[],reviewReports:[],comments:[],branchChanges:[]};
 const NAV:{view:View;label:string;small:string;icon:IconComponent;index:string}[]=[
- {view:'accounts',label:'Konten',small:'Konten',icon:UsersRound,index:'15'},
- {view:'home',label:'Startseite',small:'Startseite',icon:LayoutDashboard,index:'14'},
  {view:'overview',label:'Heute',small:'Heute',icon:LayoutDashboard,index:'01'},
  {view:'review',label:'Orte prüfen',small:'Prüfen',icon:MapPinned,index:'02'},
  {view:'moderation',label:'Freigaben',small:'Freigaben',icon:ShieldCheck,index:'03'},
  {view:'publish',label:'Erstellen',small:'Erstellen',icon:SquarePen,index:'04'},
+ {view:'home',label:'Startseite',small:'Startseite',icon:LayoutDashboard,index:'14'},
  {view:'catalog',label:'Kategorien',small:'Rubriken',icon:Filter,index:'05'},
+ {view:'notifications',label:'Stadttipps',small:'Tipps',icon:SquarePen,index:'12'},
+ {view:'quality',label:'Datenqualität',small:'Qualität',icon:FileCheck2,index:'09'},
  {view:'ads',label:'Werbung',small:'Werbung',icon:BarChart3,index:'06'},
+ {view:'loyalty',label:'Treuekarten',small:'Treue',icon:UsersRound,index:'13'},
  {view:'team',label:'Teamplätze',small:'Teams',icon:UsersRound,index:'07'},
  {view:'tariffs',label:'Tarife',small:'Tarife',icon:BarChart3,index:'08'},
- {view:'quality',label:'Datenqualität',small:'Qualität',icon:FileCheck2,index:'09'},
- {view:'services',label:'Dienste',small:'Dienste',icon:FileCheck2,index:'10'},
+ {view:'accounts',label:'Konten',small:'Konten',icon:UsersRound,index:'15'},
  {view:'roles',label:'Berechtigungen',small:'Rechte',icon:ShieldCheck,index:'11'},
- {view:'notifications',label:'Stadttipps',small:'Tipps',icon:SquarePen,index:'12'},
- {view:'loyalty',label:'Treuekarten',small:'Treue',icon:UsersRound,index:'13'}
+ {view:'services',label:'Dienste',small:'Dienste',icon:FileCheck2,index:'10'},
+];
+const NAV_GROUPS:{label:string;views:View[]}[]=[
+ {label:'Redaktion',views:['overview','review','moderation','publish']},
+ {label:'Inhalte',views:['home','catalog','notifications','quality']},
+ {label:'Unternehmen',views:['ads','loyalty','team','tariffs']},
+ {label:'Verwaltung',views:['accounts','roles','services']}
 ];
 const queueNames:{key:keyof Queue;title:string;singular:string}[]=[
  {key:'businesses',title:'Unternehmen',singular:'business'},
@@ -133,6 +140,9 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
  const [revision,setRevision]=useState(0);
  const [queueSection,setQueueSection]=useState<keyof Queue>(visibleQueues[0]?.key||'businesses');
  const [mobileMenu,setMobileMenu]=useState(false);
+ const closeMobileMenu=useCallback(()=>setMobileMenu(false),[]);
+ useModalFocus(mobileMenu,closeMobileMenu);
+ useEffect(()=>{const media=window.matchMedia('(min-width:851px)');const close=()=>{if(media.matches)setMobileMenu(false)};media.addEventListener('change',close);return()=>media.removeEventListener('change',close)},[]);
  const [detailDecision,setDetailDecision]=useState(false);
  const [newPlaceId,setNewPlaceId]=useState('');
 
@@ -326,15 +336,14 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
  ):<div className="ffm-studio-no-selection"><div className="ffm-studio-orbit"><Compass size={40}/><span/></div><Caption>{ui("DIE STADT WARTET")}</Caption><h3>{ui("Wähle einen Ort.")}</h3><p>{ui("Links eine Adresse öffnen, Quelle prüfen und eine sichere Entscheidung treffen.")}</p></div>;
 
  return <main className="ffm-studio" aria-label={ui("FFM Redaktion")}>
-  <aside className={'ffm-studio-rail'+(mobileMenu?' open':'')}>
+  <aside id="ffm-admin-navigation" role={mobileMenu?'dialog':undefined} aria-modal={mobileMenu?true:undefined} aria-label={ui('Redaktionsbereiche')} className={'ffm-studio-rail'+(mobileMenu?' open':'')}>
    <div className="ffm-studio-rail-top">
     <div className="ffm-studio-brand"><Mark/><div><strong>{ui("ffm")}<span>.</span>{ui("aktuell")}</strong><small>{ui("STADTSTUDIO / REDAKTION")}</small></div></div>
     <button className="ffm-studio-closemenu" onClick={()=>setMobileMenu(false)} aria-label={ui("Menü schließen")}><X size={20}/></button>
    </div>
    
    <nav className="ffm-studio-rail-nav" aria-label={ui("Redaktionsbereiche")}>
-    {availableNav.map(n=><button type="button" key={n.view} className={view===n.view?'active':''} aria-current={view===n.view?'page':undefined} onClick={()=>navigate(n.view)}>
-     <n.icon size={19} strokeWidth={1.8}/><span>{ui(n.label)}</span><small>{n.index}</small></button>)}
+    {NAV_GROUPS.map(group=>{const entries=availableNav.filter(n=>group.views.includes(n.view));return entries.length>0&&<div className="ffm-studio-nav-group" key={group.label}><span className="ffm-studio-nav-label">{ui(group.label)}</span>{entries.map(n=><button type="button" key={n.view} className={view===n.view?'active':''} aria-current={view===n.view?'page':undefined} onClick={()=>navigate(n.view)}><n.icon size={18} strokeWidth={1.8}/><span>{ui(n.label)}</span></button>)}</div>})}
    </nav>
    <div className="ffm-studio-rail-bottom">
     
@@ -348,9 +357,9 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
     <div className="ffm-studio-mobile-brand"><Mark/><span>{ui("ffm")}<span>.</span>{ui("stadtstudio")}</span></div>
     <div className="ffm-studio-breadcrumb"><strong>FFM</strong> <span>/</span> {ui(NAV.find(n=>n.view===view)?.label||"")}</div>
     <div className="ffm-studio-top-end"><UiLanguageSwitch/><button type="button" title={ui("Aktualisieren")} aria-label={ui("Daten aktualisieren")} className="ffm-studio-refresh" onClick={refresh}><RefreshCw size={18}/></button><span className="ffm-studio-avatar">{ui("R")}</span></div>
-    <button type="button" className="ffm-studio-menubutton" aria-label={ui("Menü öffnen")} aria-expanded={mobileMenu} onClick={()=>setMobileMenu(v=>!v)}><Menu size={23}/></button>
+    <button type="button" className="ffm-studio-menubutton" aria-label={ui("Menü öffnen")} aria-controls="ffm-admin-navigation" aria-expanded={mobileMenu} onClick={()=>setMobileMenu(v=>!v)}><Menu size={23}/></button>
    </header>
-   <div className="ffm-studio-mobile-tabs">{availableNav.map(n=><button type="button" key={n.view} onClick={()=>navigate(n.view)} aria-current={view===n.view?'page':undefined} className={view===n.view?'active':''}><n.icon size={17}/>{ui(n.small)}</button>)}</div>
+   <div className="ffm-studio-mobile-current">{ui(NAV.find(n=>n.view===view)?.label||'')}</div>
 
    <div className="ffm-studio-content">
     {view==='home'&&<HomepageStudio/>}

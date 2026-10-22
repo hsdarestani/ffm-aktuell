@@ -13,7 +13,7 @@ export default function AdminTeamSeats({onNotice}:{onNotice:(message:string,succ
   setBusy(true);try{const r=await fetch('/api/admin/business-seats',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({business_id,seats,reason,terms_approved:f.get('terms_approved')==='on'})});const d=await r.json();if(!r.ok)throw Error(d.error||ui("Fehler"));onNotice(ui("Mitarbeiterkontingent protokolliert."),true);await load()}catch(e){onNotice(e instanceof Error?e.message:ui("Änderung fehlgeschlagen"),false)}finally{setBusy(false)}
  }
  return <section className="ffm-team-admin"><h1>{ui("Mitarbeiterplätze")}</h1><p>{ui("Nur nach geprüfter vertraglicher Freigabe. Keine automatische Buchung oder Belastung.")}</p>
-  {items.map(b=><form key={b.id} onSubmit={e=>void save(b.id,e)}><strong>{b.name}</strong><small>{ui("Aktiv: ")}{b.used_seats} {ui(" · Kontingent: ")}{b.team_seat_limit}</small>
+  {!items.length&&<p className="ffm-admin-empty">{ui("Keine Unternehmen vorhanden.")}</p>}{items.map(b=><form key={b.id} onSubmit={e=>void save(b.id,e)}><strong>{b.name}</strong><small>{ui("Aktiv: ")}{b.used_seats} {ui(" · Kontingent: ")}{b.team_seat_limit}</small>
     <label>{ui("Plätze")}<input type="number" min={b.used_seats} max={50} name="seats" defaultValue={b.team_seat_limit} required/></label>
     <label>{ui("Begründung und Freigabequelle")}<textarea name="reason" rows={2} minLength={20} maxLength={700} placeholder={ui("Datum, interne Freigabe und vertraglicher Nachweis")} required/></label>
     <label className="ffm-team-consent"><input type="checkbox" name="terms_approved" required/> {ui(" Bedingungen und Berechtigung sind tatsächlich genehmigt")}</label>

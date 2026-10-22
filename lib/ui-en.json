@@ -1746,5 +1746,9 @@
   "Zeichen erforderlich": "characters required",
   "Passwortlänge erfüllt": "Password length is sufficient",
   "Wird eingerichtet …": "Setting up …",
-  "Administrator Konto aktivieren": "Activate administrator account"
+  "Administrator Konto aktivieren": "Activate administrator account",
+  "Inhalte": "Content",
+  "Keine Unternehmen vorhanden.": "No businesses yet.",
+  "Keine Treuekarten zur Prüfung.": "No loyalty cards awaiting review.",
+  "Noch keine Rollen zugewiesen.": "No roles assigned yet."
 }

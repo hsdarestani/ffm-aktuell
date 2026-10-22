@@ -116,3 +116,11 @@ Source `6f81be9f49a2cd84f13a95693570631cd36bed3c` passed all 176 tests, TypeScri
 ## Final named web modules
 
 [Web completion decisions and tests](WEB_COMPLETION_20261021.md) covers implemented source-backed daily opening filters, editorial homepage layout, contextual discovery, weather adapter, consent-based public-post translation, linked phone access, paid ad booking/delivery and actual viewable receipt counting. The remaining provider, factual inventory, legal and independent operational acceptance steps are not completed by code or secrets alone.
+
+### Admin workspace visual correction — 2026-10-22
+
+All 15 permitted sections now use task-grouped navigation (editorial, content, business, administration), with Today first for root administrators. The desktop rail scrolls independently; mobile uses a grouped menu with focus containment, Escape and opener restoration. Permission filtering remains unchanged.
+
+Shared admin-only controls cover account search, catalog/roles, tariff/seat forms and moderation tools. Homepage modules use compact ordered rows, correctly sized checkboxes, spaced movement actions and a separate save action. Failed initial layout loading blocks editing/saving rather than overwriting the saved layout with defaults. Empty role/team/loyalty states are explicit. Public interfaces retain their own styles.
+
+`node scripts/admin-workspace-browser.mjs` uses isolated HTTP fixtures and a production build to exercise every section at desktop/mobile sizes, check horizontal overflow, audit accessibility, test homepage order/visibility persistence and account search, and capture representative screenshots. It creates no production records and is included in CI. Provider delivery and independent accessibility acceptance remain external prerequisites.
