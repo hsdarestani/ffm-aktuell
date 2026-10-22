@@ -33,7 +33,7 @@ The exact, idempotent model lives in `db/schema.sql`; no external diagram supers
 | Media | user_media, stories, media_right_grants, highlights; scan, moderation, time and revocation gates remain independent |
 | Planning | events, news, favorites, event_favorites, user_tours/stops; shared tour token explicitly grants read access |
 | Business | businesses, claims, proposed branch corrections, team members/invites; owner authorization and seat limits apply |
-| Commercial | subscription_plans, immutable billing_prices, billing_checkouts/subscriptions, invoices, credits/refunds, ad_campaigns, deals/coupons and loyalty cards; paid advertisement delivery remains open |
+| Commercial | subscription_plans, immutable billing_prices, billing_checkouts/subscriptions, invoices, credits/refunds, ad_campaigns, deals/coupons and loyalty cards; ad_rates, immutable ad_orders, deduplicated ad_webhook_events and viewable receipt/daily aggregates implement paid advertisement delivery |
 | Notifications | push_subscriptions and push_deliveries; browser consent plus stored category preferences required |
 | Audit | audit_log plus source evidence/history; changes retain actor, target and time according to each workflow |
 
@@ -98,10 +98,10 @@ Estimates below are engineering planning ranges in person-days, not committed da
 | --- | --- | --- |
 | Production scanner and media/Stories/Highlights acceptance | 2–4 | Separate capacity/private scanner and rights policy |
 | Google/Apple real account linking/deletion acceptance | 2–4 | Provider accounts, credentials and test users |
-| Phone authentication | 3–6 | SMS provider/account, abuse limits and agreed recovery flow |
-| Weather/date/occasion assistant and optional post translation | 4–8 | Verified event/venue facts, provider choice, consent/cost policy |
+| Phone provider acceptance | 1–2 | Twilio account/Verify service, funded delivery and real test numbers; linking/login/abuse limits are implemented |
+| Weather/text provider acceptance and editorial attributes | 1–3 | OpenWeather/OpenAI access and verified facts; contextual search/translation/cost controls are implemented |
 | Live web billing provider acceptance | 2–4 | Real PSP account, tax/contract data, webhook and test account; implementation is complete and tested with fixtures |
-| Paid ad booking/delivery and honest impressions/click measurements | 8–15 | Approved price list, payment and tracking policy |
+| Live ad checkout/payment/refund acceptance | 1–3 | Stripe account, released actual advertising terms/rates and funded test account; booking/delivery/measurements are implemented |
 | Real device Push acceptance and delivery monitoring | 1–3 | Consenting test devices and volume targets; web categories are implemented |
 | Editorial inventory and licensed media | Ongoing | Real source review, copyright grants and content owner |
 | Complete OpenAPI, approved wireframes and all A–I acceptance cases | 4–8 | Remaining implemented contracts and stakeholder acceptance |
@@ -112,3 +112,7 @@ No secret alone completes these open items. Native apps and email are excluded a
 ## Latest combined acceptance
 
 Source `6f81be9f49a2cd84f13a95693570631cd36bed3c` passed all 176 tests, TypeScript, production build, Chromium regressions, actual HTTP acceptance on temporary PostgreSQL and Compose validation in [CI run 39638646930](https://github.com/hsdarestani/ffm-aktuell/actions/runs/39638646930). The tested scope includes concurrent loyalty confirmation/redemption, permission revocation and paid entitlement expiry. This does not replace real provider/device acceptance or complete the remaining web backlog.
+
+## Final named web modules
+
+[Web completion decisions and tests](WEB_COMPLETION_20261021.md) covers implemented contextual discovery, weather adapter, consent-based public-post translation, linked phone access, paid ad booking/delivery and actual viewable receipt counting. The remaining provider, factual inventory, legal and independent operational acceptance steps are not completed by code or secrets alone.

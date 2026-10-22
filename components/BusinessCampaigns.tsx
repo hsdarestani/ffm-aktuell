@@ -1,8 +1,9 @@
 'use client';
+import AdBooking from '@/components/AdBooking';
 import {useCallback,useEffect,useState,type FormEvent} from 'react';
 type Place={id:string;name:string;status:string};
-type Campaign={id:string;title:string;copy_de:string;placement:string;start_date:string;end_date:string;status:string;place_name:string;rejection_note:string|null};
-const PLACEMENTS:[string,string][]=[['search','Gesponserte Suche'],['home','Startseite'],['feed','Community Feed'],['stories','Stories'],['events','Events'],['district','Stadtteile'],['category','Kategorien']];
+type Campaign={id:string;title:string;copy_de:string;placement:string;start_date:string;end_date:string;status:string;place_name:string;rejection_note:string|null;orders?:{state:string;amount:number;invoice_url:string|null;snapshot:{terms_url:string}}[]|null;impressions?:number;clicks?:number};
+const PLACEMENTS:[string,string][]=[['search','Gesponserte Suche'],['home','Startseite'],['feed','Beiträge'],['stories','Geschichten'],['events','Veranstaltungen'],['district','Stadtteile'],['category','Kategorien']];
 export default function BusinessCampaigns({approved,places,onNotice}:{approved:boolean;places:Place[];onNotice:(message:string)=>void}){
  const [items,setItems]=useState<Campaign[]>([]),[busy,setBusy]=useState(false),[open,setOpen]=useState(false);
  const reload=useCallback(async()=>{try{const r=await fetch('/api/campaigns',{cache:'no-store'});if(!r.ok)return;const d=await r.json();setItems(d.items||[])}catch{}},[]);
@@ -20,7 +21,7 @@ export default function BusinessCampaigns({approved,places,onNotice}:{approved:b
  if(!approved)return null;
  const locations=places.filter(p=>p.status==='published');
  return <section className="ffm-campaign-panel" aria-label="Kampagnen">
-  <header><div><h2>Werbung planen</h2><p>Erstelle einen Kampagnenvorschlag. Noch keine Buchung, Kosten oder Veröffentlichung.</p></div>
+  <header><div><h2>Werbung planen</h2><p>Erstelle einen Vorschlag. Nach Inhaltsprüfung und Preisbestätigung kannst du verbindlich buchen.</p></div>
    <button type="button" onClick={()=>setOpen(!open)} aria-expanded={open}>{open?'Schließen':'Kampagne erstellen'}</button></header>
   {open&&<form className="ffm-campaign-form" onSubmit={submitForm}>
     <label>Standort<select name="place_id" required defaultValue=""><option value="">Standort auswählen</option>{locations.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
@@ -33,10 +34,11 @@ export default function BusinessCampaigns({approved,places,onNotice}:{approved:b
     <button type="submit" disabled={busy||locations.length===0}>Entwurf speichern</button>
    </form>}
    <div className="ffm-campaign-list">{items.map(c=><article key={c.id}><div><strong>{c.title}</strong><small>{PLACEMENTS.find(p=>p[0]===c.placement)?.[1]||c.placement} · {c.place_name}</small>
-    <span>{c.status==='draft'?'Entwurf':c.status==='pending_review'?'Redaktion prüft':c.status==='rejected'?'Abgelehnt':c.status==='awaiting_commercial_setup'?'Inhalt geprüft · Tarif/Zahlung offen':'Storniert'}</span>
-    {c.rejection_note&&<p>{c.rejection_note}</p>}</div>
+    <span>{c.status==='draft'?'Entwurf':c.status==='pending_review'?'Redaktion prüft':c.status==='rejected'?'Abgelehnt':c.status==='awaiting_commercial_setup'?'Inhalt geprüft':'Storniert'}</span>
+    {c.rejection_note&&<p>{c.rejection_note}</p>}<AdBooking campaign={c} onNotice={onNotice} onChanged={()=>void reload()}/></div>
     {c.status==='draft'&&<button type="button" disabled={busy} onClick={()=>void action({action:'submit',id:c.id})}>Zur Prüfung</button>}
     {['draft','pending_review','awaiting_commercial_setup'].includes(c.status)&&<button type="button" className="secondary" disabled={busy} onClick={()=>void action({action:'cancel',id:c.id})}>Stornieren</button>}
    </article>)}</div>
  </section>;
 }
+

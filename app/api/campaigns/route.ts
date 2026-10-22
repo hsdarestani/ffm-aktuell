@@ -7,7 +7,7 @@ const placements=['search','home','feed','stories','events','district','category
 const fail=(error:string,status=400)=>NextResponse.json({error},{status});
 export async function GET(req:NextRequest){
  const u=await sessionUser(req);if(!u)return fail('Anmeldung erforderlich',401);
- const rows=await query("SELECT c.id,c.title,c.copy_de,c.placement,c.start_date,c.end_date,c.status,c.place_id,c.rejection_note,c.created_at,p.name AS place_name,b.name AS business_name FROM ad_campaigns c JOIN businesses b ON b.id=c.business_id JOIN places p ON p.id=c.place_id WHERE b.owner_id=$1 ORDER BY c.created_at DESC LIMIT 60",[u.id]);
+ const rows=await query("SELECT c.id,c.title,c.copy_de,c.placement,c.start_date,c.end_date,c.status,c.place_id,c.rejection_note,c.created_at,(SELECT jsonb_agg(jsonb_build_object('id',o.id,'state',o.state,'amount',o.amount,'invoice_url',o.invoice_url,'snapshot',o.snapshot)) FROM ad_orders o WHERE o.campaign_id=c.id) AS orders,(SELECT COALESCE(sum(impressions),0)::int FROM ad_daily_stats WHERE campaign_id=c.id) AS impressions,(SELECT COALESCE(sum(clicks),0)::int FROM ad_daily_stats WHERE campaign_id=c.id) AS clicks,p.name AS place_name,b.name AS business_name FROM ad_campaigns c JOIN businesses b ON b.id=c.business_id JOIN places p ON p.id=c.place_id WHERE b.owner_id=$1 ORDER BY c.created_at DESC LIMIT 60",[u.id]);
  return NextResponse.json({items:rows.rows,checkout_available:false},{headers:{'Cache-Control':'private,no-store'}});
 }
 export async function POST(req:NextRequest){
@@ -48,3 +48,4 @@ export async function POST(req:NextRequest){
   return NextResponse.json({id:data.id,status,notice:status==='pending_review'?'Zur redaktionellen Prüfung gesendet. Keine Zahlung oder Ausspielung.':'Kampagne wurde storniert.'});
  }catch(e){await tx.query('ROLLBACK');console.error('Campaign transition failed',e);return fail('Kampagne konnte nicht geändert werden',500)}finally{tx.release()}
 }
+

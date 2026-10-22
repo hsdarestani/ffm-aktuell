@@ -717,3 +717,57 @@ CREATE TABLE IF NOT EXISTS visit_confirmation_requests (
 CREATE INDEX IF NOT EXISTS visit_confirmation_rate_idx ON visit_confirmation_requests(user_id,created_at DESC);
 COMMIT;
 
+
+-- Phone login is explicitly linked from an existing recently authenticated account.
+CREATE TABLE IF NOT EXISTS phone_identities (
+ phone text PRIMARY KEY CHECK(phone ~ '^\+[1-9][0-9]{7,14}$'),
+ user_id uuid UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ linked_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS phone_challenges (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),token_hash text UNIQUE NOT NULL,
+ phone text NOT NULL,user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+ purpose text NOT NULL CHECK(purpose IN ('login','link')),ip_hash text NOT NULL,
+ provider_sid text,attempts integer NOT NULL DEFAULT 0,
+ created_at timestamptz NOT NULL DEFAULT now(),expires_at timestamptz NOT NULL DEFAULT now()+interval '10 minutes',used_at timestamptz
+);
+CREATE INDEX IF NOT EXISTS phone_challenges_rate ON phone_challenges(created_at,phone);
+ALTER TABLE place_attributes DROP CONSTRAINT IF EXISTS place_attributes_field_check;
+ALTER TABLE place_attributes ADD CONSTRAINT place_attributes_field_check CHECK(field IN ('price_level','indoor','outdoor','family_friendly','wheelchair_accessible','date_friendly','group_friendly','quiet'));
+CREATE TABLE IF NOT EXISTS text_service_usage (
+ id bigserial PRIMARY KEY,user_id uuid REFERENCES users(id) ON DELETE SET NULL,kind text NOT NULL CHECK(kind IN ('translation','ranking')),created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS text_service_usage_time ON text_service_usage(created_at);
+CREATE TABLE IF NOT EXISTS post_translations (
+ post_id uuid NOT NULL REFERENCES posts(id) ON DELETE CASCADE,language text NOT NULL CHECK(language IN ('de','en')),source_hash text NOT NULL,body text NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(post_id,language)
+);
+
+-- Flat daily advertisement rates. Draft defaults are editable and never self-approved.
+CREATE TABLE IF NOT EXISTS ad_rates (
+ placement text PRIMARY KEY CHECK(placement IN ('search','home','feed','stories','events','district','category')),
+ daily_cents integer NOT NULL CHECK(daily_cents BETWEEN 1 AND 1000000),terms_url text,
+ approved boolean NOT NULL DEFAULT false,updated_at timestamptz NOT NULL DEFAULT now()
+);
+INSERT INTO ad_rates(placement,daily_cents) VALUES('search',1500),('home',2500),('feed',1500),('stories',1000),('events',1500),('district',1000),('category',1000) ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS ad_orders (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),campaign_id uuid NOT NULL REFERENCES ad_campaigns(id) ON DELETE CASCADE,
+ user_id uuid REFERENCES users(id) ON DELETE SET NULL,customer_id text NOT NULL REFERENCES billing_customers(stripe_id),
+ snapshot jsonb NOT NULL,amount integer NOT NULL CHECK(amount>0),currency text NOT NULL DEFAULT 'eur',
+ state text NOT NULL DEFAULT 'pending' CHECK(state IN ('pending','processing','paid','expired','refunded','failed')),
+ provider_session_id text UNIQUE,provider_url text,payment_intent_id text,invoice_url text,
+ created_at timestamptz NOT NULL DEFAULT now(),expires_at timestamptz NOT NULL DEFAULT now()+interval '35 minutes',paid_at timestamptz
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ad_orders_pending ON ad_orders(campaign_id) WHERE state IN ('pending','processing');
+CREATE UNIQUE INDEX IF NOT EXISTS ad_orders_paid ON ad_orders(campaign_id) WHERE state='paid';
+CREATE TABLE IF NOT EXISTS ad_webhook_events(id text PRIMARY KEY,created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS ad_charge_refunds(charge_id text PRIMARY KEY,payment_intent_id text NOT NULL,amount_refunded integer NOT NULL);
+CREATE TABLE IF NOT EXISTS ad_exposures (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),order_id uuid NOT NULL REFERENCES ad_orders(id) ON DELETE CASCADE,
+ token_hash text UNIQUE NOT NULL,ip_hash text NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),
+ expires_at timestamptz NOT NULL DEFAULT now()+interval '20 minutes',impression_at timestamptz,click_at timestamptz
+);
+CREATE INDEX IF NOT EXISTS ad_exposures_rate ON ad_exposures(ip_hash,created_at);
+CREATE TABLE IF NOT EXISTS ad_daily_stats (
+ campaign_id uuid NOT NULL REFERENCES ad_campaigns(id) ON DELETE CASCADE,day date NOT NULL,
+ impressions integer NOT NULL DEFAULT 0,clicks integer NOT NULL DEFAULT 0,PRIMARY KEY(campaign_id,day)
+);

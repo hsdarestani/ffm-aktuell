@@ -590,6 +590,28 @@ try{
  if(!proofReviews.body.items.find(r=>r.id===visitReview.body.id)?.verified_visit)throw Error('Merchant visit evidence was not attached to the review');
  if((await get('loyalty',reader)).body.cards.length)throw Error('Private loyalty cards leaked to another account');
  console.log('PASS: merchant-confirmed visits, parallel confirmation limits, immutable reward snapshots, one-time rewards and review evidence');
+ // Real PostgreSQL races for public advertising receipts. Payments are fixtures in this disposable database only.
+ const adToday=(await pool.query("SELECT (now() AT TIME ZONE 'Europe/Berlin')::date::text AS day")).rows[0].day;
+ const adCampaign=(await pool.query("INSERT INTO ad_campaigns(business_id,created_by,place_id,title,copy_de,placement,start_date,end_date,status) VALUES($1,$2,$3,'CI Paid ad','Actual CI advertising text','home',$4,$4,'awaiting_commercial_setup') RETURNING id",[createdBusiness.body.id,authorId,publicPlace.rows[0].id,adToday])).rows[0].id;
+ await pool.query("INSERT INTO billing_customers(user_id,stripe_id) VALUES($1,'cus_ci_ad') ON CONFLICT(user_id) DO NOTHING",[authorId]);
+ const adCustomer=(await pool.query('SELECT stripe_id FROM billing_customers WHERE user_id=$1',[authorId])).rows[0].stripe_id;
+ const adOrder=(await pool.query("INSERT INTO ad_orders(campaign_id,user_id,customer_id,snapshot,amount,state) VALUES($1,$2,$3,$4,2500,'paid') RETURNING id",[adCampaign,authorId,adCustomer,JSON.stringify({title:'CI Paid ad',copy_de:'Actual CI advertising text',placement:'home',place_id:publicPlace.rows[0].id,start_date:adToday,end_date:adToday,amount:2500,terms_url:'https://example.org/terms'})])).rows[0].id;
+ const delivery=await get('advertising?placement=home');
+ if(delivery.body.items.length!==1)throw Error('Paid approved ad not delivered');
+ const adToken=delivery.body.items[0].token;
+ const receipts=await Promise.all([1,2,3].map(()=>post('advertising',client,{token:adToken,kind:'click'})));
+ if(receipts.some(r=>r.status!==200))throw Error('Concurrent ad receipt failed');
+ const adStats=(await pool.query('SELECT impressions,clicks FROM ad_daily_stats WHERE campaign_id=$1',[adCampaign])).rows[0];
+ if(adStats.impressions!==1||adStats.clicks!==1)throw Error('Parallel ad receipts double-counted');
+ if((await post('ad-booking',reader,{campaign_id:adCampaign,action:'stop'})).status!==409)throw Error('Outsider could stop ad');
+ if((await post('ad-booking',client,{campaign_id:adCampaign,action:'stop'})).status!==200)throw Error('Owner could not stop ad');
+ if((await get('advertising?placement=home')).body.items.length)throw Error('Stopped ad remained public');
+ if((await post('advertising',client,{token:adToken,kind:'impression'})).status!==409)throw Error('Stopped ad token still accepted');
+ const phoneReady=await get('auth/phone',client);
+ if(phoneReady.status!==200||phoneReady.body.configured)throw Error('Unconfigured phone login was not fail closed');
+ const deniedSms=await post('auth/phone',client,{action:'start',phone:'+4915123456789',consent:true});
+ if(deniedSms.status!==503)throw Error('Phone sent without provider configuration');
+ console.log('PASS: paid ad fixtures, actual delivery, parallel receipt deduplication, owner stop, outsider isolation and unconfigured phone gate');
  // Phase 5: proof of media privacy without accepting any unscanned file.
  // Fake media bytes are inserted DIRECTLY into this disposable CI database only.
  // This does not test or bypass the scanner on any production server.

@@ -1,4 +1,5 @@
 'use client';
+import AdRates from '@/components/AdRates';
 import FinanceLedger from '@/components/FinanceLedger';
 import {useEffect,useState,type FormEvent} from 'react';
 type Plan={staff_seats:number;branch_limit:number;code:string;title_de:string;title_en:string;features:string[];monthly_price_cents:number|null;annual_price_cents:number|null;trial_days:number;status:string;legal_terms_url:string|null};
@@ -30,7 +31,7 @@ export default function AdminTariffs({onNotice}:{onNotice:(msg:string,success:bo
     <label><input type="checkbox" name="approved" required/> Preis und Vertragsbedingungen geprüft</label>
     <button type="submit" disabled={busy}>Zur Buchung freigeben</button></form>:
     <button disabled={busy} type="button" onClick={()=>void send({action:'withdraw',code:p.code})}>Veröffentlichung zurückziehen</button>}
-  </article>)}</div><FinanceLedger/>
+  </article>)}</div><AdRates/><FinanceLedger/>
  </section>;
 }
 

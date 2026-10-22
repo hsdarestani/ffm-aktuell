@@ -43,3 +43,5 @@ References: https://github.com/web-push-libs/web-push and https://developer.mozi
 ## Web subscriptions and delegated access
 
 Hosted Stripe Checkout, portal changes/cancellation, invoice/credit/refund synchronization, paid entitlements and editable initial tariff decisions are implemented. Add STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET to the same FFM_SERVICES_JSON object. See [commercial/access decisions and provider acceptance](COMMERCIAL_AND_ACCESS_20261021.md). Live account/tax/contract setup and provider tests remain necessary.
+
+Telephone and weather activation, advertising terms and shared text cost controls are documented in [web completion](WEB_COMPLETION_20261021.md). The same allowlisted service configuration accepts Twilio Verify credentials, allowed number prefixes, a daily send ceiling and OpenWeather credentials.

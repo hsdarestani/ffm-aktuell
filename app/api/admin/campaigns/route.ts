@@ -14,6 +14,9 @@ export async function POST(req:NextRequest){
  if(!trustedOrigin(req))return error('Ungültige Anfrage',403);
  const u=await sessionUser(req);if(!u||!canAdmin(u,'marketing'))return error('Admin erforderlich',403);
  const data=await req.json().catch(()=>null);
+ if(data?.action==='stop'&&uuid.test(data.id||'')&&typeof data.note==='string'&&data.note.trim().length>=10&&data.note.length<=1200){
+  const tx=await pool.connect();try{await tx.query('BEGIN');const stopped=await tx.query("UPDATE ad_campaigns SET status='cancelled',rejection_note=$2,updated_at=now() WHERE id=$1 RETURNING id",[data.id,data.note]);if(!stopped.rowCount){await tx.query('ROLLBACK');return error('Kampagne nicht gefunden',404)}await tx.query("INSERT INTO audit_log(actor_id,action,target_type,target_id) VALUES($1,$2,'ad_campaign',$3)",[u.id,'ad:marketing-stop:'+data.note,data.id]);await tx.query('COMMIT');return NextResponse.json({notice:'Ausspielung gestoppt. Abrechnung separat prüfen.'})}catch{await tx.query('ROLLBACK');return error('Stoppen fehlgeschlagen',500)}finally{tx.release()}
+ }
  if(!uuid.test(data?.id||'')||typeof data.approve!=='boolean')return error('Prüfentscheidung ungültig');
  const note=typeof data.note==='string'?data.note.trim():'';
  if(note.length>1200||(!data.approve&&note.length<10))return error('Ablehnungsgrund erforderlich (mindestens 10 Zeichen)');

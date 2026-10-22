@@ -4,6 +4,9 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 
 | Method | Route | Handler |
 | --- | --- | --- |
+| POST | `/api/ad-booking` | [app/api/ad-booking/route.ts](../app/api/ad-booking/route.ts) |
+| GET | `/api/ad-rates` | [app/api/ad-rates/route.ts](../app/api/ad-rates/route.ts) |
+| POST | `/api/ad-rates` | [app/api/ad-rates/route.ts](../app/api/ad-rates/route.ts) |
 | POST | `/api/admin/activate` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/admin/billing` | [app/api/admin/billing/route.ts](../app/api/admin/billing/route.ts) |
 | GET | `/api/admin/business-seats` | [app/api/admin/business-seats/route.ts](../app/api/admin/business-seats/route.ts) |
@@ -30,10 +33,14 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | GET | `/api/admin/service-status` | [app/api/admin/service-status/route.ts](../app/api/admin/service-status/route.ts) |
 | GET | `/api/admin/validation` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/admin/verify-place` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
+| GET | `/api/advertising` | [app/api/advertising/route.ts](../app/api/advertising/route.ts) |
+| POST | `/api/advertising` | [app/api/advertising/route.ts](../app/api/advertising/route.ts) |
 | POST | `/api/auth/login` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/auth/logout` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/auth/oauth/[provider]/start` | [app/api/auth/oauth/[provider]/start/route.ts](../app/api/auth/oauth/[provider]/start/route.ts) |
 | GET | `/api/auth/oauth/status` | [app/api/auth/oauth/status/route.ts](../app/api/auth/oauth/status/route.ts) |
+| GET | `/api/auth/phone` | [app/api/auth/phone/route.ts](../app/api/auth/phone/route.ts) |
+| POST | `/api/auth/phone` | [app/api/auth/phone/route.ts](../app/api/auth/phone/route.ts) |
 | POST | `/api/auth/register` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/billing/checkout` | [app/api/billing/checkout/route.ts](../app/api/billing/checkout/route.ts) |
 | POST | `/api/billing/portal` | [app/api/billing/portal/route.ts](../app/api/billing/portal/route.ts) |
@@ -79,6 +86,7 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | GET | `/api/health` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/highlights` | [app/api/highlights/route.ts](../app/api/highlights/route.ts) |
 | POST | `/api/highlights` | [app/api/highlights/route.ts](../app/api/highlights/route.ts) |
+| POST | `/api/internal/maintenance` | [app/api/internal/maintenance/route.ts](../app/api/internal/maintenance/route.ts) |
 | POST | `/api/internal/push-tick` | [app/api/internal/push-tick/route.ts](../app/api/internal/push-tick/route.ts) |
 | GET | `/api/location` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/lod2-tile` | [app/api/lod2-tile/route.ts](../app/api/lod2-tile/route.ts) |
@@ -116,7 +124,7 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | POST | `/api/post-likes` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/posts` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/posts` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
-| GET | `/api/recommendations` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
+| GET | `/api/recommendations` | [app/api/recommendations/route.ts](../app/api/recommendations/route.ts) |
 | POST | `/api/review-reports` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/reviews` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/reviews` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
@@ -129,3 +137,4 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | GET | `/api/tours/curated` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/tours/details` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/tours/shared` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
+| POST | `/api/translations` | [app/api/translations/route.ts](../app/api/translations/route.ts) |

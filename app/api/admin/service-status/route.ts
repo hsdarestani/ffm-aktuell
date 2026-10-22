@@ -1,6 +1,7 @@
 import {canAdmin} from '@/lib/admin-permissions';
 import {NextRequest,NextResponse} from 'next/server';
 import {sessionUser} from '@/lib/auth';
+import {phoneConfigured} from '@/lib/phone-provider';
 import {billingConfigured} from '@/lib/billing-policy';
 import {query} from '@/lib/db';
 import {configured} from '@/lib/oauth';
@@ -16,7 +17,7 @@ export async function GET(req:NextRequest){
  ]);
  return NextResponse.json({
   google:{configured:configured('google')},apple:{configured:configured('apple')},
-  assistant:{configured:Boolean(process.env.OPENAI_API_KEY)},
+  assistant:{configured:Boolean(process.env.OPENAI_API_KEY)},phone:{configured:phoneConfigured()},weather:{configured:Boolean(process.env.OPENWEATHER_API_KEY)},
   web_push:{configured:pushConfigured(),devices:push.rows[0]?.devices||0},
   media:{configured:Boolean(process.env.CLAMD_HOST),scanner_reachable:scanner},
   billing:{configured:billingConfigured(),reason:billingConfigured()?'Web Abrechnung konfiguriert; Providerabnahme weiterhin erforderlich.':'Stripe Schlüssel und Webhook fehlen.'},

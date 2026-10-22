@@ -148,6 +148,23 @@ try{
   await page.waitForTimeout(800);assert.equal(requested.has('feature'),false);assert.equal(requested.has('price_max'),false);assert.equal(requested.has('rating_min'),false);
   assert.deepEqual(errors,[]);await ctx.close();console.log('PASS: factual filters reach the server, suppress unsupported OSM rows and reset completely');
  }
+ {
+  const {ctx,page,errors}=await context(true,true);let asked=null;const receipts=[];
+  await ctx.route('**/api/advertising?*',route=>route.fulfill({json:{items:[{token:'b'.repeat(64),title:'Bezahlte Anzeige',body:'Ein tatsächliches Angebot des Testbetriebs.',place_id:'00000000-0000-4000-8000-000000000002',place_name:'Testbetrieb',business_name:'Testbetrieb'}]}}));
+  await ctx.route('**/api/advertising',route=>{receipts.push(route.request().postDataJSON());return route.fulfill({json:{recorded:true}})});
+  await ctx.route('**/api/recommendations?*',route=>{asked=new URL(route.request().url()).searchParams;return route.fulfill({json:{items:[],events:[{id:'fixture-event',title:'Passender Eintritt',starts_at:'2026-11-01T16:00:00Z',price_cents:500,price_source_url:'https://example.org/tickets'}],mode:'editorial',notice:'Nur belegte Angaben.',weather:null}})});
+  await page.goto(base+'/?page=home',{waitUntil:'domcontentloaded'});
+  await page.locator('.desktop-nav').getByRole('button').first().dispatchEvent('click');
+  const sponsored=page.getByRole('complementary',{name:'Werbung'});await sponsored.waitFor();await sponsored.scrollIntoViewIfNeeded();await page.clock.runFor(1500);
+  assert.equal(receipts.filter(r=>r.kind==='impression').length,1);
+  await page.locator('#ffm-intent').fill('Ein ruhiger Nachmittag');
+  await page.getByText('Datum, Budget und Anlass',{exact:true}).click();await page.getByLabel('Datum',{exact:true}).fill('2026-11-01');
+  await page.getByRole('combobox',{name:'Preisniveau bis'}).selectOption('2');await page.getByLabel('Eintritt höchstens in Euro').fill('6');await page.getByRole('combobox',{name:'Anlass',exact:true}).selectOption('quiet');
+  await page.getByRole('button',{name:'Ideen finden',exact:true}).click();await page.getByText('Passender Eintritt',{exact:true}).waitFor();
+  assert.equal(asked.get('date'),'2026-11-01');assert.equal(asked.get('budget'),'2');assert.equal(asked.get('event_budget'),'6');assert.equal(asked.get('occasion'),'quiet');assert.equal(asked.get('ai'),'0');
+  assert.deepEqual(errors,[]);await page.screenshot({path:'artifacts/map-startup/mobile-context-and-advertising.png'});await ctx.close();
+  console.log('PASS: mobile context fields, event results and one visible sponsored impression');
+ }
 }finally{
  await browser?.close();server.kill('SIGTERM');
 }

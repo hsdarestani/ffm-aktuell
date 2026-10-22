@@ -177,3 +177,7 @@ One-time private confirmation codes, merchant/branch authorization, interval/rat
 ## Combined acceptance, 21 October 2026
 
 All 176 tests, TypeScript, production build, Chromium regressions, actual PostgreSQL HTTP acceptance and Compose validation passed for `6f81be9f49a2cd84f13a95693570631cd36bed3c` in [CI 39638646930](https://github.com/hsdarestani/ffm-aktuell/actions/runs/39638646930). Department roles, scoped staff, hosted subscription lifecycle, remaining web notification categories and merchant-confirmed loyalty now supersede their earlier pending milestones. Paid ad delivery, phone authentication, extended assistant/translation, live provider acceptance and operational/legal work remain open. Native clients and email remain excluded.
+
+## Remaining named web modules implemented
+
+Paid ad booking/delivery/receipt measurement, linked phone authentication, contextual date/occasion/relative venue budget and exact event entry budget, weather integration, opt-in AI ranking and public-post translation are implemented. See [decisions, defaults and acceptance boundaries](WEB_COMPLETION_20261021.md). Historical statements that these modules have not been developed are superseded. External service acceptance, scanner capacity, authentic inventory and legal/operational signoff remain separate.

@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
-export const factLabels:Record<string,string>={price_level:'Preisniveau',indoor:'Indoor',outdoor:'Outdoor',family_friendly:'Familienfreundlich',wheelchair_accessible:'Rollstuhlgerecht'};
+export const factLabels:Record<string,string>={price_level:'Preisniveau',indoor:'Innenbereich',outdoor:'Außenbereich',family_friendly:'Familienfreundlich',wheelchair_accessible:'Rollstuhlgerecht',date_friendly:'Für ein Date',group_friendly:'Für Gruppen',quiet:'Ruhig'};
 export type Fact={field:string;value:string;source_url:string;checked_at:string;note:string};
 export default function PlaceFacts({placeId}:{placeId:string}){
  const [facts,setFacts]=useState<Fact[]>([]);

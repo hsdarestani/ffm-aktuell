@@ -4,7 +4,7 @@ import {sessionUser,trustedOrigin} from '@/lib/auth';
 import {pool,query} from '@/lib/db';
 import {z} from 'zod';
 export const dynamic='force-dynamic';
-const field=z.enum(['price_level','indoor','outdoor','family_friendly','wheelchair_accessible']);
+const field=z.enum(['price_level','indoor','outdoor','family_friendly','wheelchair_accessible','date_friendly','group_friendly','quiet']);
 const input=z.object({place_id:z.uuid(),field,value:z.enum(['yes','no','1','2','3','4']).nullable(),source_url:z.url().max(1500).refine(v=>new URL(v).protocol==='https:'),checked_at:z.iso.datetime(),note:z.string().trim().min(10).max(500)}).refine(v=>v.value===null||(v.field==='price_level'?['1','2','3','4'].includes(v.value):['yes','no'].includes(v.value)));
 const reply=(d:unknown,status=200)=>NextResponse.json(d,{status,headers:{'Cache-Control':'no-store'}});
 export async function GET(req:NextRequest){
