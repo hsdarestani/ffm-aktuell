@@ -99,14 +99,14 @@ test('phone, translation and advertising workflows execute their gates on Postgr
   actor=owner;let created=0;
   await db.query("UPDATE ad_rates SET approved=true,terms_url='https://example.org/ad-terms' WHERE placement='home'");
   const next=(await db.query("INSERT INTO ad_campaigns(business_id,created_by,place_id,title,copy_de,placement,start_date,end_date,status) VALUES($1,$2,$3,'Future ad','Actual future merchant ad','home',current_date+2,current_date+2,'awaiting_commercial_setup') RETURNING id",[business,owner.id,place])).rows[0].id;
-  const checkoutProvider={checkout:{sessions:{create:async data=>{created++;assert.equal(data.mode,'payment');assert.equal(data.line_items[0].price_data.unit_amount,2500);assert.equal(data.invoice_creation.enabled,true);return {id:'cs_future',url:'https://checkout.stripe.com/fixture'}},expire:async()=>{}}}};
+  const checkoutProvider={checkout:{sessions:{create:async data=>{created++;assert.equal(data.mode,'payment');assert.equal(data.line_items[0].price_data.unit_amount,2500);assert.equal(data.invoice_creation.enabled,true);return {id:'cs_future',url:'https://checkout.stripe.com/fixture'}},retrieve:async()=>({id:'cs_future',status:'complete',payment_status:'unpaid',payment_intent:'pi_future'}),expire:async()=>{}}}};
   const route=compile('app/api/ad-booking/route.ts',{...mocks,'@/lib/auth':auth,'@/lib/billing-policy':{billingConfigured:()=>true},'@/lib/billing-provider':{stripeClient:()=>checkoutProvider},'@/lib/advertising':ad,'@/lib/discovery-context':context});
   assert.equal((await post(route,{campaign_id:next,amount:2500})).status,409);assert.equal(created,0);
   actor=other;assert.equal((await post(route,{campaign_id:next,amount:2500,accept_terms:true})).status,409);actor=owner;
   assert.equal((await post(route,{campaign_id:next,amount:2500,accept_terms:true})).status,200);
   assert.equal((await post(route,{campaign_id:next,amount:2500,accept_terms:true})).status,200);assert.equal(created,1);
   assert.equal((await db.query('SELECT state FROM ad_orders WHERE campaign_id=$1',[next])).rows[0].state,'pending');
-  await db.query("UPDATE ad_orders SET state='processing' WHERE campaign_id=$1",[next]);assert.equal((await post(route,{campaign_id:next,amount:2500,accept_terms:true})).status,409);assert.equal(created,1);
+  await db.query("UPDATE ad_orders SET expires_at=now()-interval '1 minute' WHERE campaign_id=$1",[next]);assert.equal((await post(route,{campaign_id:next,amount:2500,accept_terms:true})).status,409);assert.equal(created,1);assert.equal((await db.query('SELECT state FROM ad_orders WHERE campaign_id=$1',[next])).rows[0].state,'processing');
  });
  }finally{await db.close()}
 });

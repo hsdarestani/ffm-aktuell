@@ -22,7 +22,7 @@ export async function syncAdvertisingEvent(event:Stripe.Event,provider=stripeCli
   const session=await provider.checkout.sessions.retrieve(object.id,{expand:['invoice']});
   const order=(await tx.query('SELECT * FROM ad_orders WHERE provider_session_id=$1 FOR UPDATE',[session.id])).rows[0];
   if(order){
-   if(idOf(session.customer)!==order.customer_id||session.mode!=='payment'||session.currency!=='eur'||session.amount_total!==order.amount)throw Error('Ad payment mismatch');
+   if(idOf(session.customer)!==order.customer_id||session.mode!=='payment'||(session.status!=='expired'&&(session.currency!=='eur'||session.amount_total!==order.amount)))throw Error('Ad payment mismatch');
    const intent=idOf(session.payment_intent),refunded=intent&&(await tx.query('SELECT 1 FROM ad_charge_refunds WHERE payment_intent_id=$1 AND amount_refunded>0',[intent])).rowCount;
    if(session.status==='complete'&&session.payment_status==='paid'&&order.state!=='refunded'&&!refunded){
     // A signed checkout is insufficient if its latest charge was already refunded before the webhook arrived.

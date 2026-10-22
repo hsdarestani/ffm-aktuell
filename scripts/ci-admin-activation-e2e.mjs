@@ -603,6 +603,9 @@ try{
  if(receipts.some(r=>r.status!==200))throw Error('Concurrent ad receipt failed');
  const adStats=(await pool.query('SELECT impressions,clicks FROM ad_daily_stats WHERE campaign_id=$1',[adCampaign])).rows[0];
  if(adStats.impressions!==1||adStats.clicks!==1)throw Error('Parallel ad receipts double-counted');
+ await pool.query("UPDATE billing_subscriptions SET current_period_end=now()+interval '1 day' WHERE id=$1",[testSub]);
+ const measuredInsights=await get('business/insights?business_id='+createdBusiness.body.id,client);
+ if(measuredInsights.status!==200||measuredInsights.body.impressions!==1||measuredInsights.body.clicks!==1)throw Error('Measured ad totals missing from paid business insights');
  if((await post('ad-booking',reader,{campaign_id:adCampaign,action:'stop'})).status!==409)throw Error('Outsider could stop ad');
  if((await post('ad-booking',client,{campaign_id:adCampaign,action:'stop'})).status!==200)throw Error('Owner could not stop ad');
  if((await get('advertising?placement=home')).body.items.length)throw Error('Stopped ad remained public');

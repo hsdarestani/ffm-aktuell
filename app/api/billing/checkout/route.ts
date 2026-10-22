@@ -28,7 +28,14 @@ export async function POST(req:NextRequest){
   if(businessId&&!(await tx.query("SELECT id FROM businesses WHERE id=$1 AND owner_id=$2 AND status='approved' FOR SHARE",[businessId,u.id])).rowCount){await tx.query('ROLLBACK');return reply({error:'Unternehmen nicht mehr freigegeben'},403)}
   const live=await tx.query("SELECT id FROM billing_subscriptions WHERE scope_key=$1 AND status NOT IN ('canceled','incomplete_expired') LIMIT 1",[scope]);
   if(live.rowCount){await tx.query('ROLLBACK');return reply({error:'Ein Abo besteht bereits. Bitte über Abo verwalten ändern oder kündigen.'},409)}
-  await tx.query("UPDATE billing_checkouts SET state='expired' WHERE scope_key=$1 AND state='pending' AND expires_at<=now()",[scope]);
+  const stale=(await tx.query("SELECT id,provider_session_id FROM billing_checkouts WHERE scope_key=$1 AND state='pending' AND expires_at<=now()",[scope])).rows;
+  for(const old of stale){
+   if(old.provider_session_id){const current=await stripe.checkout.sessions.retrieve(old.provider_session_id);
+    if(current.status==='complete'){await tx.query('ROLLBACK');return reply({error:'Bestehende Zahlung wird abgeglichen. Bitte keine zweite Buchung starten.'},409)}
+    if(current.status!=='expired')await stripe.checkout.sessions.expire(old.provider_session_id);
+   }
+   await tx.query("UPDATE billing_checkouts SET state='expired' WHERE id=$1",[old.id]);
+  }
   const pending=await tx.query("SELECT provider_url,price_id FROM billing_checkouts WHERE scope_key=$1 AND state='pending'",[scope]);
   if(pending.rowCount){await tx.query('ROLLBACK');return pending.rows[0].provider_url&&pending.rows[0].price_id===price.id?reply({url:pending.rows[0].provider_url}):reply({error:'Eine Buchung ist noch offen. Bitte abschließen oder nach 35 Minuten erneut versuchen.'},409)}
   let customer=(await tx.query('SELECT stripe_id FROM billing_customers WHERE user_id=$1',[u.id])).rows[0]?.stripe_id;

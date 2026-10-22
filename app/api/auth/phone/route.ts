@@ -24,7 +24,7 @@ export async function POST(req:NextRequest){
    if(u&&!await isRecentlyAuthenticated(req,u.id)){await tx.query('ROLLBACK');return reply({error:'Bitte zuerst erneut mit Passwort oder Google/Apple anmelden.'},403)}
    // A global lock serializes the cost ceiling as well as per-phone limits across processes.
    await tx.query("SELECT pg_advisory_xact_lock(hashtext('ffm-phone-send'))");
-   const ip=hash(req.headers.get('x-real-ip')||'unknown');
+   const ip=hash(req.headers.get('x-real-ip')||req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()||'unknown');
    const limits=(await tx.query(`SELECT count(*) FILTER(WHERE created_at>now()-interval '24 hours')::int AS daily,
     count(*) FILTER(WHERE created_at>now()-interval '1 hour' AND (phone=$1 OR ip_hash=$2))::int AS hourly,
     count(*) FILTER(WHERE created_at>now()-interval '60 seconds' AND phone=$1)::int AS recent FROM phone_challenges WHERE created_at>now()-interval '24 hours'`,[phone,ip])).rows[0];

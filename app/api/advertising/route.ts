@@ -9,7 +9,7 @@ export async function GET(req:NextRequest){
  const q=req.nextUrl.searchParams,placement=q.get('placement')||'',category=(q.get('category')||'').slice(0,80),district=(q.get('district')||'').slice(0,80);
  if(!placements.includes(placement as typeof placements[number]))return reply({error:'Anzeigenplatz ungültig'},400);
  if((placement==='category'&&!category)||(placement==='district'&&!district))return reply({items:[]});
- const ip=adIpHash(req.headers.get('x-real-ip')||'unknown'),tx=await pool.connect();
+ const ip=adIpHash(req.headers.get('x-real-ip')||req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()||'unknown'),tx=await pool.connect();
  try{await tx.query('BEGIN');await tx.query('SELECT pg_advisory_xact_lock(hashtext($1))',['ad:'+ip]);
  const count=(await tx.query("SELECT count(*)::int AS n FROM ad_exposures WHERE ip_hash=$1 AND created_at>now()-interval '1 hour'",[ip])).rows[0].n;
  if(count>=60){await tx.query('ROLLBACK');return reply({items:[]})}

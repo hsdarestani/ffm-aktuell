@@ -26,7 +26,14 @@ export async function POST(req:NextRequest){
  if(d.accept_terms!==true||d.amount!==snapshot.amount){await tx.query('ROLLBACK');return reply({error:'Aktuellen Gesamtpreis und Bedingungen bestätigen'},409)}
  if(snapshot.start_date<=berlinDate()){await tx.query('ROLLBACK');return reply({error:'Buchungen müssen mindestens am Folgetag starten. Bitte neuen Entwurf anlegen.'},409)}
  if((await tx.query("SELECT id FROM ad_orders WHERE campaign_id=$1 AND state='paid'",[campaign.id])).rowCount){await tx.query('ROLLBACK');return reply({error:'Bereits bezahlt'},409)}
- await tx.query("UPDATE ad_orders SET state='expired' WHERE campaign_id=$1 AND state='pending' AND expires_at<=now()",[campaign.id]);
+ const stale=(await tx.query("SELECT id,provider_session_id FROM ad_orders WHERE campaign_id=$1 AND state='pending' AND expires_at<=now()",[campaign.id])).rows;
+ for(const old of stale){
+  if(old.provider_session_id){const current=await stripe.checkout.sessions.retrieve(old.provider_session_id);
+   if(current.status==='complete'){await tx.query("UPDATE ad_orders SET state='processing',payment_intent_id=$2 WHERE id=$1",[old.id,typeof current.payment_intent==='string'?current.payment_intent:current.payment_intent?.id||null]);await tx.query('COMMIT');return reply({error:'Zahlung wird abgeglichen. Keine zweite Buchung starten.'},409)}
+   if(current.status!=='expired')await stripe.checkout.sessions.expire(old.provider_session_id);
+  }
+  await tx.query("UPDATE ad_orders SET state='expired' WHERE id=$1",[old.id]);
+ }
  const pending=(await tx.query("SELECT provider_url,snapshot,state FROM ad_orders WHERE campaign_id=$1 AND state IN ('pending','processing')",[campaign.id])).rows[0];
  if(pending){await tx.query('ROLLBACK');if(pending.state==='processing')return reply({error:'Bankzahlung wird noch verarbeitet. Keine zweite Buchung starten.'},409);return pending.provider_url&&Object.entries(snapshot).every(([key,value])=>pending.snapshot[key]===value)?reply({url:pending.provider_url}):reply({error:'Buchung noch offen. Bitte später erneut versuchen.'},409)}
  let customer=(await tx.query('SELECT stripe_id FROM billing_customers WHERE user_id=$1',[u.id])).rows[0]?.stripe_id;

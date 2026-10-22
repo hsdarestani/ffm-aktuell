@@ -1,11 +1,11 @@
 import {NextRequest,NextResponse} from 'next/server';
-import {sessionUser} from '@/lib/auth';
+import {sessionUser,trustedOrigin} from '@/lib/auth';
 import {query} from '@/lib/db';
 import {reserveTextRequest,textJSON} from '@/lib/text-provider';
 import {parseDiscoveryContext,contextMatches,forecastFor} from '@/lib/discovery-context';
 export const dynamic='force-dynamic';
 export async function GET(req:NextRequest){
- const q=req.nextUrl.searchParams;let ctx;try{ctx=parseDiscoveryContext(q)}catch{return NextResponse.json({error:'Datum, Anlass oder Budget ungültig'},{status:400})}
+ const q=req.nextUrl.searchParams;if(q.get('ai')==='1'&&!trustedOrigin(req))return NextResponse.json({error:'Ungültige Herkunft'},{status:403});let ctx;try{ctx=parseDiscoveryContext(q)}catch{return NextResponse.json({error:'Datum, Anlass oder Budget ungültig'},{status:400})}
  const search=(q.get('q')||'').trim().slice(0,180),lang=q.get('lang')==='en'?'en':'de',u=await sessionUser(req);
  const pref=u&&q.get('use_interests')==='1'?(await query('SELECT interests,districts FROM user_preferences WHERE user_id=$1',[u.id])).rows[0]:null;
  const weather=ctx.weather?await forecastFor(ctx.date):null;
