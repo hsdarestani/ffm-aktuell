@@ -1,8 +1,9 @@
+import {readUiSource} from './ui-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const atlas=readFileSync('components/Atlas3D.tsx','utf8');
-const css=readFileSync('app/atlas-readable.css','utf8');
+const atlas=readUiSource('components/Atlas3D.tsx');
+const css=readUiSource('app/atlas-readable.css');
 
 test('3D default cannot zoom so far out that all buildings vanish',()=>{
  assert.match(atlas,/const MIN_3D_ZOOM=13\.15/);
@@ -33,3 +34,4 @@ test('empty location state is a small district button, not another bottom inform
  assert.match(css,/\.atlas-district-toggle/);
  assert.match(atlas,/aria-label="Stadtteil wählen"/);
 });
+

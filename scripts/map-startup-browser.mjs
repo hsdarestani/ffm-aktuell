@@ -1,9 +1,10 @@
 // Production-built app, isolated HTTP fixtures, real Chromium + MapLibre.
 // No production records are created. Stalled upstreams exercise actual recovery.
 import {chromium} from 'playwright';
+import {AxeBuilder} from '@axe-core/playwright';
 import {spawn} from 'node:child_process';
 import assert from 'node:assert/strict';
-import {mkdir,readFile} from 'node:fs/promises';
+import {mkdir,readFile,writeFile} from 'node:fs/promises';
 const port=3104,base='http://127.0.0.1:'+port;
 const server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','-H','127.0.0.1','-p',String(port)],{stdio:['ignore','pipe','pipe']});
 let logs='';server.stdout.on('data',b=>logs=(logs+b).slice(-3000));server.stderr.on('data',b=>logs=(logs+b).slice(-3000));
@@ -167,6 +168,37 @@ try{
   assert.equal(asked.get('date'),'2026-11-01');assert.equal(asked.get('budget'),'2');assert.equal(asked.get('event_budget'),'6');assert.equal(asked.get('occasion'),'quiet');assert.equal(asked.get('ai'),'0');
   assert.deepEqual(errors,[]);await page.screenshot({path:'artifacts/map-startup/mobile-context-and-advertising.png'});await ctx.close();
   console.log('PASS: mobile context fields, event results and one visible sponsored impression');
+ }
+ {
+  const {ctx,page,errors}=await context(true);
+  await page.goto(base+'/?page=home',{waitUntil:'domcontentloaded'});
+  const audit=async name=>{const report=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa']).analyze();await writeFile('artifacts/map-startup/accessibility-'+name+'.json',JSON.stringify(report,null,2));assert.deepEqual(report.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))})),[],'Accessibility violations on '+name)};
+  await audit('home-de');
+  await page.getByRole('button',{name:'Switch to English',exact:true}).click();
+  await page.locator('html[lang="en"]').waitFor({state:'attached'});
+  assert.equal(await page.locator('html').getAttribute('lang'),'en');
+  await page.getByText('Date, budget and occasion',{exact:true}).click();
+  await page.getByLabel('Maximum entry price in euros',{exact:true}).waitFor();
+  await page.getByRole('combobox',{name:'Time of day',exact:true}).selectOption('evening');
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.getByRole('button',{name:'Switch to German',exact:true}).waitFor();
+  assert.equal(await page.locator('html').getAttribute('lang'),'en');
+  await audit('home-en');
+  const opener=page.locator('.header .user-button');await opener.click();
+  const dialog=page.getByRole('dialog',{name:'Welcome to FFM',exact:true});await dialog.waitFor();
+  assert.equal(await page.evaluate(()=>document.querySelector('[role="dialog"]').contains(document.activeElement)),true);
+  await audit('auth-en');
+  for(let n=0;n<15;n++){await page.keyboard.press(n%2?'Shift+Tab':'Tab');assert.equal(await page.evaluate(()=>document.querySelector('[role="dialog"]').contains(document.activeElement)),true)}
+  await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
+  assert.equal(await opener.evaluate(el=>el===document.activeElement),true);
+  assert.equal(await page.locator('[inert]').count(),0);
+  const unnamed=await page.locator('button').evaluateAll(nodes=>nodes.filter(el=>el.getClientRects().length&&!el.textContent.trim()&&!el.getAttribute('aria-label')&&!el.getAttribute('title')).map(el=>el.outerHTML));assert.deepEqual(unnamed,[]);
+  assert.equal(await page.locator('img:not([alt])').count(),0);
+  await page.getByRole('button',{name:'Switch to German',exact:true}).click();
+  await page.getByRole('button',{name:'Switch to English',exact:true}).waitFor();
+  assert.equal(await page.locator('html').getAttribute('lang'),'de');
+  assert.deepEqual(errors,[]);await page.screenshot({path:'artifacts/map-startup/english-and-keyboard.png'});await ctx.close();
+  console.log('PASS: English context controls, persisted locale, named controls, trapped modal keyboard focus, Escape and opener restoration');
  }
 }finally{
  await browser?.close();server.kill('SIGTERM');

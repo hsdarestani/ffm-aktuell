@@ -1,7 +1,8 @@
+import {readUiSource} from './ui-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const read=(file)=>readFileSync(file,'utf8');
+const read=(file)=>readUiSource(file);
 const v=read('lib/vorschau.ts'),page=read('app/page.tsx'),home=read('components/AtlasHome.tsx'),css=read('app/vorschau.css'),atlas=read('app/atlas/page.tsx');
 test('samples exist for all requested visitor surfaces but are not written to the DB',()=>{
  for(const key of ['vorschauOrte','vorschauVeranstaltungen','vorschauBeitraege','vorschauPosts','vorschauAngebote'])assert.match(v,new RegExp('export const '+key));
@@ -37,3 +38,4 @@ test('photo cards include meaningful alt labels and demo UI never writes placeho
  assert.match(v,/Stimmungsbild/);
  assert.match(css,/prefers-reduced-motion/);
 });
+

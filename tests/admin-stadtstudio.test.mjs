@@ -1,7 +1,8 @@
+import {readUiSource} from './ui-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const read=p=>readFileSync(p,'utf8');
+const read=p=>readUiSource(p);
 const admin=read('components/AdminStudio.tsx'),css=read('app/stadtstudio.css'),
  site=read('app/page.tsx'),dedicated=read('app/admin/page.tsx'),layout=read('app/layout.tsx');
 test('new Stadtstudio is the only main-page admin and has a separate protected route',()=>{

@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/lib/ui-locale';
 
 import {useState,type FormEvent} from 'react';
 import {Search,MapPin,CalendarDays,BookOpen,Compass,Plus,Heart,Globe2} from 'lucide-react';
@@ -52,12 +53,13 @@ function localDate(date:string,lang:'de'|'en'){return new Date(date).toLocaleDat
 function Accent(){return <span className="ml-dot" aria-hidden="true"/>;}
 
 export default function MinimalHome({lang,places,events,news,onDiscover,onMap,onEvents,onCommunity,onBusiness,onPlace,onCategory,onSearch}:Props){
+ const ui=useUiText();
  const t=labels[lang], [search,setSearch]=useState('');
  const submit=(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();onSearch(search.trim())};
  return <main className="ml">
    <section className="ml-hero" aria-labelledby="ml-hero-title">
     <div className="ml-hero-main">
-     <div className="ml-overline"><span className="ml-overline-mark">ffm.</span><span>{t.description}</span></div>
+     <div className="ml-overline"><span className="ml-overline-mark">{ui("ffm.")}</span><span>{t.description}</span></div>
      <div className="ml-hero-center">
       <span className="ml-eyebrow"><Accent/>{t.label}</span>
       <h1 id="ml-hero-title"><span>{t.lead}</span><em>{t.accent}</em></h1>
@@ -70,26 +72,26 @@ export default function MinimalHome({lang,places,events,news,onDiscover,onMap,on
       </form>
       <div className="ml-hero-actions"><button className="ml-primary" onClick={onDiscover}><span>{t.discover}</span><span className="ml-primary-glyph"><Plus size={16} strokeWidth={1.6}/></span></button><button className="ml-text-action" onClick={onMap}><MapPin size={15} strokeWidth={1.6}/>{t.map}</button></div>
      </div>
-     <div className="ml-hero-foot"><span>50.1109° N / 8.6821° E</span><span>EDITION 01 · 2026</span></div>
+     <div className="ml-hero-foot"><span>{ui("50.1109° N / 8.6821° E")}</span><span>{ui("EDITION 01 · 2026")}</span></div>
     </div>
     <div className="ml-hero-visual">
-      <img src="https://images.unsplash.com/photo-1775127493662-2e0fb1138b9c?auto=format&fit=crop&w=1700&q=82" alt={lang==='de'?'Frankfurter Skyline hinter dem Main und der alten Brücke':'Frankfurt skyline beyond the Main river and the old bridge'} width="1200" height="1500" fetchPriority="high"/>
+      <img src="https://images.unsplash.com/photo-1775127493662-2e0fb1138b9c?auto=format&fit=crop&w=1700&q=82" alt={lang==='de'?ui("Frankfurter Skyline hinter dem Main und der alten Brücke"):ui("Frankfurt skyline beyond the Main river and the old bridge")} width="1200" height="1500" fetchPriority="high"/>
       <div className="ml-photo-side">{t.sideLabel} <span>·</span> 069</div>
       <div className="ml-photo-caption"><span>{t.photoCaption}</span><span>01 / 04</span></div>
     </div>
    </section>
 
-   <div className="ml-signet-strip"><div><span>FFM AKTUELL</span><Mainlinie/><span>{t.location}</span></div></div>
+   <div className="ml-signet-strip"><div><span>{ui("FFM AKTUELL")}</span><Mainlinie/><span>{t.location}</span></div></div>
 
    <section className="ml-container ml-categories" aria-labelledby="ml-categories-title">
     <div className="ml-head-row">
      <div><div className="ml-kicker"><span>01</span><span>{t.section1}</span></div><h2 id="ml-categories-title">{t.selection}</h2><p>{t.selectionSub}</p></div>
-     <span className="ml-head-counter">FRANKFURT<br/>AM MAIN</span>
+     <span className="ml-head-counter">FRANKFURT<br/>{ui("AM MAIN")}</span>
     </div>
     <div className="ml-category-board">
       {t.categoryLabels.map(([key,label],i)=><button type="button" onClick={()=>onCategory(key)} key={key} className="ml-category-tile">
        <span className="ml-category-no">{String(i+1).padStart(2,'0')}</span>
-       <span className="ml-category-name">{label}</span>
+       <span className="ml-category-name">{ui(label)}</span>
        <span className="ml-category-disc"><Plus size={15} strokeWidth={1.5}/></span>
       </button>)}
     </div>
@@ -109,7 +111,7 @@ export default function MinimalHome({lang,places,events,news,onDiscover,onMap,on
    </section>
 
    <section className="ml-photo-story" aria-labelledby="ml-interlude-title">
-      <div className="ml-photo-story-img" role="img" aria-label="Stadtleben in Frankfurt"><div className="ml-image-index">FFM 02 / 04</div></div>
+      <div className="ml-photo-story-img" role="img" aria-label={ui("Stadtleben in Frankfurt")}><div className="ml-image-index">{ui("FFM 02 / 04")}</div></div>
       <div className="ml-photo-story-words">
         <span className="ml-eyebrow"><Accent/>{t.interludeTop}</span>
         <h2 id="ml-interlude-title">{t.interlude}</h2>
@@ -139,9 +141,10 @@ export default function MinimalHome({lang,places,events,news,onDiscover,onMap,on
    <section className="ml-ending">
      <div className="ml-ending-inner">
       <div className="ml-ending-tile"><div className="ml-kicker"><span>04</span><span>COMMUNITY</span></div><h2>{t.community}</h2><p>{t.communityText}</p><button className="ml-underlined" onClick={onCommunity}>{t.join}<Accent/></button></div>
-      <div className="ml-ending-tile"><div className="ml-kicker"><span>05</span><span>LOKALE PARTNER</span></div><h2>{t.partner}</h2><p>{t.partnerText}</p><button className="ml-underlined" onClick={onBusiness}>{t.partners}<Accent/></button></div>
+      <div className="ml-ending-tile"><div className="ml-kicker"><span>05</span><span>{ui("LOKALE PARTNER")}</span></div><h2>{t.partner}</h2><p>{t.partnerText}</p><button className="ml-underlined" onClick={onBusiness}>{t.partners}<Accent/></button></div>
      </div>
-     <div className="ml-ending-line"><Mainlinie/><span>MAINLINIE / FFM</span></div>
+     <div className="ml-ending-line"><Mainlinie/><span>{ui("MAINLINIE / FFM")}</span></div>
    </section>
  </main>;
 }
+

@@ -1,11 +1,12 @@
+import {readUiSource} from './ui-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
-const page=readFileSync('app/page.tsx','utf8');
-const component=readFileSync('components/PlaceLocationMap.tsx','utf8');
-const css=readFileSync('app/place-location.css','utf8');
-const layout=readFileSync('app/layout.tsx','utf8');
+const page=readUiSource('app/page.tsx');
+const component=readUiSource('components/PlaceLocationMap.tsx');
+const css=readUiSource('app/place-location.css');
+const layout=readUiSource('app/layout.tsx');
 const detail=page.slice(page.indexOf('{selected&&<div className="overlay"'),page.indexOf('{auth&&<div className="overlay"'));
 
 test('selected place detail always fills formerly empty media column',()=>{
@@ -50,3 +51,4 @@ test('close control is outside map iframe in a dedicated, keyboard-accessible he
  assert.match(css,/\.ffm-place-location\{\s*order:-1/);
  assert.match(css,/\.ffm-place-dialog-header \.dialog-close:focus-visible/);
 });
+

@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/lib/ui-locale';
 
 import {useState,useEffect,type FormEvent} from 'react';
 import {Heart,MessageCircle,Send} from 'lucide-react';
@@ -17,6 +18,7 @@ async function request(path:string,body?:unknown){
  return data;
 }
 export default function PostEngagement({postId,likes,comments,liked,loggedIn,onLogin,onNotice}:Props){
+ const ui=useUiText();
  const [likedNow,setLikedNow]=useState(liked),[likesNow,setLikesNow]=useState(likes);
  const [expanded,setExpanded]=useState(false),[responses,setResponses]=useState<Comment[]>([]);
  const [commentsNow,setCommentsNow]=useState(comments),[text,setText]=useState('');
@@ -31,7 +33,7 @@ export default function PostEngagement({postId,likes,comments,liked,loggedIn,onL
   try{
    const d=await request('post-likes',{post_id:postId,active:!likedNow});
    setLikedNow(d.liked);setLikesNow(d.count);
-  }catch{onNotice('Gefällt mir konnte nicht gespeichert werden.')}
+  }catch{onNotice(ui("Gefällt mir konnte nicht gespeichert werden."))}
   finally{setBusy(false)}
  };
  const open=async()=>{
@@ -40,7 +42,7 @@ export default function PostEngagement({postId,likes,comments,liked,loggedIn,onL
   try{
    const d=await request('comments?post_id='+encodeURIComponent(postId));
    setResponses(d.items||[]);
-  }catch{onNotice('Kommentare konnten nicht geladen werden.')}
+  }catch{onNotice(ui("Kommentare konnten nicht geladen werden."))}
   finally{setLoading(false)}
  };
  const submit=async(e:FormEvent<HTMLFormElement>)=>{
@@ -50,29 +52,30 @@ export default function PostEngagement({postId,likes,comments,liked,loggedIn,onL
   setBusy(true);
   try{
    await request('comments',{post_id:postId,body:text.trim()});
-   setText('');onNotice('Dein Kommentar wartet auf die Freigabe der Redaktion.');
-  }catch{onNotice('Kommentar konnte nicht gespeichert werden.')}
+   setText('');onNotice(ui("Dein Kommentar wartet auf die Freigabe der Redaktion."));
+  }catch{onNotice(ui("Kommentar konnte nicht gespeichert werden."))}
   finally{setBusy(false)}
  };
  return <div className="ffm-post-engagement">
   <div className="ffm-post-interactions">
-   <button type="button" onClick={()=>void like()} aria-pressed={likedNow} aria-label="Beitrag gefällt mir" disabled={busy}>
+   <button type="button" onClick={()=>void like()} aria-pressed={likedNow} aria-label={ui("Beitrag gefällt mir")} disabled={busy}>
     <Heart size={18} fill={likedNow?'currentColor':'none'}/><span>{likesNow}</span>
    </button>
    <button type="button" aria-expanded={expanded} onClick={()=>void open()}>
-    <MessageCircle size={18}/><span>{commentsNow} Kommentare</span>
+    <MessageCircle size={18}/><span>{commentsNow} {ui(" Kommentare")}</span>
    </button>
   </div>
   {expanded&&<div className="ffm-post-comments">
-   {loading?<p role="status">Kommentare werden geladen …</p>:
+   {loading?<p role="status">{ui("Kommentare werden geladen …")}</p>:
    responses.length?responses.map(c=><div className="ffm-post-comment" key={c.id}>
-    <strong>{c.display_name||'Nutzer'}</strong><p>{c.body}</p>
-   </div>):<p>Noch keine freigegebenen Kommentare.</p>}
+    <strong>{c.display_name||ui("Nutzer")}</strong><p>{c.body}</p>
+   </div>):<p>{ui("Noch keine freigegebenen Kommentare.")}</p>}
    <form onSubmit={submit}>
-    <label htmlFor={'ffm-comment-'+postId}>Kommentieren</label>
-    <textarea id={'ffm-comment-'+postId} value={text} onChange={e=>setText(e.target.value)} maxLength={800} minLength={3} rows={2} placeholder="Schreibe einen freundlichen Kommentar …" required/>
-    <button type="submit" disabled={busy}><Send size={15}/> {loggedIn?'Zur Prüfung senden':'Anmelden'}</button>
+    <label htmlFor={'ffm-comment-'+postId}>{ui("Kommentieren")}</label>
+    <textarea id={'ffm-comment-'+postId} value={text} onChange={e=>setText(e.target.value)} maxLength={800} minLength={3} rows={2} placeholder={ui("Schreibe einen freundlichen Kommentar …")} required/>
+    <button type="submit" disabled={busy}><Send size={15}/> {loggedIn?ui("Zur Prüfung senden"):ui("Anmelden")}</button>
    </form>
   </div>}
  </div>;
 }
+

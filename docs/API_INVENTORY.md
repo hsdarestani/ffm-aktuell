@@ -1,6 +1,6 @@
 # API source inventory
 
-Generated from the actual route handlers. Dynamic segments retain square brackets. This lists literal branches and exports, not a complete OpenAPI specification; complex dynamic catch-all branches require source inspection. Refer to authorization checks in each handler and behavioral tests for its contract. All URLs are relative to the application origin.
+Generated from the actual route handlers. Dynamic segments retain square brackets. This lists literal branches and exports, paired with [detailed contracts](API_CONTRACTS.md) and [OpenAPI](openapi.json). Refer to authorization checks in each handler and behavioral tests for its contract. All URLs are relative to the application origin.
 
 | Method | Route | Handler |
 | --- | --- | --- |
@@ -41,6 +41,8 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | POST | `/api/advertising` | [app/api/advertising/route.ts](../app/api/advertising/route.ts) |
 | POST | `/api/auth/login` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/auth/logout` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
+| GET | `/api/auth/oauth/[provider]/callback` | [app/api/auth/oauth/[provider]/callback/route.ts](../app/api/auth/oauth/[provider]/callback/route.ts) |
+| POST | `/api/auth/oauth/[provider]/callback` | [app/api/auth/oauth/[provider]/callback/route.ts](../app/api/auth/oauth/[provider]/callback/route.ts) |
 | GET | `/api/auth/oauth/[provider]/start` | [app/api/auth/oauth/[provider]/start/route.ts](../app/api/auth/oauth/[provider]/start/route.ts) |
 | GET | `/api/auth/oauth/status` | [app/api/auth/oauth/status/route.ts](../app/api/auth/oauth/status/route.ts) |
 | GET | `/api/auth/phone` | [app/api/auth/phone/route.ts](../app/api/auth/phone/route.ts) |
@@ -121,6 +123,7 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | GET | `/api/media/status` | [app/api/media/status/route.ts](../app/api/media/status/route.ts) |
 | POST | `/api/media/upload` | [app/api/media/upload/route.ts](../app/api/media/upload/route.ts) |
 | GET | `/api/news` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
+| GET | `/api/openapi` | [app/api/openapi/route.ts](../app/api/openapi/route.ts) |
 | GET | `/api/opening-hours` | [app/api/opening-hours/route.ts](../app/api/opening-hours/route.ts) |
 | POST | `/api/opening-hours` | [app/api/opening-hours/route.ts](../app/api/opening-hours/route.ts) |
 | GET | `/api/pharmacy-notdienst` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |

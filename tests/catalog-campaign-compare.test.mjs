@@ -1,7 +1,8 @@
+import {readUiSource} from './ui-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const file=p=>readFileSync(p,'utf8');
+const file=p=>readUiSource(p);
 test('Editorial taxonomy is managed by admins, supports nested groups and real multi-category links',()=>{
  const schema=file('db/schema.sql'),cats=file('app/api/categories/route.ts'),places=file('app/api/categories/places/route.ts');
  assert.match(schema,/CREATE TABLE IF NOT EXISTS catalog_categories/);

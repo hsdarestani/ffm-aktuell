@@ -1,7 +1,8 @@
+import {readUiSource} from './ui-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const read=(name)=>readFileSync(name,'utf8');
+const read=(name)=>readUiSource(name);
 const page=read('app/page.tsx'),api=read('app/api/[[...path]]/route.ts');
 const db=read('db/schema.sql'),ui=read('components/PlaceActions.tsx'),atlas=read('components/Atlas3D.tsx');
 const helpers=read('lib/location-actions.ts'),admin=read('components/AdminStudio.tsx');
@@ -75,3 +76,4 @@ test('actions are responsive, accessible and only reveal the advanced tools on d
  assert.match(ui,/disabled=\{Boolean\(venue.demo\)\}/);
  assert.match(layout,/place-actions\.css/);
 });
+

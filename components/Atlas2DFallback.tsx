@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/lib/ui-locale';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import type {AtlasPlace} from './Atlas3D';
 import {LocateFixed,Minus,Plus} from 'lucide-react';
@@ -24,6 +25,7 @@ const good=(p:AtlasPlace)=>Number.isFinite(p.longitude)&&Number.isFinite(p.latit
  p.longitude!==null&&p.latitude!==null&&Math.abs(p.longitude)<=180&&Math.abs(p.latitude)<=85;
 
 export default function Atlas2DFallback({places,category,lang,center,initialZoom,onPick,onCandidates,selectedId}:Props){
+ const ui=useUiText();
  const host=useRef<HTMLDivElement>(null),pointer=useRef<{x:number;y:number;center:Coordinates}|null>(null);
  const seen=useRef(new Set<string>()),[size,setSize]=useState({w:900,h:560});
  const [at,setAt]=useState<Coordinates>(center),[zoom,setZoom]=useState(clamp(Math.round(initialZoom),12,17));
@@ -74,7 +76,7 @@ export default function Atlas2DFallback({places,category,lang,center,initialZoom
    if(west[0]<8.2||east[0]>9.1||west[1]<49.7||east[1]>50.4)return;
    try{
     const r=await fetch('/api/discovery-map?'+new URLSearchParams({bbox:[west[0],west[1],east[0],east[1]].join(','),category}),{signal:ctl.signal});
-    if(!r.ok)throw Error('Candidate loading failed');
+    if(!r.ok)throw Error(ui("Candidate loading failed"));
     const d=await r.json();
     const found=(Array.isArray(d.items)?d.items:[]).filter((p:AtlasPlace)=>good(p)).slice(0,130) as AtlasPlace[];
     setCandidates(found);onCandidates(found);
@@ -86,7 +88,7 @@ export default function Atlas2DFallback({places,category,lang,center,initialZoom
   const p=xy(start,zoom);setAt(lngLat(p.x-dx,p.y-dy,zoom));
  },[at,zoom]);
  const clickZoom=(delta:number)=>setZoom(z=>clamp(z+delta,12,17));
- return <div ref={host} className="atlas-2d-native" aria-label={lang==='de'?'Frankfurt Stadtplan mit Orten':'Frankfurt city map with places'}>
+ return <div ref={host} className="atlas-2d-native" aria-label={lang==='de'?ui("Frankfurt Stadtplan mit Orten"):ui("Frankfurt city map with places")}>
   <div className="atlas-2d-plane" onPointerDown={e=>{
    if(e.button!==0)return;pointer.current={x:e.clientX,y:e.clientY,center:at};e.currentTarget.setPointerCapture(e.pointerId);
   }} onPointerMove={e=>{
@@ -101,23 +103,23 @@ export default function Atlas2DFallback({places,category,lang,center,initialZoom
     style={{position:'absolute',width:TILE,height:TILE,left:t.left,top:t.top,pointerEvents:'none'}}/>)}
    {visible.map(({place,left,top})=><button type="button" key={place.id}
     className={'atlas-2d-pin'+(isRawMapId(place.id)?' atlas-2d-pin-unknown':'')}
-    style={{left,top}} title={place.name} aria-label={'Ort: '+place.name+(isRawMapId(place.id)?' · Ungeprüft':'')}
+    style={{left,top}} title={place.name} aria-label={ui("Ort: ")+place.name+(isRawMapId(place.id)?ui(" · Ungeprüft"):'')}
     onPointerDown={e=>e.stopPropagation()}
     onClick={e=>{e.stopPropagation();onPick(place)}}>
     <span aria-hidden="true">●</span><span>{place.name}</span>
    </button>)}
   </div>
   <div className="atlas-2d-status" role="status">
-   {tileMissing?(lang==='de'?'Straßenkarten derzeit nicht erreichbar. Orte lassen sich trotzdem wählen.':'Street tiles unavailable. Places remain selectable.'):
-    lang==='de'?'2D Stadtplan · Ziehen und Orte antippen':'2D city map · Drag and select places'}
+   {tileMissing?(lang==='de'?ui("Straßenkarten derzeit nicht erreichbar. Orte lassen sich trotzdem wählen."):ui("Street tiles unavailable. Places remain selectable.")):
+    lang==='de'?ui("2D Stadtplan · Ziehen und Orte antippen"):ui("2D city map · Drag and select places")}
   </div>
   <div className="atlas-2d-controls">
-   <button type="button" title="Zoom in" aria-label="Vergrößern" onClick={()=>clickZoom(1)}><Plus size={17}/></button>
-   <button type="button" title="Zoom out" aria-label="Verkleinern" onClick={()=>clickZoom(-1)}><Minus size={17}/></button>
-   <button type="button" title="Zurück zu Frankfurt" aria-label="Frankfurt zentrieren" onClick={()=>{setAt(center);setZoom(clamp(Math.round(initialZoom),12,17))}}><LocateFixed size={17}/></button>
+   <button type="button" title={ui("Zoom in")} aria-label={ui("Vergrößern")} onClick={()=>clickZoom(1)}><Plus size={17}/></button>
+   <button type="button" title={ui("Zoom out")} aria-label={ui("Verkleinern")} onClick={()=>clickZoom(-1)}><Minus size={17}/></button>
+   <button type="button" title={ui("Zurück zu Frankfurt")} aria-label={ui("Frankfurt zentrieren")} onClick={()=>{setAt(center);setZoom(clamp(Math.round(initialZoom),12,17))}}><LocateFixed size={17}/></button>
   </div>
-  <div className="atlas-2d-credit">{loaded>0?'© OpenStreetMap contributors · ODbL':'Ortskoordinaten: OpenStreetMap · ODbL'}
-    <a href={'https://www.openstreetmap.org/#map='+zoom+'/'+at[1].toFixed(5)+'/'+at[0].toFixed(5)} target="_blank" rel="noopener noreferrer">In OpenStreetMap öffnen</a>
+  <div className="atlas-2d-credit">{loaded>0?ui("© OpenStreetMap contributors · ODbL"):ui("Ortskoordinaten: OpenStreetMap · ODbL")}
+    <a href={'https://www.openstreetmap.org/#map='+zoom+'/'+at[1].toFixed(5)+'/'+at[0].toFixed(5)} target="_blank" rel="noopener noreferrer">{ui("In OpenStreetMap öffnen")}</a>
   </div>
  </div>;
 }
