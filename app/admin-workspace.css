@@ -106,3 +106,8 @@
 .ffm-studio .ffm-studio-review-tabs button:not(.active){color:#465f4e}
 .ffm-studio .ffm-studio-content summary{min-height:44px;padding-top:11px;padding-bottom:11px;color:#425f4b;cursor:pointer}
 .ffm-studio footer{color:#526b59}
+@media(max-width:560px){
+ .ffm-studio .ffm-studio-mobile-brand{flex:1;min-width:0}
+ .ffm-studio .ffm-studio-mobile-brand>span{font-size:13px;line-height:1.2;overflow-wrap:anywhere}
+ .ffm-studio .ffm-studio-top-end{flex:none}
+}

@@ -14,7 +14,7 @@ try{
  for(let n=0;n<100;n++){try{if((await fetch(base)).ok)break}catch{}if(server.exitCode!==null)throw Error(logs);await new Promise(r=>setTimeout(r,200))}
  browser=await chromium.launch({headless:true});await mkdir('artifacts/admin-workspace',{recursive:true});
  const failures=[];
- for(const width of [1440,390]){
+ for(const width of [1440,390,320,850,1024]){
   const ctx=await browser.newContext({viewport:{width,height:960}}),page=await ctx.newPage(),errors=[],writes=[];let layout=structuredClone(modules);
   page.on('pageerror',e=>errors.push(e.message));
   await ctx.route('**/api/**',async route=>{
@@ -38,7 +38,8 @@ try{
   });
   await page.goto(base+'/admin');await page.locator('.ffm-studio').waitFor();
   async function open(label){if(width<851)await page.getByRole('button',{name:'Menü öffnen',exact:true}).click();await page.locator('.ffm-studio-rail-nav').getByRole('button',{name:label,exact:true}).click();await page.waitForTimeout(350)}
-  for(const label of nav){
+  const screens=[1440,390].includes(width)?nav:['Startseite','Konten','Berechtigungen'];
+  for(const label of screens){
    console.log('CHECK',width,label);
    try{await open(label)}catch(e){await page.screenshot({path:'artifacts/admin-workspace/failure.png',fullPage:true});console.log(await page.locator('body').innerText());console.log(errors);throw e}
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${width} ${label} horizontal overflow`);
@@ -56,7 +57,7 @@ try{
   await ctx.route('**/api/home-layout',route=>route.fulfill({status:503,json:{error:'Test unavailable'}}));await open('Startseite');await page.locator('.ffm-home-editor').getByRole('alert').waitFor();assert.equal(await page.getByRole('button',{name:'Startseite speichern',exact:true}).isDisabled(),true,'Failed load must not overwrite saved layout with defaults');await open('Konten');
   await page.locator('.ffm-language-toggle').click();await page.getByRole('heading',{name:'Manage accounts'}).waitFor();
   await page.screenshot({path:`artifacts/admin-workspace/${width}-accounts-en.png`,fullPage:true});
-  assert.deepEqual(errors,[]);await ctx.close();console.log(`PASS: ${width}px all 15 admin pages, saved module order/visibility, account lookup, menu keyboard and no overflow`);
+  assert.deepEqual(errors,[]);await ctx.close();console.log(`PASS: ${width}px ${screens.length} admin pages, saved module order/visibility, account lookup, menu keyboard and no overflow`);
  }
  await writeFile('artifacts/admin-workspace/accessibility.json',JSON.stringify(failures,null,2));assert.deepEqual(failures,[],'Admin accessibility violations: '+JSON.stringify(failures));
 }finally{await browser?.close();server.kill('SIGTERM')}
