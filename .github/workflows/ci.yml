@@ -52,6 +52,11 @@ jobs:
         env:
           ACTIVATION_CI_DATABASE_URL: postgres://ffm:ci-only@127.0.0.1:5432/ffm_activation_ci
         run: node scripts/ci-admin-activation-e2e.mjs
+      - name: Rehearse isolated PostgreSQL backup and restore
+        env:
+          ACTIVATION_CI_DATABASE_URL: postgres://ffm:ci-only@127.0.0.1:5432/ffm_activation_ci
+          FFM_CI_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: node scripts/ci-backup-restore.mjs
       - name: Validate compose
         run: |
           printf 'POSTGRES_PASSWORD=ci-only\nSESSION_SECRET=ci-only-long-session-key\n' > .env
