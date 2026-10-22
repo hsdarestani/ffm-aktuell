@@ -156,7 +156,9 @@ try{
   await ctx.route('**/api/recommendations?*',route=>{asked=new URL(route.request().url()).searchParams;return route.fulfill({json:{items:[],events:[{id:'fixture-event',title:'Passender Eintritt',starts_at:'2026-11-01T16:00:00Z',price_cents:500,price_source_url:'https://example.org/tickets'}],mode:'editorial',notice:'Nur belegte Angaben.',weather:null}})});
   await page.goto(base+'/?page=home',{waitUntil:'domcontentloaded'});
   await page.locator('.mobile-bottom').getByRole('button',{name:'Start',exact:true}).click();
-  const sponsored=page.getByRole('complementary',{name:'Werbung'});await sponsored.waitFor();await sponsored.scrollIntoViewIfNeeded();await page.clock.runFor(1500);
+  const sponsored=page.getByRole('complementary',{name:'Werbung'});await sponsored.waitFor();
+  const visibleReceipt=page.waitForResponse(r=>r.url()===base+'/api/advertising'&&r.request().method()==='POST'&&r.request().postDataJSON()?.kind==='impression');
+  await sponsored.scrollIntoViewIfNeeded();await page.clock.runFor(1500);await visibleReceipt;
   assert.equal(receipts.filter(r=>r.kind==='impression').length,1);
   await page.locator('#ffm-intent').fill('Ein ruhiger Nachmittag');
   await page.getByText('Datum, Budget und Anlass',{exact:true}).click();await page.getByLabel('Datum',{exact:true}).fill('2026-11-01');
