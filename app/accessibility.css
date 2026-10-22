@@ -24,3 +24,5 @@
 .atlas-standalone-note,.atlas-detail-source{color:#526457}
 .atlas-editorial-index{color:#81564e}
 .ffm-find-visual .ffm-find-source-credit{opacity:1}
+/* Keep the standalone atlas wordmark readable at its 21px mobile size. */
+.atlas-standalone-brand>span{color:#735959}
