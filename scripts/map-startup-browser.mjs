@@ -24,6 +24,7 @@ try{
   await page.waitForFunction(()=>Math.abs(window.scrollY)<1);
   const report=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa']).analyze();
   await writeFile('artifacts/map-startup/accessibility-'+name+'.json',JSON.stringify(report,null,2));
+  console.log('AXE '+name+': '+JSON.stringify(report.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))));
   accessibilityFindings.push({name,violations:report.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
  }
  async function context(noWebGL=false,signedIn=false){
@@ -182,6 +183,10 @@ try{
   await audit(page,'map-de');
   await page.locator('.mobile-bottom').getByRole('button',{name:'Start',exact:true}).click();
   await audit(page,'home-de');
+  await page.locator('.header .user-button').click();
+  await page.getByRole('dialog',{name:'Willkommen bei FFM',exact:true}).waitFor();
+  await audit(page,'auth-de');await page.keyboard.press('Escape');
+  await page.getByRole('dialog').waitFor({state:'hidden'});
   await page.locator('.mobile-bottom').getByRole('button',{name:'Entdecken',exact:true}).click();
   await audit(page,'discovery-de');
   await page.locator('.mobile-bottom').getByRole('button',{name:'Start',exact:true}).click();
@@ -230,7 +235,7 @@ try{
 
  {
   const {ctx,page,errors}=await context(true);
-  await ctx.route('**/api/places',route=>route.fulfill({json:{items:[{id:'00000000-0000-4000-8000-000000000002',name:'Keyboard venue',category:'Cafés',latitude:50.1074,longitude:8.6666,description_de:'Testort',description_en:'Test venue'}]}}));
+  await ctx.route('**/api/places',route=>route.fulfill({json:{items:[{id:'00000000-0000-4000-8000-000000000002',name:'Keyboard venue',category:'Cafés',latitude:50.1114,longitude:8.6813,description_de:'Testort',description_en:'Test venue'}]}}));
   await page.goto(base+'/atlas',{waitUntil:'domcontentloaded'});
   await audit(page,'standalone-map-de');
   await page.getByRole('button',{name:/Switch to English$/}).click();
