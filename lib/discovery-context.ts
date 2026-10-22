@@ -3,12 +3,24 @@ export function parseDiscoveryContext(q:URLSearchParams,now=new Date()){
  const date=q.get('date')||berlinDate(now),occasion=q.get('occasion')||'',budget=q.get('budget')||'';
  if(!/^20\d{2}-\d{2}-\d{2}$/.test(date)||new Date(date+'T12:00:00Z').toISOString().slice(0,10)!==date||date<berlinDate(now)||Date.parse(date)>now.getTime()+366*86400000)throw Error('Datum ungültig');
  if(!['','family','date','friends','quiet'].includes(occasion)||!['','1','2','3','4'].includes(budget))throw Error('Anlass oder Preisniveau ungültig');
+ const daypart=q.get('daypart')||'',mood=q.get('mood')||'',companion=q.get('companion')||'';
+ if(!['','morning','afternoon','evening','night'].includes(daypart)||!['','relaxed','active','social'].includes(mood)||!['','solo','family','friends','partner'].includes(companion))throw Error('Tageszeit, Stimmung oder Begleitung ungültig');
+ const radius=Number(q.get('radius')||3),lat=q.has('lat')?Number(q.get('lat')):null,lon=q.has('lon')?Number(q.get('lon')):null;
+ if(![1,3,5,10].includes(radius)||(lat===null)!==(lon===null)||lat!==null&&(!Number.isFinite(lat)||!Number.isFinite(lon)||lat<49.7||lat>50.4||lon!<8.2||lon!>9.1))throw Error('Standort ungültig');
+ const ranges:Record<string,[number,number]>={morning:[6,12],afternoon:[12,18],evening:[18,24],night:[0,6]};
+ const timeRange=ranges[daypart]||[0,24];
  const euros=q.get('event_budget');const eventBudget=euros===null||euros===''?null:Number(euros);
  if(eventBudget!==null&&(!Number.isFinite(eventBudget)||eventBudget<0||eventBudget>10000))throw Error('Veranstaltungsbudget ungültig');
- return {date,occasion,budget,eventBudget:eventBudget===null?null:Math.round(eventBudget*100),weather:q.get('weather')==='1'};
+ return {date,occasion,budget,daypart,mood,companion,timeRange,lat,lon,radius,eventBudget:eventBudget===null?null:Math.round(eventBudget*100),weather:q.get('weather')==='1'};
 }
-export function contextMatches(facts:Record<string,string>,ctx:ReturnType<typeof parseDiscoveryContext>,indoor=false){
+export function contextMatches(facts:Record<string,string>,ctx:ReturnType<typeof parseDiscoveryContext>,indoor=false,place:{category?:string;periods?:{start:number;end:number}[];latitude?:number;longitude?:number}={}){
  const field:Record<string,string>={family:'family_friendly',date:'date_friendly',friends:'group_friendly',quiet:'quiet'};
+ const companionField:Record<string,string>={family:'family_friendly',friends:'group_friendly',partner:'date_friendly'};
+ const distance=ctx.lat!==null?venueDistance(ctx.lat,ctx.lon!,Number(place.latitude),Number(place.longitude)):null;
+ if(ctx.lat!==null&&(distance===null||distance>ctx.radius))return false;
+ if(ctx.companion&&companionField[ctx.companion]&&facts[companionField[ctx.companion]]!=='yes')return false;
+ if(ctx.mood==='relaxed'&&facts.quiet!=='yes'||ctx.mood==='social'&&facts.group_friendly!=='yes'||ctx.mood==='active'&&!['Sport','Fitness','Natur','Freizeit'].includes(place.category||''))return false;
+ if(ctx.daypart&&!place.periods?.some(p=>p.start<ctx.timeRange[1]*60&&p.end>ctx.timeRange[0]*60))return false;
  return (!ctx.budget||(facts.price_level!==undefined&&Number(facts.price_level)<=Number(ctx.budget)))&&(!ctx.occasion||facts[field[ctx.occasion]]==='yes')&&(!indoor||facts.indoor==='yes');
 }
 export function weatherSummary(list:unknown,date:string,now=Date.now()){
@@ -29,3 +41,5 @@ export async function forecastFor(date:string){
  }
  const summary=weatherSummary(cached?.list,date);return summary&&cached?{...summary,checked_at:cached.fetchedAt}:null;
 }
+
+export function venueDistance(lat:number,lon:number,targetLat:number,targetLon:number){if(![lat,lon,targetLat,targetLon].every(Number.isFinite))return null;const rad=(n:number)=>n*Math.PI/180;const a=Math.sin(rad(targetLat-lat)/2)**2+Math.cos(rad(lat))*Math.cos(rad(targetLat))*Math.sin(rad(targetLon-lon)/2)**2;return 6371*2*Math.asin(Math.sqrt(Math.min(1,a)))}

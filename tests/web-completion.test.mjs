@@ -14,6 +14,11 @@ test('discovery uses Berlin dates, strict source-backed budgets and real forecas
  assert.throws(()=>context.parseDiscoveryContext(new URLSearchParams({budget:'cheap'}),now));
  const c=context.parseDiscoveryContext(new URLSearchParams({budget:'2',occasion:'date',event_budget:'12.50'}),now);assert.equal(c.eventBudget,1250);
  assert.equal(context.contextMatches({},c),false);assert.equal(context.contextMatches({price_level:'2',date_friendly:'yes'},c),true);assert.equal(context.contextMatches({price_level:'2',date_friendly:'yes'},c,true),false);
+ const extra=context.parseDiscoveryContext(new URLSearchParams({daypart:'afternoon',mood:'relaxed',companion:'family',lat:'50.11',lon:'8.68',radius:'1'}),now);
+ assert.equal(context.contextMatches({quiet:'yes',family_friendly:'yes'},extra,false,{latitude:50.11,longitude:8.68,periods:[{start:720,end:900}]}),true);
+ assert.equal(context.contextMatches({quiet:'yes',family_friendly:'yes'},extra,false,{latitude:50.11,longitude:8.68,periods:[{start:600,end:720}]}),false);
+ assert.equal(context.contextMatches({quiet:'yes',family_friendly:'yes'},extra,false,{latitude:50.3,longitude:8.9,periods:[{start:720,end:900}]}),false);
+ assert.throws(()=>context.parseDiscoveryContext(new URLSearchParams({lat:'50.11'}),now));
  assert.equal(context.weatherSummary([],c.date,now.getTime()),null);
  const forecast=context.weatherSummary([{dt:Date.parse('2026-10-22T12:00:00Z')/1000,main:{temp:12},weather:[{id:500}],pop:.6}],c.date,now.getTime());assert.equal(forecast.prefer_indoor,true);assert.equal(forecast.min,12);
 });
