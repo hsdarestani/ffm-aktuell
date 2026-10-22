@@ -17,3 +17,5 @@ export function UiLanguageProvider({children}:{children:ReactNode}){
 export const useUiLocale=()=>useContext(UiContext);
 /** Explicit UI literals only. User content must use the opt-in translation workflow. */
 export function useUiText(){const {locale}=useUiLocale();return Object.assign(useCallback((source:string)=>uiText(locale,source),[locale]),{locale})}
+
+export function UiLanguageSwitch(){const {locale,setLocale}=useUiLocale();return <button type="button" className="ffm-language-toggle" aria-label={locale==='de'?'EN · Switch to English':'DE · Switch to German'} title={locale==='de'?'English':'Deutsch'} onClick={()=>setLocale(v=>v==='de'?'en':'de')}>{locale==='de'?'EN':'DE'}</button>}

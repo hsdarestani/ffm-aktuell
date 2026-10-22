@@ -1,5 +1,5 @@
 'use client';
-import {useUiText} from '@/lib/ui-locale';
+import {useUiText,UiLanguageSwitch} from '@/lib/ui-locale';
 import {useCallback,useEffect,useState,type FormEvent} from 'react';
 import {
  ArrowRight,ArrowUpRight,BarChart3,Building2,Check,ChevronLeft,ChevronRight,
@@ -347,7 +347,7 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
    <header className="ffm-studio-top">
     <div className="ffm-studio-mobile-brand"><Mark/><span>{ui("ffm")}<span>.</span>{ui("stadtstudio")}</span></div>
     <div className="ffm-studio-breadcrumb"><strong>FFM</strong> <span>/</span> {ui(NAV.find(n=>n.view===view)?.label||"")}</div>
-    <div className="ffm-studio-top-end"><button type="button" title={ui("Aktualisieren")} aria-label={ui("Daten aktualisieren")} className="ffm-studio-refresh" onClick={refresh}><RefreshCw size={18}/></button><span className="ffm-studio-avatar">{ui("R")}</span></div>
+    <div className="ffm-studio-top-end"><UiLanguageSwitch/><button type="button" title={ui("Aktualisieren")} aria-label={ui("Daten aktualisieren")} className="ffm-studio-refresh" onClick={refresh}><RefreshCw size={18}/></button><span className="ffm-studio-avatar">{ui("R")}</span></div>
     <button type="button" className="ffm-studio-menubutton" aria-label={ui("Menü öffnen")} aria-expanded={mobileMenu} onClick={()=>setMobileMenu(v=>!v)}><Menu size={23}/></button>
    </header>
    <div className="ffm-studio-mobile-tabs">{availableNav.map(n=><button type="button" key={n.view} onClick={()=>navigate(n.view)} aria-current={view===n.view?'page':undefined} className={view===n.view?'active':''}><n.icon size={17}/>{ui(n.small)}</button>)}</div>

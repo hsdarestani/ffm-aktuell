@@ -10,3 +10,16 @@
 /* Measured WCAG AA text contrast on the actual cream surfaces. */
 .atlas-app-map-note,.footer-top p,.footer-bottom{color:#566457}
 .mobile-bottom button{color:#526957}
+.ml-brand-word small,.atlas-map-loading>small,.ffm-quick-hero-top>.ffm-quick-eyebrow,
+.ffm-quick-container>p,.ffm-quick-empty p,.ffm-quick-empty small,.ffm-quick-quiet p,
+.ffm-find-more>summary,.ffm-find-data>summary,.ffm-find-source-line small,
+.ffm-find-empty,.ffm-find-source-credit,.ffm-find-preview>summary,
+.ffm-profile-head>span,.ffm-profile-head p,.ffm-profile-field>small,
+.ffm-profile-check small,.ffm-profile-tip,.ffm-coupon-wallet>p,.ffm-team-check p{color:#526457}
+.auth-dialog>small{color:#8b5132}
+.ffm-profile-danger>button{color:#934e46}
+.ffm-quick-empty button{min-height:44px}
+.ffm-find-visual .ffm-find-data summary{color:#526457}
+.ffm-team-section .ffm-team-check p{color:#526457}
+.atlas-standalone-note,.atlas-detail-source{color:#526457}
+.atlas-editorial-index{color:#81564e}

@@ -22,7 +22,7 @@ export default function EventActions({event,saved,loggedIn,onLogin,onSaved,onNot
  let safeTicket:string|null=null;
  try{const parsed=new URL(event.ticket_url||'');if(['https:','http:'].includes(parsed.protocol))safeTicket=parsed.toString()}catch{}
  return <div className="ffm-event-actions">
-  <button type="button" onClick={()=>loggedIn?void onSaved(event.id,!saved):onLogin()} aria-pressed={saved} aria-label={saved?ui("Veranstaltung nicht mehr merken"):ui("Veranstaltung merken")}>
+  <button type="button" onClick={()=>loggedIn?void onSaved(event.id,!saved):onLogin()} aria-pressed={saved} aria-label={(saved?ui("Gemerkt"):ui("Merken"))+" · "+(saved?ui("Veranstaltung nicht mehr merken"):ui("Veranstaltung merken"))}>
    {saved?<BookmarkCheck size={16}/>:<Bookmark size={16}/>}<span>{saved?ui("Gemerkt"):ui("Merken")}</span></button>
   <button type="button" onClick={calendar}><CalendarPlus size={16}/><span>{ui("Kalender")}</span></button>
   {safeTicket&&<a href={safeTicket} target="_blank" rel="noopener noreferrer"><span>{ui("Infos")}</span><ExternalLink size={13}/></a>}

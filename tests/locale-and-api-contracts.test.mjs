@@ -9,7 +9,7 @@ test('English UI catalog covers explicit literals and leaves original German and
  assert.equal(m.exports.uiText('en','  Öffnungszeiten '),'  Opening hours ');
  assert.equal(m.exports.uiText('de','Öffnungszeiten'),'Öffnungszeiten');
  assert.equal(m.exports.uiText('en','A business or customer supplied this unique text'),'A business or customer supplied this unique text');
- const files=['app/page.tsx','app/admin/page.tsx','app/not-found.tsx',...readdirSync('components').filter(x=>x.endsWith('.tsx')).map(x=>'components/'+x)];let checked=0;
+ const files=['app/page.tsx','app/admin/page.tsx','app/not-found.tsx','app/atlas/page.tsx','app/admin/aktivieren/page.tsx',...readdirSync('components').filter(x=>x.endsWith('.tsx')).map(x=>'components/'+x)];let checked=0;
  for(const path of files){const source=readFileSync(path,'utf8'),file=ts.createSourceFile(path,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
   function visit(n){if(ts.isCallExpression(n)&&n.expression.getText(file)==='ui'&&ts.isStringLiteral(n.arguments[0])){assert.ok(Object.hasOwn(dict,n.arguments[0].text.trim()),path+': missing '+n.arguments[0].text);checked++}ts.forEachChild(n,visit)}visit(file);
   assert.doesNotMatch(source,/ui\((?:r\.body|p\.name|post\.body|selected\.name|s\.caption)\)/,'User content must not enter the automatic UI translator');

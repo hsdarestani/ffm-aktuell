@@ -32,7 +32,7 @@ export default function AtlasHome({tips,assistant,lang,places,events,news,onDisc
  const modules:Record<string,ReactNode>={tips,assistant,choices:(<section className="ffm-quick-choices ffm-quick-container" aria-labelledby="ffm-quick-choose">
    <div className="ffm-quick-section-heading"><div><span className="ffm-quick-eyebrow">{lang==='de'?ui("DEIN NÄCHSTER SCHRITT"):ui("YOUR NEXT STEP")}</span><h2 id="ffm-quick-choose">{lang==='de'?ui("Worauf hast du Lust?"):ui("What sounds good?")}</h2></div><span className="ffm-quick-help">{lang==='de'?ui("Einmal tippen. Direkt zu den Orten."):ui("One tap. Straight to the places.")}</span></div>
    <div className="ffm-quick-grid">
-    {needs.map(n=><button key={n.id} type="button" className={'ffm-quick-option '+n.color} onClick={()=>onCategory(n.id)} aria-label={ui(n.label)+ui(" in Frankfurt suchen")}>
+    {needs.map(n=><button key={n.id} type="button" className={'ffm-quick-option '+n.color} onClick={()=>onCategory(n.id)}>
      <span className="ffm-quick-option-icon"><n.icon size={24} strokeWidth={1.9}/></span><span>{lang==='de'?n.label:({Cafés:'Find a café',Restaurants:'Go out to eat',Bars:'Find a bar',Freizeit:'Things to do',Museen:'Explore culture',Apotheken:'Find a pharmacy'} as Record<string,string>)[n.id]}</span><ChevronRight size={17} className="ffm-quick-option-go"/>
     </button>)}
    </div>

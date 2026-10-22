@@ -1,5 +1,5 @@
 'use client';
-import {useUiText} from '@/lib/ui-locale';
+import {useUiText,UiLanguageSwitch} from '@/lib/ui-locale';
 import {useEffect,useState} from 'react';
 import {canAdmin} from '@/lib/admin-permissions';
 import AdminStudio from '@/components/AdminStudio';
@@ -18,7 +18,7 @@ export default function Redaktion(){
  },[]);
  if(role==='admin')return <AdminStudio permissions={permissions} onChanged={()=>{}}/>;
  return <main className="ffm-studio-access">
-  <div className="ffm-studio-access-card">
+  <div className="ffm-studio-access-card"><UiLanguageSwitch/>
    <span>{ui("FFM AKTUELL · STADTSTUDIO")}</span>
    <LockKeyhole size={35}/>
    <h1>{role==='loading'?ui("Dein Stadtstudio wird geöffnet."):ui("Nur für die Redaktion.")}</h1>

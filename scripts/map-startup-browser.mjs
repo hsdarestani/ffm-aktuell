@@ -21,6 +21,7 @@ try{
  browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  await mkdir('artifacts/map-startup',{recursive:true});
  async function audit(page,name){
+  await page.waitForFunction(()=>Math.abs(window.scrollY)<1);
   const report=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa']).analyze();
   await writeFile('artifacts/map-startup/accessibility-'+name+'.json',JSON.stringify(report,null,2));
   accessibilityFindings.push({name,violations:report.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
@@ -131,7 +132,7 @@ try{
   assert.ok(calendar.includes('DTSTART:20261101T160000Z'));
   assert.ok(calendar.includes('DTEND:20261101T190000Z'));
   assert.ok(!calendar.includes('Endzeit nicht bestätigt'));
-  await events.getByRole('button',{name:'Veranstaltung nicht mehr merken'}).click();
+  await events.getByRole('button',{name:/Veranstaltung nicht mehr merken$/}).click();
   await events.getByText('Noch keine anstehenden Veranstaltungen gemerkt.').waitFor();
   assert.equal(calls.length,1);assert.equal(calls[0].active,false);
   await page.screenshot({path:'artifacts/map-startup/mobile-saved-events.png'});
@@ -225,6 +226,30 @@ try{
   await audit(page,'account-en');
   assert.deepEqual(errors,[]);await ctx.close();
   console.log('PASS: German and English account accessibility');
+ }
+
+ {
+  const {ctx,page,errors}=await context(true);
+  await ctx.route('**/api/places',route=>route.fulfill({json:{items:[{id:'00000000-0000-4000-8000-000000000002',name:'Keyboard venue',category:'Cafés',latitude:50.1074,longitude:8.6666,description_de:'Testort',description_en:'Test venue'}]}}));
+  await page.goto(base+'/atlas',{waitUntil:'domcontentloaded'});
+  await audit(page,'standalone-map-de');
+  await page.getByRole('button',{name:/Switch to English$/}).click();
+  await page.locator('html[lang="en"]').waitFor({state:'attached'});
+  await audit(page,'standalone-map-en');
+  const marker=page.locator('.atlas-2d-pin').first();await marker.click();
+  const details=page.getByRole('dialog',{name:'Keyboard venue',exact:true});await details.waitFor();
+  assert.equal(await details.evaluate(el=>el.contains(document.activeElement)),true);
+  await audit(page,'standalone-details-en');
+  await page.keyboard.press('Tab');assert.equal(await details.evaluate(el=>el.contains(document.activeElement)),true);
+  await page.keyboard.press('Escape');await details.waitFor({state:'hidden'});
+  assert.equal(await marker.evaluate(el=>el===document.activeElement),true);
+  await page.goto(base+'/admin/aktivieren',{waitUntil:'domcontentloaded'});
+  await page.getByRole('heading',{name:'Activate editorial access',exact:true}).waitFor();
+  await audit(page,'activation-en');
+  await page.getByRole('button',{name:/Switch to German$/}).click();
+  await audit(page,'activation-de');
+  assert.deepEqual(errors,[]);await ctx.close();
+  console.log('PASS: standalone atlas and unavailable-invitation screen in both languages');
  }
 
  assert.deepEqual(accessibilityFindings.filter(x=>x.violations.length),[],'Accessibility violations across all audited German/English screens');
