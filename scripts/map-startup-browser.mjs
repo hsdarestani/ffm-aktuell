@@ -150,8 +150,8 @@ try{
   assert.deepEqual(errors,[]);await ctx.close();console.log('PASS: factual filters reach the server, suppress unsupported OSM rows and reset completely');
  }
  {
-  const {ctx,page,errors}=await context(true,true);let asked=null;const receipts=[];
-  await ctx.route('**/api/advertising?*',route=>route.fulfill({json:{items:[{token:'b'.repeat(64),title:'Bezahlte Anzeige',body:'Ein tatsächliches Angebot des Testbetriebs.',place_id:'00000000-0000-4000-8000-000000000002',place_name:'Testbetrieb',business_name:'Testbetrieb'}]}}));
+  const {ctx,page,errors}=await context(true,true);let asked=null;const receipts=[],requestedPlacements=[];
+  await ctx.route('**/api/advertising?*',route=>{const placement=new URL(route.request().url()).searchParams.get('placement');requestedPlacements.push(placement);return route.fulfill({json:{items:placement==='home'?[{token:'b'.repeat(64),title:'Bezahlte Anzeige',body:'Ein tatsächliches Angebot des Testbetriebs.',place_id:'00000000-0000-4000-8000-000000000002',place_name:'Testbetrieb',business_name:'Testbetrieb'}]:[]}})});
   await ctx.route('**/api/advertising',route=>{receipts.push(route.request().postDataJSON());return route.fulfill({json:{recorded:true}})});
   await ctx.route('**/api/recommendations?*',route=>{asked=new URL(route.request().url()).searchParams;return route.fulfill({json:{items:[],events:[{id:'fixture-event',title:'Passender Eintritt',starts_at:'2026-11-01T16:00:00Z',price_cents:500,price_source_url:'https://example.org/tickets'}],mode:'editorial',notice:'Nur belegte Angaben.',weather:null}})});
   await page.goto(base+'/?page=home',{waitUntil:'domcontentloaded'});
@@ -159,7 +159,7 @@ try{
   const sponsored=page.getByRole('complementary',{name:'Werbung'});await sponsored.waitFor();
   const visibleReceipt=page.waitForResponse(r=>r.url()===base+'/api/advertising'&&r.request().method()==='POST'&&r.request().postDataJSON()?.kind==='impression');
   await sponsored.scrollIntoViewIfNeeded();await page.clock.runFor(1500);await visibleReceipt;
-  assert.equal(receipts.filter(r=>r.kind==='impression').length,1);
+  assert.equal(receipts.filter(r=>r.kind==='impression').length,1);assert.ok(requestedPlacements.includes('new_openings'));
   await page.locator('#ffm-intent').fill('Ein ruhiger Nachmittag');
   await page.getByText('Datum, Budget und Anlass',{exact:true}).click();await page.getByLabel('Datum',{exact:true}).fill('2026-11-01');
   await page.getByRole('combobox',{name:'Preisniveau bis'}).selectOption('2');await page.getByLabel('Eintritt höchstens in Euro').fill('6');await page.getByRole('combobox',{name:'Anlass',exact:true}).selectOption('quiet');

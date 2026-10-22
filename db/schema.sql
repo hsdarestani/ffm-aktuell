@@ -798,3 +798,6 @@ ALTER TABLE ad_campaigns ADD CONSTRAINT ad_campaigns_placement_check CHECK(place
 ALTER TABLE ad_rates DROP CONSTRAINT IF EXISTS ad_rates_placement_check;
 ALTER TABLE ad_rates ADD CONSTRAINT ad_rates_placement_check CHECK(placement IN ('search','home','feed','stories','events','district','category','new_openings'));
 INSERT INTO ad_rates(placement,daily_cents) VALUES('new_openings',1500) ON CONFLICT DO NOTHING;
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended_at timestamptz;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS suspension_reason text;

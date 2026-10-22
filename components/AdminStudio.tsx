@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import {KATEGORIEN} from '@/lib/ortskategorien';
 import {EDITORIAL_SOURCE_LEADS} from '@/lib/editorial-source-leads';
+import ContentRecovery from '@/components/ContentRecovery';
 import MediaEditorial from '@/components/MediaEditorial';
 import HomepageStudio from '@/components/HomepageStudio';
 import CatalogStudio from '@/components/CatalogStudio';
@@ -16,6 +17,7 @@ import AdminTeamSeats from '@/components/AdminTeamSeats';
 import AdminTariffs from '@/components/AdminTariffs';
 import {LoyaltyStudio} from '@/components/Loyalty';
 import NotificationStudio from '@/components/NotificationStudio';
+import AdminAccounts from '@/components/AdminAccounts';
 import AdminRoles from '@/components/AdminRoles';
 import ServiceStatus from '@/components/ServiceStatus';
 import DataQualityStudio from '@/components/DataQualityStudio';
@@ -25,7 +27,7 @@ import '@/app/team-management.css';
 import '@/app/campaigns.css';
 import '@/app/catalog-studio.css';
 
-type View='home'|'overview'|'review'|'moderation'|'publish'|'catalog'|'ads'|'team'|'tariffs'|'quality'|'services'|'roles'|'notifications'|'loyalty';
+type View='accounts'|'home'|'overview'|'review'|'moderation'|'publish'|'catalog'|'ads'|'team'|'tariffs'|'quality'|'services'|'roles'|'notifications'|'loyalty';
 type PublishMode='place'|'news'|'event';
 type ReviewMode='unverified'|'needs_review'|'existing';
 type Candidate={osm_id:string;name:string;category:string;address:string|null;website:string|null;phone:string|null;opening_hours:string|null;last_osm_check:string|null;osm_url:string;latitude:number;longitude:number};
@@ -38,6 +40,7 @@ type Notice={kind:'success'|'error';text:string};
 type IconComponent=typeof LayoutDashboard;
 const emptyQueue:Queue={businesses:[],claims:[],places:[],deals:[],posts:[],reports:[],reviews:[],reviewReports:[],comments:[],branchChanges:[]};
 const NAV:{view:View;label:string;small:string;icon:IconComponent;index:string}[]=[
+ {view:'accounts',label:'Konten',small:'Konten',icon:UsersRound,index:'15'},
  {view:'home',label:'Startseite',small:'Startseite',icon:LayoutDashboard,index:'14'},
  {view:'overview',label:'Heute',small:'Heute',icon:LayoutDashboard,index:'01'},
  {view:'review',label:'Orte prüfen',small:'Prüfen',icon:MapPinned,index:'02'},
@@ -98,7 +101,7 @@ function Field({label,children,hint}:{label:string;children:React.ReactNode;hint
 export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=>void;permissions?:string[]}){
  const root=permissions.includes('*');
  const allowed=(cap:string)=>root||permissions.includes(cap);
- const navPermission:Record<View,string>={overview:'root',review:'editorial',moderation:'access',publish:'editorial',home:'editorial',catalog:'editorial',ads:'marketing',team:'business',tariffs:'finance',quality:'editorial',services:'operations',roles:'root',notifications:'editorial',loyalty:'marketing'};
+ const navPermission:Record<View,string>={accounts:'moderation',overview:'root',review:'editorial',moderation:'access',publish:'editorial',home:'editorial',catalog:'editorial',ads:'marketing',team:'business',tariffs:'finance',quality:'editorial',services:'operations',roles:'root',notifications:'editorial',loyalty:'marketing'};
  const availableNav=NAV.filter(n=>root||navPermission[n.view]==='access'&&permissions.some(p=>['editorial','moderation','business','marketing'].includes(p))||allowed(navPermission[n.view]));
  const queuePermission:Record<keyof Queue,string>={businesses:'business',claims:'business',places:'editorial',deals:'marketing',posts:'moderation',reports:'moderation',reviews:'moderation',reviewReports:'moderation',comments:'moderation',branchChanges:'business'};
  const visibleQueues=queueNames.filter(q=>allowed(queuePermission[q.key]));
@@ -353,6 +356,7 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
     {view==='tariffs'&&<AdminTariffs onNotice={(msg,success)=>setNotice({kind:success?'success':'error',text:msg})}/>}
     {view==='loyalty'&&<LoyaltyStudio/>}
     {view==='notifications'&&<NotificationStudio/>}
+    {view==='accounts'&&<AdminAccounts/>}
     {view==='roles'&&root&&<AdminRoles/>}
     {view==='services'&&<ServiceStatus/>}
     {view==='quality'&&<DataQualityStudio onNotice={(msg,success)=>setNotice({kind:success?'success':'error',text:msg})}/>}
@@ -449,6 +453,7 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
         }
        }}>Bewertung entfernen</button>}</div></div></article>):<div className="ffm-studio-mod-empty"><div><CheckCheck size={32}/></div><h3>Alles erledigt.</h3></div>}
      </CityPanel></div>
+     <ContentRecovery/>
      {allowed('moderation')&&<MediaEditorial/>}
     </>}
 

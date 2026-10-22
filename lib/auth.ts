@@ -9,12 +9,13 @@ function tokenHash(token:string){return createHash('sha256').update(token).diges
 export async function sessionUser(req:NextRequest):Promise<User|null>{
   const token=req.cookies.get(cookieName)?.value;
   if(!token||!/^[a-f0-9]{64}$/.test(token))return null;
-  const r=await query<User>('SELECT u.id,u.email,u.display_name,u.role,u.language,ARRAY(SELECT DISTINCT unnest(ar.permissions) FROM admin_role_assignments ara JOIN admin_roles ar ON ar.code=ara.role_code WHERE ara.user_id=u.id) AS admin_permissions FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>now()',[tokenHash(token)]);
+  const r=await query<User>('SELECT u.id,u.email,u.display_name,u.role,u.language,ARRAY(SELECT DISTINCT unnest(ar.permissions) FROM admin_role_assignments ara JOIN admin_roles ar ON ar.code=ara.role_code WHERE ara.user_id=u.id) AS admin_permissions FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>now() AND u.suspended_at IS NULL',[tokenHash(token)]);
   return r.rows[0]||null;
 }
 export async function beginSession(userId:string,res:NextResponse){
   const token=randomBytes(32).toString('hex');
-  await query("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '30 days')",[tokenHash(token),userId]);
+  const created=await query("INSERT INTO sessions(token_hash,user_id,expires_at) SELECT $1,id,now()+interval '30 days' FROM users WHERE id=$2 AND suspended_at IS NULL RETURNING user_id",[tokenHash(token),userId]);
+  if(!created.rowCount)throw Object.assign(new Error('Account unavailable'),{status:403});
   res.cookies.set(cookieName,token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:60*60*24*30});
 }
 export async function endSession(req:NextRequest,res:NextResponse){

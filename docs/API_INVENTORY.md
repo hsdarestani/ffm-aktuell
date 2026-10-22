@@ -7,6 +7,8 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | POST | `/api/ad-booking` | [app/api/ad-booking/route.ts](../app/api/ad-booking/route.ts) |
 | GET | `/api/ad-rates` | [app/api/ad-rates/route.ts](../app/api/ad-rates/route.ts) |
 | POST | `/api/ad-rates` | [app/api/ad-rates/route.ts](../app/api/ad-rates/route.ts) |
+| GET | `/api/admin/accounts` | [app/api/admin/accounts/route.ts](../app/api/admin/accounts/route.ts) |
+| POST | `/api/admin/accounts` | [app/api/admin/accounts/route.ts](../app/api/admin/accounts/route.ts) |
 | POST | `/api/admin/activate` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/admin/billing` | [app/api/admin/billing/route.ts](../app/api/admin/billing/route.ts) |
 | GET | `/api/admin/business-seats` | [app/api/admin/business-seats/route.ts](../app/api/admin/business-seats/route.ts) |
@@ -14,6 +16,8 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | GET | `/api/admin/campaigns` | [app/api/admin/campaigns/route.ts](../app/api/admin/campaigns/route.ts) |
 | POST | `/api/admin/campaigns` | [app/api/admin/campaigns/route.ts](../app/api/admin/campaigns/route.ts) |
 | GET | `/api/admin/candidates` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
+| GET | `/api/admin/content` | [app/api/admin/content/route.ts](../app/api/admin/content/route.ts) |
+| POST | `/api/admin/content` | [app/api/admin/content/route.ts](../app/api/admin/content/route.ts) |
 | GET | `/api/admin/data-quality` | [app/api/admin/data-quality/route.ts](../app/api/admin/data-quality/route.ts) |
 | POST | `/api/admin/dispute-place` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/admin/events` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |

@@ -28,6 +28,13 @@ test('push jobs enforce consent, event bookmarks, publication, time windows and 
   assert.equal((await db.query('SELECT * FROM push_deliveries')).rows.length,1);
   const args=[sub,event.id,'event',event.version];
   assert.equal((await db.query(pushPayloadQuery,args)).rows.length,1);
+  await t.test('suspended accounts receive neither queued nor new notifications',async()=>{
+   await db.query('UPDATE users SET suspended_at=now() WHERE id=$1',[user]);
+   assert.equal((await db.query(pushPayloadQuery,args)).rows.length,0);
+   await db.query('DELETE FROM push_deliveries');await db.query(enqueuePushJobs);
+   assert.equal((await db.query('SELECT * FROM push_deliveries')).rows.length,0);
+   await db.query('UPDATE users SET suspended_at=NULL WHERE id=$1',[user]);
+  });
   await t.test('unbookmarking cancels a queued reminder at delivery time',async()=>{await db.query('DELETE FROM event_favorites WHERE user_id=$1',[user]);assert.equal((await db.query(pushPayloadQuery,args)).rows.length,0)});
   await db.query('INSERT INTO event_favorites(user_id,event_id) VALUES($1,$2)',[user,event.id]);
   await t.test('rescheduling invalidates the old reminder',async()=>{await db.query("UPDATE events SET starts_at=now()+interval '2 hours' WHERE id=$1",[event.id]);assert.equal((await db.query(pushPayloadQuery,args)).rows.length,0)});
