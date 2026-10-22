@@ -27,3 +27,40 @@ with tempfile.TemporaryDirectory() as td:
 print('safe retention passed')`;
  const r=spawnSync('python3',['-c',code],{encoding:'utf8'});assert.equal(r.status,0,r.stderr);assert.match(r.stdout,/safe retention passed/);
 });
+
+test('Nightly snapshots publish only after validation, stay private and preserve failed captures',async()=>{
+ const {mkdtempSync,mkdirSync,writeFileSync,readFileSync,readdirSync,statSync,copyFileSync,rmSync}=await import('node:fs');
+ const {tmpdir}=await import('node:os');const {join}=await import('node:path');
+ const root=mkdtempSync(join(tmpdir(),'ffm-nightly-test-'));
+ try{
+  for(const dir of ['bin','backups','scripts','media/uploads'])mkdirSync(join(root,dir),{recursive:true});
+  copyFileSync('scripts/expire-backups.py',join(root,'scripts/expire-backups.py'));
+  writeFileSync(join(root,'.env'),'PRIVATE_FIXTURE=must-never-appear-in-logs\n',{mode:0o600});
+  writeFileSync(join(root,'media/uploads','photo.txt'),'licensed fixture');
+  writeFileSync(join(root,'bin/docker'),`#!/usr/bin/env bash
+set -eu
+case "$*" in
+ *pg_dump*) [ "\${FAIL_DUMP:-0}" = 0 ] || exit 7; printf 'database archive fixture';;
+ *pg_restore*) cat >/dev/null;;
+ *'tar -czf'*) exec tar -czf - -C "$FIXTURE_MEDIA" uploads;;
+ *) exit 8;;
+esac
+`,{mode:0o755});
+  writeFileSync(join(root,'bin/date'),'#!/bin/sh\nprintf "%s\\n" "$SNAPSTAMP"\n',{mode:0o755});
+  writeFileSync(join(root,'bin/df'),'#!/bin/sh\nprintf "Filesystem 1024-blocks Used Available Capacity Mounted\\nfixture 9999999 1 9999998 1%% /\\n"\n',{mode:0o755});
+  const source=readFileSync('scripts/nightly-backup.sh','utf8').replaceAll('/opt/ffm-aktuell',root);
+  const env={...process.env,PATH:join(root,'bin')+':'+process.env.PATH,FIXTURE_MEDIA:join(root,'media'),SNAPSTAMP:'20260101T031700Z'};
+  const first=spawnSync('bash',['-c',source],{env,encoding:'utf8'});assert.equal(first.status,0,first.stderr);
+  const snapshot=join(root,'backups/nightly-20260101T031700Z');
+  assert.equal(statSync(snapshot).mode&0o777,0o700);
+  for(const name of readdirSync(snapshot))assert.equal(statSync(join(snapshot,name)).mode&0o777,0o600,name);
+  assert.equal(readFileSync(join(snapshot,'environment.private'),'utf8'),'PRIVATE_FIXTURE=must-never-appear-in-logs\n');
+  assert.doesNotMatch(first.stdout+first.stderr,/must-never-appear-in-logs/);
+  const repeated=spawnSync('bash',['-c',source],{env,encoding:'utf8'});assert.equal(repeated.status,0,repeated.stderr);
+  assert.equal(readdirSync(snapshot).length,5,'A same-second repeat must not nest another directory');
+  const failed=spawnSync('bash',['-c',source],{env:{...env,SNAPSTAMP:'20260102T031700Z',FAIL_DUMP:'1'},encoding:'utf8'});assert.notEqual(failed.status,0);
+  assert.ok(readdirSync(join(root,'backups')).includes('.nightly-20260102T031700Z.partial'));
+  assert.ok(!readdirSync(join(root,'backups')).includes('nightly-20260102T031700Z'));
+  assert.doesNotMatch(failed.stdout+failed.stderr,/must-never-appear-in-logs/);
+ }finally{rmSync(root,{recursive:true,force:true})}
+});

@@ -12,6 +12,7 @@ if [ "$FREE_KB" -lt "$MIN_FREE_KB" ]; then echo 'FFM backup refused: less than 1
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 PART="/opt/ffm-aktuell/backups/.nightly-${STAMP}.partial"
 FINAL="/opt/ffm-aktuell/backups/nightly-${STAMP}"
+[ ! -e "$FINAL" ] || exit 0
 mkdir -m 700 "$PART"
 trap 'echo "FFM snapshot failed; private partial preserved for inspection." >&2' ERR
 docker compose exec -T db pg_dump --format=custom -U ffm -d ffm </dev/null > "$PART/database.dump"
