@@ -10,6 +10,7 @@ const server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','
 let logs='';server.stdout.on('data',b=>logs=(logs+b).slice(-3000));server.stderr.on('data',b=>logs=(logs+b).slice(-3000));
 let browser;
 try{
+ const accessibilityFindings=[];
  let healthy=false;
  for(let n=0;n<60;n++){
   if(server.exitCode!==null)throw Error('Test server exited: '+logs);
@@ -19,6 +20,11 @@ try{
  assert.ok(healthy,'Production server did not start: '+logs);
  browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  await mkdir('artifacts/map-startup',{recursive:true});
+ async function audit(page,name){
+  const report=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa']).analyze();
+  await writeFile('artifacts/map-startup/accessibility-'+name+'.json',JSON.stringify(report,null,2));
+  accessibilityFindings.push({name,violations:report.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
+ }
  async function context(noWebGL=false,signedIn=false){
   const calls=[];let eventSaved=true;
   const ctx=await browser.newContext({viewport:{width:390,height:844}});
@@ -172,36 +178,38 @@ try{
  {
   const {ctx,page,errors}=await context(true);
   await page.goto(base+'/?page=home',{waitUntil:'domcontentloaded'});
-  const audit=async name=>{const report=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa']).analyze();await writeFile('artifacts/map-startup/accessibility-'+name+'.json',JSON.stringify(report,null,2));assert.deepEqual(report.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))})),[],'Accessibility violations on '+name)};
-  await audit('home-de');
-  await page.locator('.mobile-bottom').getByRole('button',{name:'Entdecken',exact:true}).click();
-  await audit('discovery-de');
+  await audit(page,'map-de');
   await page.locator('.mobile-bottom').getByRole('button',{name:'Start',exact:true}).click();
-  await page.getByRole('button',{name:'Switch to English',exact:true}).click();
+  await audit(page,'home-de');
+  await page.locator('.mobile-bottom').getByRole('button',{name:'Entdecken',exact:true}).click();
+  await audit(page,'discovery-de');
+  await page.locator('.mobile-bottom').getByRole('button',{name:'Start',exact:true}).click();
+  await page.getByRole('button',{name:/Switch to English$/}).click();
   await page.locator('html[lang="en"]').waitFor({state:'attached'});
   assert.equal(await page.locator('html').getAttribute('lang'),'en');
   await page.getByText('Date, budget and occasion',{exact:true}).click();
   await page.getByLabel('Maximum entry price in euros',{exact:true}).waitFor();
   await page.getByRole('combobox',{name:'Time of day',exact:true}).selectOption('evening');
   await page.reload({waitUntil:'domcontentloaded'});
-  await page.getByRole('button',{name:'Switch to German',exact:true}).waitFor();
+  await page.getByRole('button',{name:/Switch to German$/}).waitFor();
   assert.equal(await page.locator('html').getAttribute('lang'),'en');
-  await audit('home-en');
-  await page.locator('.mobile-bottom').getByRole('button',{name:'Discover',exact:true}).click();
-  await audit('discovery-en');
+  await page.locator('.mobile-bottom').getByRole('button',{name:'Home',exact:true}).click();
+  await audit(page,'home-en');
+  await page.locator('.mobile-bottom').getByRole('button',{name:'Explore',exact:true}).click();
+  await audit(page,'discovery-en');
   await page.locator('.mobile-bottom').getByRole('button',{name:'Home',exact:true}).click();
   const opener=page.locator('.header .user-button');await opener.click();
   const dialog=page.getByRole('dialog',{name:'Welcome to FFM',exact:true});await dialog.waitFor();
   assert.equal(await page.evaluate(()=>document.querySelector('[role="dialog"]').contains(document.activeElement)),true);
-  await audit('auth-en');
+  await audit(page,'auth-en');
   for(let n=0;n<15;n++){await page.keyboard.press(n%2?'Shift+Tab':'Tab');assert.equal(await page.evaluate(()=>document.querySelector('[role="dialog"]').contains(document.activeElement)),true)}
   await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
   assert.equal(await opener.evaluate(el=>el===document.activeElement),true);
   assert.equal(await page.locator('[inert]').count(),0);
   const unnamed=await page.locator('button').evaluateAll(nodes=>nodes.filter(el=>el.getClientRects().length&&!el.textContent.trim()&&!el.getAttribute('aria-label')&&!el.getAttribute('title')).map(el=>el.outerHTML));assert.deepEqual(unnamed,[]);
   assert.equal(await page.locator('img:not([alt])').count(),0);
-  await page.getByRole('button',{name:'Switch to German',exact:true}).click();
-  await page.getByRole('button',{name:'Switch to English',exact:true}).waitFor();
+  await page.getByRole('button',{name:/Switch to German$/}).click();
+  await page.getByRole('button',{name:/Switch to English$/}).waitFor();
   assert.equal(await page.locator('html').getAttribute('lang'),'de');
   assert.deepEqual(errors,[]);await page.screenshot({path:'artifacts/map-startup/english-and-keyboard.png'});await ctx.close();
   console.log('PASS: English context controls, persisted locale, named controls, trapped modal keyboard focus, Escape and opener restoration');
@@ -210,16 +218,17 @@ try{
   const {ctx,page,errors}=await context(true,true);
   await page.goto(base,{waitUntil:'domcontentloaded'});
   await page.getByRole('button',{name:'Meine Orte',exact:true}).click();
-  const audit=async name=>{const report=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa']).analyze();await writeFile('artifacts/map-startup/accessibility-'+name+'.json',JSON.stringify(report,null,2));assert.deepEqual(report.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))})),[],'Accessibility violations on '+name)};
   await page.getByRole('region',{name:'Meine Veranstaltungen'}).waitFor();
-  await audit('account-de');
-  await page.getByRole('button',{name:'Switch to English',exact:true}).click();
+  await audit(page,'account-de');
+  await page.getByRole('button',{name:/Switch to English$/}).click();
   await page.locator('html[lang="en"]').waitFor({state:'attached'});
-  await audit('account-en');
+  await audit(page,'account-en');
   assert.deepEqual(errors,[]);await ctx.close();
   console.log('PASS: German and English account accessibility');
  }
 
+ assert.deepEqual(accessibilityFindings.filter(x=>x.violations.length),[],'Accessibility violations across all audited German/English screens');
+ console.log('PASS: all audited German/English screens have no automated WCAG A/AA violations');
 }finally{
  await browser?.close();server.kill('SIGTERM');
 }

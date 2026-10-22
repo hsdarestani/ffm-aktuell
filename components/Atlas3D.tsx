@@ -576,7 +576,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
     <button type="button" className="atlas-dim-button" aria-pressed={fallback||domFallback?false:is3D}
       onClick={()=>{if(domFallback||fallback){retry3D();return}if(luftbild){setLuftbild(false);set3D(true)}else set3D(x=>!x)}}
       title={domFallback||fallback?(lang==='de'?ui("3D erneut versuchen"):ui("Retry 3D")):t.view}
-      aria-label={domFallback||fallback?ui("3D erneut versuchen"):ui("2D oder 3D wechseln")}>{domFallback||fallback?ui("3D neu"):is3D?ui("3D"):ui("2D")}</button>
+      aria-label={(domFallback||fallback?ui("3D neu"):is3D?ui("3D"):ui("2D"))+" · "+(domFallback||fallback?ui("3D erneut versuchen"):ui("2D oder 3D wechseln"))}>{domFallback||fallback?ui("3D neu"):is3D?ui("3D"):ui("2D")}</button>
     <details className="atlas-map-more-views"><summary>{ui("Ansicht ")}<Plus size={14}/></summary><div>
       <button type="button" className={'atlas-tone-button'+(mode==='golden'?' active':'')} onClick={()=>setMode(x=>x==='day'?'golden':'day')} title={mode==='day'?t.golden:t.day} aria-label={mode==='day'?t.golden:t.day}>{mode==='day'?<Sunset size={17}/>:<Sun size={17}/>}<span>{mode==='day'?t.golden:t.day}</span></button>
       <button type="button" className={'atlas-air-button'+(luftbild?' active':'')} aria-pressed={luftbild} onClick={()=>{setLuftbildFehler(false);if(!luftbild)set3D(false);else set3D(true);setLuftbild(v=>!v)}} title={ui("Amtliche Luftbilder statt Kartenzeichnung")}>{luftbild?ui("Stadtplan"):ui("Luftbild")}</button>
