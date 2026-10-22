@@ -64,7 +64,7 @@ See [generated API inventory](API_INVENTORY.md) for actual handlers and [require
 | Business edit | Approved owner or authorized editor, real scoped branch | Proposed correction queued; never self-published | PostgreSQL HTTP acceptance tests |
 | Coupon | Published approved offer and logged-in user | Random private claim; authorized redemption once; no verified-visit claim | Existing coupon concurrency/permissions acceptance |
 | Subscription | Approved tariff, contractual terms and configured provider | Hosted card/SEPA checkout, signed synchronization, immutable terms, expiry, invoices, credits/refunds and provider portal | Billing lifecycle tests and real PostgreSQL entitlement checks; live provider acceptance pending |
-| Advertisement proposal | Approved owner and marketing permission according to action | Draft/review/awaiting commercial setup; no paid ad delivery | Existing proposal lifecycle tests |
+| Advertisement | Approved owner, reviewed content, released rate/terms and actual payment | Immutable quote, hosted card/SEPA checkout, signed payment/refund synchronization, eight placements and current viewability receipts | PostgreSQL payment/receipt lifecycle tests and Chromium visibility regression |
 | Loyalty and visit proof | Approved merchant program, actual scoped merchant confirmation | Hashed short-lived one-time codes, immutable card rules, minimum visit interval, one-time reward and private wallet | PGlite lifecycle plus real PostgreSQL concurrent visit/reward HTTP tests |
 | Account deletion | Own account and exact confirmation plus recent/password authentication | Private data/device cascades; protected business/admin gates may reject | Existing HTTP CI and push cascade test |
 
