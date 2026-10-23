@@ -2,7 +2,6 @@ import {NextRequest,NextResponse} from 'next/server';
 import {sessionUser,trustedOrigin} from '@/lib/auth';
 import {query} from '@/lib/db';
 import {reserveTextRequest,textJSON} from '@/lib/text-provider';
-import {getProviderSecret} from '@/lib/provider-credentials';
 import {parseDiscoveryContext,contextMatches,forecastFor,venueDistance} from '@/lib/discovery-context';
 export const dynamic='force-dynamic';
 export async function GET(req:NextRequest){
@@ -25,7 +24,7 @@ export async function GET(req:NextRequest){
  const scored=places.rows.filter(p=>contextMatches(p.facts,ctx,Boolean(weather?.prefer_indoor),p)).map(p=>({p,score:words.reduce((v,w)=>v+([p.name,p.category,p.district,p.description_de,p.description_en].join(' ').toLocaleLowerCase().includes(w)?1:0),0)+(pref?.districts?.includes(p.district)?2:0)})).sort((a,b)=>b.score-a.score);
  let mode='editorial';
  let items:{id:string;name:string;reasons:string[];[key:string]:unknown}[]=scored.slice(0,4).map(x=>({...x.p,id:String(x.p.id),name:String(x.p.name),distance_km:ctx.lat!==null?venueDistance(ctx.lat,ctx.lon!,Number(x.p.latitude),Number(x.p.longitude)):null,reasons:[...(ctx.budget?['price_level']:[]),...(ctx.occasion?[ctx.occasion]:[]),...(weather?.prefer_indoor?['indoor']:[])]}));
- if(q.get('ai')==='1'&&u&&search.length>=3&&items.length&&await getProviderSecret('OPENAI_API_KEY')&&await reserveTextRequest(u.id,'ranking')){
+ if(q.get('ai')==='1'&&u&&search.length>=3&&items.length&&await (async()=>Boolean(process.env.OPENAI_API_KEY||await (await import('@/lib/provider-credentials')).getProviderSecret('OPENAI_API_KEY')))()&&await reserveTextRequest(u.id,'ranking')){
   try{const r=await textJSON('Return JSON {"ids":[]} containing up to four supplied venue IDs ordered by relevance. Never invent venues, prices, availability or opening hours.',{question:search,context:{...ctx,lat:undefined,lon:undefined},interests:pref?.interests||[],candidates:scored.slice(0,12).map(x=>x.p)});if(Array.isArray(r.ids)){const ids=r.ids.filter((x):x is string=>typeof x==='string');const ranked=ids.map(id=>items.find(p=>p.id===id)).filter((x):x is typeof items[number]=>Boolean(x));if(ranked.length){items=[...new Map(ranked.map(p=>[p.id,p])).values()];mode='ai'}}}catch{/* Deterministic verified fallback. */}
  }
  return NextResponse.json({items,events:events.rows,mode,context:ctx,weather,notice:lang==='de'?[
