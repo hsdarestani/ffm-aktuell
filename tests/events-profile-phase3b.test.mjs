@@ -48,7 +48,7 @@ test('export excludes stored password hashes and deletions require exact confirm
  assert.match(profile,/window.confirm/);
 });
 test('event cards and profile are directly reachable without dense nav',()=>{
- assert.match(page,/<EventActions key=\{e.id\}/);
+ assert.match(page,/<EventsExplorer /);assert.match(get('components/EventsExplorer.tsx'),/<EventActions event=\{e\}/);
  assert.match(page,/page==='profile'&&<>/);
  assert.match(page,/<ProfileSettings user=/);
  assert.match(page,/<MediaRightsPanel onNotice=/);

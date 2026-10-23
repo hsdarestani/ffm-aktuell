@@ -18,7 +18,7 @@ test('the home route does not mount a blocking 3D map',()=>{
  assert.doesNotMatch(home,/<Atlas3D/);
  assert.doesNotMatch(home,/next\/dynamic|maplibre-gl/);
  assert.match(page,/<AtlasHome lang/);
- assert.match(page,/page==='map'&&<main className="atlas-app-map"/);
+ assert.match(page,/page==='map'&&<MapDiscovery /);assert.match(read('components/MapDiscovery.tsx'),/<Atlas3D /);
 });
 test('the home view does not advertise illustrative entries as confirmed or give invented events',()=>{
  assert.match(home,/places.filter\(p=>frischBestaetigt\(p\)\)/);
@@ -34,14 +34,14 @@ test('real search is first, preview cards are folded, advanced categories are no
  assert.match(page,/<details className="ffm-find-more">/);
  assert.match(page,/Nur aktuell geprüfte Betriebe/);
  assert.match(page,/window.setTimeout\(\(\)=>\{/);
- assert.match(page,/const nav:[^;]*\['map',MapIcon,t.map\]\];/);
+ assert.match(page,/const nav:[^;]*\['matcher',Activity,'Matcher'\][^;]*\['guides',Newspaper,'Guides'\]\];/);
  assert.doesNotMatch(page,/const nav:[^;]*\['community',Users,t.community\]/);
 });
 test('full category catalog, official pharmacy duty search and 3D map remain accessible',()=>{
  assert.match(page,/categoryIds.filter\(cat=>/);
  assert.match(page,/Apotheken Notdienst/);
  assert.match(page,/aponet.de\/notdienstsuche/);
- assert.match(page,/Atlas3D places=\{places\}/);
+ assert.match(page,/<MapDiscovery lang=\{lang\} places=\{places\}/);assert.match(read('components/MapDiscovery.tsx'),/<Atlas3D key=\{mode\}/);
  assert.match(home,/Alle Kategorien ansehen/);
  assert.match(home,/Miteinander entdecken/);
 });

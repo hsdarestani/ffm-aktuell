@@ -1,0 +1,38 @@
+name: FFM provider keys — secure same-repo sync
+on:
+  push:
+    branches: [feat/ffm-frankfurtleben-parity-20261023]
+    paths:
+      - .github/workflows/ffm-provider-sync.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Securely send existing FFM repository keys to the FFM server
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$OPENAI_API_KEY" && test -n "$OPENWEATHER_API_KEY" || {
+            echo "::error::Both secrets must be configured in the ffm-aktuell repository."
+            exit 1
+          }
+          test -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN"
+          export FFM_PROVISION_BODY="$RUNNER_TEMP/ffm-provider-body.json"
+          umask 077
+          node -e 'require("fs").writeFileSync(process.env.FFM_PROVISION_BODY, JSON.stringify({OPENAI_API_KEY:process.env.OPENAI_API_KEY, OPENWEATHER_API_KEY:process.env.OPENWEATHER_API_KEY}))'
+          URL="https://ffm-aktuell.smarbiz.sbs/api/internal/github-provider-sync"
+          TOKEN_JSON="$(curl --fail --silent --show-error --max-time 15 --header "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$URL")"
+          OIDC_JWT="$(printf '%s' "$TOKEN_JSON" | node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>process.stdout.write(JSON.parse(s).value||""))')"
+          test -n "$OIDC_JWT"
+          curl --fail --silent --show-error --max-time 25 --retry 2 --retry-delay 3 \
+            -H "Authorization: Bearer $OIDC_JWT" -H 'Content-Type: application/json' \
+            --data-binary "@$FFM_PROVISION_BODY" "$URL" -o "$RUNNER_TEMP/provision-response.json"
+          node -e 'const r=JSON.parse(require("fs").readFileSync(process.env.RUNNER_TEMP+"/provision-response.json","utf8"));if(r.ok!==true)process.exit(1);console.log("FFM provider credentials securely provisioned; no secret values logged.")'
+          rm -f "$FFM_PROVISION_BODY" "$RUNNER_TEMP/provision-response.json"

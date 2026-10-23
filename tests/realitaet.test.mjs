@@ -36,7 +36,7 @@ test('licensed Hessian orthophoto exists as optional base mode',()=>{
 test('real map pins are still geographic, never demo contents',()=>{
  assert.match(atlas,/type:'geojson'/);
  assert.match(atlas,/geoFeatures\(filtered\)/);
- assert.match(page,/places=\{places\} lang=\{lang\} variant="full"/);
+ assert.match(page,/<MapDiscovery lang=\{lang\} places=\{places\}/);assert.match(read('components/MapDiscovery.tsx'),/places=\{pins\}/);
 });
 test('activity groups are labelled as previews',()=>{
  assert.match(page,/vorschauGruppen/);

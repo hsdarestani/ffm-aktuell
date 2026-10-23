@@ -101,6 +101,10 @@ ALTER TABLE places ADD COLUMN IF NOT EXISTS activity_status text NOT NULL DEFAUL
 ALTER TABLE places ADD COLUMN IF NOT EXISTS verified_at timestamptz;
 ALTER TABLE places ADD COLUMN IF NOT EXISTS verification_source text;
 ALTER TABLE places ADD COLUMN IF NOT EXISTS editorial_rank smallint NOT NULL DEFAULT 0;
+-- Opening dates are explicitly source-backed, never inferred from import/update timestamps.
+ALTER TABLE places ADD COLUMN IF NOT EXISTS opened_at date;
+ALTER TABLE places ADD COLUMN IF NOT EXISTS opening_source_url text;
+CREATE INDEX IF NOT EXISTS places_opened_at_idx ON places(opened_at) WHERE opened_at IS NOT NULL;
 ALTER TABLE places ADD COLUMN IF NOT EXISTS opening_hours_text text;
 ALTER TABLE places ADD COLUMN IF NOT EXISTS phone text;
 -- Redaktionelle Beweiskette: OSM-ID dient nur der Identität, nie als Betriebsnachweis.
@@ -216,6 +220,9 @@ CREATE TABLE IF NOT EXISTS events (
 );
 -- Event/source details and scheduled news; unknown prices stay NULL.
 ALTER TABLE events ADD COLUMN IF NOT EXISTS category text NOT NULL DEFAULT 'Weitere';
+-- Optional explicit event-to-venue link: never geocode an ambiguous free-text venue.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS place_id uuid REFERENCES places(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS events_place_id_idx ON events(place_id);
 ALTER TABLE events ADD COLUMN IF NOT EXISTS organizer text NOT NULL DEFAULT '';
 ALTER TABLE events ADD COLUMN IF NOT EXISTS ends_at timestamptz;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS price_cents integer CHECK(price_cents>=0);
@@ -239,6 +246,9 @@ CREATE TABLE IF NOT EXISTS news (
  published_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE news ADD COLUMN IF NOT EXISTS category text NOT NULL DEFAULT 'Stadtleben';
+-- Editorial guides use the existing news publication workflow with rights-verified images.
+ALTER TABLE news ADD COLUMN IF NOT EXISTS image_url text;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS image_rights_note text;
 CREATE INDEX IF NOT EXISTS news_release_date_idx ON news(status,published_at);
 CREATE TABLE IF NOT EXISTS posts (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -831,3 +841,16 @@ $$;
 CREATE OR REPLACE FUNCTION business_profile_access(bid uuid) RETURNS boolean LANGUAGE sql STABLE AS $$
  SELECT business_deal_access(bid,NULL::uuid)
 $$;
+
+
+-- Independent encrypted FFM-only provider secrets, written solely by exact GitHub Actions OIDC identity.
+-- Rotation of SESSION_SECRET requires re-provisioning; no raw key is stored in SQL.
+CREATE TABLE IF NOT EXISTS service_credentials(
+ provider text PRIMARY KEY CHECK(provider IN ('OPENAI_API_KEY','OPENWEATHER_API_KEY')),
+ secret_encrypted text NOT NULL,
+ updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS github_oidc_receipts(
+ jti text PRIMARY KEY,
+ accepted_at timestamptz NOT NULL DEFAULT now()
+);

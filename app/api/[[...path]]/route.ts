@@ -874,20 +874,28 @@ async function handler(req:NextRequest,ctx:Ctx,method:'GET'|'POST'|'PATCH'){
       category:optionalText(80),organizer:optionalText(150),
       price_cents:z.number().int().min(0).max(100000000).nullish(),
       price_source_url:z.string().max(1000).optional(),source_url:z.string().max(1000).optional(),
-      ticket_url:z.string().max(1000).optional()
+      ticket_url:z.string().max(1000).optional(),place_id:z.uuid().nullish()
     }),await payload(req));
     if([b.ticket_url,b.source_url,b.price_source_url].some(x=>x&&!allowedUrl(x)))return bad('Invalid source URL');
     if(b.ends_at&&Date.parse(b.ends_at)<Date.parse(b.starts_at))return bad('Event end before start');
     if(b.price_cents!=null&&!b.price_source_url)return bad('Price requires a verifiable source URL');
-    const r=await query("INSERT INTO events(title,description_de,description_en,venue,starts_at,ticket_url,status,category,organizer,ends_at,price_cents,price_source_url,source_url) VALUES($1,$2,$3,$4,$5,$6,'published',$7,$8,$9,$10,$11,$12) RETURNING id",
-      [b.title,b.description_de,b.description_en,b.venue,b.starts_at,b.ticket_url||null,b.category||'Weitere',b.organizer||'',b.ends_at||null,b.price_cents??null,b.price_source_url||null,b.source_url||null]);
+    if(b.place_id){const p=await query("SELECT id FROM places WHERE id=$1 AND status='published' AND verification_status='verified' AND activity_status='operating' AND verified_at BETWEEN now()-interval '30 days' AND now()",[b.place_id]);if(!p.rowCount)return bad('Select a currently verified published venue',409)}
+    const r=await query("INSERT INTO events(title,description_de,description_en,venue,starts_at,ticket_url,status,category,organizer,ends_at,price_cents,price_source_url,source_url,place_id) VALUES($1,$2,$3,$4,$5,$6,'published',$7,$8,$9,$10,$11,$12,$13) RETURNING id",
+      [b.title,b.description_de,b.description_en,b.venue,b.starts_at,b.ticket_url||null,b.category||'Weitere',b.organizer||'',b.ends_at||null,b.price_cents??null,b.price_source_url||null,b.source_url||null,b.place_id||null]);
     await audit(u,'create','event',r.rows[0].id);return ok({id:r.rows[0].id},201);
   }
   if(method==='POST'&&path==='admin/news'){
-    const u=admin(user,'editorial');const b=parse(z.object({title:text(150),body_de:optionalText(10000),body_en:optionalText(10000),category:optionalText(80),published_at:z.iso.datetime({offset:true}).nullish(),source_url:z.string().max(1000).optional()}),await payload(req));
+    const u=admin(user,'editorial');const b=parse(z.object({title:text(150),body_de:optionalText(10000),body_en:optionalText(10000),category:optionalText(80),published_at:z.iso.datetime({offset:true}).nullish(),source_url:z.string().max(1000).optional(),image_url:z.string().max(1000).optional(),image_rights_note:z.string().max(500).optional()}),await payload(req));
     if(b.source_url&&!allowedUrl(b.source_url))return bad('Invalid link');
-    const r=await query("INSERT INTO news(title,body_de,body_en,source_url,status,category,published_at) VALUES($1,$2,$3,$4,'published',$5,COALESCE($6::timestamptz,now())) RETURNING id,published_at",
-      [b.title,b.body_de,b.body_en,b.source_url||null,b.category||'Stadtleben',b.published_at||null]);
+    const isGuide=(b.category||'').startsWith('Guide:');
+    if(isGuide&&(!['Guide:Café','Guide:Restaurant','Guide:Club','Guide:Sonstige','Guide:Bar','Guide:Aktivitäten'].includes(b.category||'')||
+      b.body_de.trim().length<100||!b.source_url||!b.source_url.startsWith('https://')))
+      return bad('Guides benötigen mindestens 100 Zeichen und eine HTTPS-Quelle');
+    if(b.image_url&&(!b.image_url.startsWith('https://')||!allowedUrl(b.image_url)||
+      !b.image_rights_note||b.image_rights_note.trim().length<30))
+      return bad('Bild nur mit gültigem HTTPS-Link und dokumentierten Nutzungsrechten');
+    const r=await query("INSERT INTO news(title,body_de,body_en,source_url,status,category,published_at,image_url,image_rights_note) VALUES($1,$2,$3,$4,'published',$5,COALESCE($6::timestamptz,now()),$7,$8) RETURNING id,published_at",
+      [b.title,b.body_de,b.body_en,b.source_url||null,b.category||'Stadtleben',b.published_at||null,b.image_url||null,b.image_rights_note||null]);
     await audit(u,'create','news',r.rows[0].id);return ok({id:r.rows[0].id,published_at:r.rows[0].published_at,scheduled:Date.parse(String(r.rows[0].published_at))>Date.now()},201);
   }
   return bad('Not found',404);

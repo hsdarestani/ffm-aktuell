@@ -2,6 +2,7 @@
 import {useModalFocus} from '@/lib/use-modal-focus';
 import {useUiText,UiLanguageSwitch} from '@/lib/ui-locale';
 import {useCallback,useEffect,useState,type FormEvent} from 'react';
+import {VerifiedPlacePicker,NewOpeningStudio} from './EditorialPlaceTools';
 import {
  ArrowRight,ArrowUpRight,BarChart3,Building2,Check,ChevronLeft,ChevronRight,
  CircleHelp,Clock3,Compass,ExternalLink,FileCheck2,Filter,Flag,LayoutDashboard,
@@ -275,11 +276,11 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
    body={title:value('title'),venue:value('venue'),description_de:value('description_de'),starts_at:at.toISOString(),
     ends_at:end?.toISOString()||null,category:value('category'),organizer:value('organizer'),
     price_cents:price===null?null:Math.round(price*100),price_source_url:value('price_source_url'),
-    source_url:value('source_url'),ticket_url:value('ticket_url')};
+    source_url:value('source_url'),ticket_url:value('ticket_url'),place_id:value('place_id')||null};
   }else{
    endpoint='admin/news';const at=value('published_at')?new Date(value('published_at')):null;
    if(at&&!Number.isFinite(at.getTime())){setNotice({kind:'error',text:'Bitte ein gültiges Veröffentlichungsdatum angeben.'});return}
-   body={title:value('title'),body_de:value('body_de'),category:value('category'),source_url:value('source_url'),published_at:at?.toISOString()||null};
+   body={title:value('title'),body_de:value('body_de'),category:value('category'),source_url:value('source_url'),published_at:at?.toISOString()||null,image_url:value('image_url'),image_rights_note:value('image_rights_note')};
   }
   const planned=publishMode==='news'&&typeof body.published_at==='string'&&Date.parse(body.published_at)>Date.now();
   if(!window.confirm(planned?ui("Beitrag für das angegebene Datum zur Veröffentlichung vormerken?"):ui("Diesen Inhalt jetzt öffentlich veröffentlichen?")))return;
@@ -490,14 +491,25 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
        </>:publishMode==='news'?<>
         <Field label="Titel"><input name="title" required maxLength={150} placeholder={ui("Was ist passiert?")}/></Field>
         <Field label="Dein Stadtbeitrag"><textarea name="body_de" rows={7} maxLength={10000} placeholder={ui("Erzähle deine Geschichte aus Frankfurt ...")}/></Field>
-        <Field label="Rubrik"><select name="category"><option value="Stadtleben">{ui("Stadtleben")}</option><option value="Kultur">{ui("Kultur")}</option><option value="Verkehr">{ui("Verkehr")}</option><option value="Sport">{ui("Sport")}</option><option value="Freizeit">{ui("Freizeit")}</option></select></Field>
+        <Field label="Rubrik"><select name="category"><option value="Stadtleben">{ui("Stadtleben")}</option><option value="Kultur">{ui("Kultur")}</option><option value="Verkehr">{ui("Verkehr")}</option><option value="Sport">{ui("Sport")}</option><option value="Freizeit">{ui("Freizeit")}</option>
+         <optgroup label={ui("Guides – redaktionelle Empfehlungen")}>
+          <option value="Guide:Café">Guide · Café</option><option value="Guide:Restaurant">Guide · Restaurant</option>
+          <option value="Guide:Bar">Guide · Bar</option><option value="Guide:Club">Guide · Club</option>
+          <option value="Guide:Aktivitäten">Guide · Aktivitäten</option><option value="Guide:Sonstige">Guide · Sonstige</option>
+         </optgroup></select></Field>
         <Field label="Veröffentlichung planen (optional)"><input type="datetime-local" name="published_at"/><small>{ui("Ohne Datum wird der Beitrag sofort veröffentlicht. Zukunftstermine bleiben bis dahin unsichtbar.")}</small></Field>
-        <details className="ffm-simple-more-fields"><summary><Plus size={17}/> {ui(" Quellenlink ergänzen")}</summary><div className="ffm-simple-more-content"><Field label="Quelle"><input type="url" name="source_url" placeholder="https://..."/></Field></div></details>
+        <details className="ffm-simple-more-fields"><summary><Plus size={17}/> {ui(" Quellenlink ergänzen")}</summary><div className="ffm-simple-more-content"><Field label="Quelle (für Guides verpflichtend)"><input type="url" name="source_url" placeholder="https://..."/></Field>
+         <Field label="Eigenes/lizenziertes Artikelbild (optional)"><input type="url" name="image_url" placeholder="https://..."/></Field>
+         <Field label="Bildrechte / Lizenznachweis"><textarea name="image_rights_note" maxLength={500} rows={3} placeholder={ui("Rechteinhaber, Genehmigung und Nutzung dokumentieren (mindestens 30 Zeichen).")}/></Field>
+         <small>{ui("Nur Bilder veröffentlichen, deren Nutzungsrechte nachweislich geklärt sind.")}</small></div></details>
        </>:<>
         <Field label="Titel der Veranstaltung"><input name="title" required maxLength={150} placeholder={ui("Name der Veranstaltung")}/></Field>
         <Field label="Veranstaltungsort"><input name="venue" required maxLength={150} placeholder={ui("Wo findet es statt?")}/></Field>
         <Field label="Datum und Uhrzeit"><input name="starts_at" type="datetime-local" required/></Field>
-        <Field label="Kategorie"><select name="category"><option value="Weitere">{ui("Weitere")}</option><option value="Kultur">{ui("Kultur")}</option><option value="Musik">{ui("Musik")}</option><option value="Sport">{ui("Sport")}</option><option value="Familie">{ui("Familie")}</option><option value="Kostenlos">{ui("Kostenlos")}</option></select></Field>
+        <Field label="Kategorie"><select name="category"><option value="Weitere">{ui("Weitere")}</option><option value="Kultur">{ui("Kultur")}</option><option value="Musik">{ui("Musik")}</option><option value="Sport">{ui("Sport")}</option><option value="Familie">{ui("Familie")}</option><option value="Kostenlos">{ui("Kostenlos")}</option><option value="Bar">Bar</option><option value="Club">Club</option><option value="Open Air">Open Air</option></select></Field>
+        <Field label="Verifizierter Veranstaltungsort für Kartenpin (optional)">
+          <VerifiedPlacePicker/>
+         </Field>
         <Field label="Veranstalter"><input name="organizer" maxLength={150} placeholder={ui("Offizieller Veranstalter")}/></Field>
         <details className="ffm-simple-more-fields"><summary><Plus size={17}/> {ui(" Zeitpunkt und Preis")}</summary><div className="ffm-simple-more-content">
          <Field label="Ende (optional)"><input name="ends_at" type="datetime-local"/></Field>
@@ -514,6 +526,7 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
        <button className="ffm-studio-primary" disabled={busy}>{busy?ui("Wird veröffentlicht …"):ui("Jetzt veröffentlichen")} <ArrowRight size={18}/></button>
       </form>
      </CityPanel></div>
+     <NewOpeningStudio/>
     </>}
    </div>
    <footer className="ffm-studio-footer"><span>{ui("FFM AKTUELL / STADTSTUDIO")}</span><span>{ui("MIT SORGFALT FÜR FRANKFURT GEMACHT ")}<span className="ffm-studio-status-dot"/></span></footer>
