@@ -21,6 +21,7 @@ type Props={
  lang?:'de'|'en';
  variant?:'hero'|'full';
  onSelect?:(id:string)=>void;
+ showRawCandidates?:boolean;
 };
 type Area={id:string,de:string,en:string,center:[number,number],zoom:number,bearing:number};
 const CENTER:[number,number]=[8.6813,50.1114];
@@ -283,7 +284,7 @@ function updateSelectedPin(map:LibreMap,selected:string|null){
  map.setFilter('ffm-poi-selected-label',['==',['get','id'],selected??'__none__']);
 }
 
-export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props){
+export default function Atlas3D({places,lang='de',variant='full',onSelect,showRawCandidates=true}:Props){
  const ui=useUiText();
  const t=UI[lang];
  const mapDiv=useRef<HTMLDivElement>(null),mapRef=useRef<LibreMap|null>(null);
@@ -524,7 +525,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
  },[ready]);
  useEffect(()=>{
   const map=mapRef.current;
-  if(!ready||!map||!map.getSource(OSM_SOURCE))return;
+  if(!ready||!map||!map.getSource(OSM_SOURCE)||!showRawCandidates)return;
   let cancelled=false,timer:number|undefined,active:AbortController|null=null;
   const load=()=>{
    if(cancelled)return;
@@ -551,7 +552,7 @@ export default function Atlas3D({places,lang='de',variant='full',onSelect}:Props
   };
   map.on('moveend',moved);load();
   return()=>{cancelled=true;if(timer!==undefined)window.clearTimeout(timer);active?.abort();map.off('moveend',moved)};
- },[ready,fallback,cat,selected]);
+ },[ready,fallback,cat,selected,showRawCandidates]);
  useEffect(()=>{
   const map=mapRef.current;
   if(!ready||!map||!map.getSource(POI_SOURCE))return;
