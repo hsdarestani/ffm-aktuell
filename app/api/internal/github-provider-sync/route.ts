@@ -10,7 +10,8 @@ export const runtime='nodejs';
  * repository Actions, branches and untrusted JWT signing keys. */
 const issuer='https://token.actions.githubusercontent.com';
 const audience='https://ffm-aktuell.smarbiz.sbs/api/internal/github-provider-sync';
-const workflow='hsdarestani/ffm-aktuell/.github/workflows/ffm-provider-sync.yml@refs/heads/feat/ffm-frankfurtleben-parity-20261023';
+const trustedRefs=new Set(['refs/heads/main','refs/heads/feat/ffm-frankfurtleben-parity-20261023']);
+const workflowPrefix='hsdarestani/ffm-aktuell/.github/workflows/ffm-provider-sync.yml@';
 const jwks=createRemoteJWKSet(new URL(issuer+'/.well-known/jwks'),{timeoutDuration:7000});
 function response(body:Record<string,unknown>,status=200){return NextResponse.json(body,{status,headers:{'Cache-Control':'no-store'}})}
 export async function POST(req:NextRequest){
@@ -23,9 +24,9 @@ export async function POST(req:NextRequest){
   const verified=await jwtVerify(auth.slice(7),jwks,{issuer,audience,algorithms:['RS256'],maxTokenAge:'3m',clockTolerance:10});
   claims=verified.payload;
   if(claims.repository!=='hsdarestani/ffm-aktuell'||String(claims.repository_id)!=='1423074676'||
-   claims.ref!=='refs/heads/feat/ffm-frankfurtleben-parity-20261023'||
-   claims.workflow_ref!==workflow||!['push','workflow_dispatch'].includes(String(claims.event_name))||
-   claims.sub!=='repo:hsdarestani/ffm-aktuell:ref:refs/heads/feat/ffm-frankfurtleben-parity-20261023'||
+   typeof claims.ref!=='string'||!trustedRefs.has(claims.ref)||
+   claims.workflow_ref!==workflowPrefix+claims.ref||!['push','workflow_dispatch'].includes(String(claims.event_name))||
+   claims.sub!=='repo:hsdarestani/ffm-aktuell:ref:'+claims.ref||
    typeof claims.jti!=='string'||claims.jti.length<10||claims.jti.length>150)throw Error('Untrusted GitHub workflow');
  }catch{return response({error:'Unauthorized workflow'},403)}
  let body;
