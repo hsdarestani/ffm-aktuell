@@ -12187,6 +12187,321 @@
           }
         ]
       }
+    },
+    "/api/event-explorer": {
+      "get": {
+        "operationId": "get__api_event_explorer",
+        "summary": "GET /api/event-explorer",
+        "description": "Public, source-backed city discovery. See CITY_EXPERIENCE_RELEASE_20261023.md.",
+        "tags": [
+          "discover"
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response with real published, source-backed records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid inputs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unauthorized operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-source": "app/api/event-explorer/route.ts",
+        "x-authorization": "",
+        "x-query-validation": "Valid date range at most 1000 days. Only published events; optional verified place links provide map coordinates.",
+        "x-response-expressions": [],
+        "security": [
+          {},
+          {
+            "cookieSession": []
+          }
+        ]
+      }
+    },
+    "/api/guides": {
+      "get": {
+        "operationId": "get__api_guides",
+        "summary": "GET /api/guides",
+        "description": "Published, scheduled, editorial Guide:* news only. No competitor content or unapproved media.",
+        "tags": [
+          "discover"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response with real published, source-backed records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid inputs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unauthorized operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-source": "app/api/guides/route.ts",
+        "x-authorization": "",
+        "x-query-validation": "",
+        "x-response-expressions": [],
+        "security": [
+          {},
+          {
+            "cookieSession": []
+          }
+        ]
+      }
+    },
+    "/api/new-openings": {
+      "get": {
+        "operationId": "get__api_new_openings",
+        "summary": "GET /api/new-openings",
+        "description": "Only independently verified operating venues opened within the last 90 days with a recorded HTTPS source.",
+        "tags": [
+          "discover"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response with real published, source-backed records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid inputs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unauthorized operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-source": "app/api/new-openings/route.ts",
+        "x-authorization": "",
+        "x-query-validation": "",
+        "x-response-expressions": [],
+        "security": [
+          {},
+          {
+            "cookieSession": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "post__api_new_openings",
+        "summary": "POST /api/new-openings",
+        "description": "Public, source-backed city discovery. See CITY_EXPERIENCE_RELEASE_20261023.md.",
+        "tags": [
+          "discover"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response with real published, source-backed records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid inputs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unauthorized operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-source": "app/api/new-openings/route.ts",
+        "x-authorization": "Current editorial permission plus trusted origin; transactionally audited.",
+        "x-query-validation": "",
+        "x-response-expressions": [],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "place_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "opened_at": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "source_url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 20,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "place_id",
+                  "opened_at",
+                  "source_url",
+                  "note"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/provider-probe": {
+      "post": {
+        "operationId": "post__api_admin_provider_probe",
+        "summary": "POST /api/admin/provider-probe",
+        "description": "Explicit cost-free OpenAI model-access and OpenWeather forecast-account reachability probe.",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response with real published, source-backed records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid inputs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unauthorized operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-source": "app/api/admin/provider-probe/route.ts",
+        "x-authorization": "Current operations permission plus trusted origin; no secrets in responses.",
+        "x-query-validation": "",
+        "x-response-expressions": [],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ]
+      }
     }
   }
 }
