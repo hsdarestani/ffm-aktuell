@@ -2,6 +2,7 @@
 import {useModalFocus} from '@/lib/use-modal-focus';
 import {useUiText,UiLanguageSwitch} from '@/lib/ui-locale';
 import {useCallback,useEffect,useState,type FormEvent} from 'react';
+import {VerifiedPlacePicker,NewOpeningStudio} from './EditorialPlaceTools';
 import {
  ArrowRight,ArrowUpRight,BarChart3,Building2,Check,ChevronLeft,ChevronRight,
  CircleHelp,Clock3,Compass,ExternalLink,FileCheck2,Filter,Flag,LayoutDashboard,
@@ -525,6 +526,7 @@ export default function AdminStudio({onChanged,permissions=['*']}:{onChanged:()=
        <button className="ffm-studio-primary" disabled={busy}>{busy?ui("Wird veröffentlicht …"):ui("Jetzt veröffentlichen")} <ArrowRight size={18}/></button>
       </form>
      </CityPanel></div>
+     <NewOpeningStudio/>
     </>}
    </div>
    <footer className="ffm-studio-footer"><span>{ui("FFM AKTUELL / STADTSTUDIO")}</span><span>{ui("MIT SORGFALT FÜR FRANKFURT GEMACHT ")}<span className="ffm-studio-status-dot"/></span></footer>
