@@ -12,10 +12,10 @@ export function NewOpeningStudio(){
  const [items,setItems]=useState<Place[]>([]),[result,setResult]=useState(''),[busy,setBusy]=useState(false);
  useEffect(()=>{let on=true;fetch('/api/places?mode=verified',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject()).then(d=>{if(on)setItems(d.items||[])}).catch(()=>{if(on)setResult('Orte konnten nicht geladen werden.')});return()=>{on=false}},[]);
  async function submit(e:FormEvent<HTMLFormElement>){
-  e.preventDefault();setBusy(true);setResult('');
-  const f=new FormData(e.currentTarget),body={place_id:String(f.get('place_id')||''),opened_at:String(f.get('opened_at')||''),source_url:String(f.get('source_url')||''),note:String(f.get('note')||'')};
+  e.preventDefault();const form=e.currentTarget;setBusy(true);setResult('');
+  const f=new FormData(form),body={place_id:String(f.get('place_id')||''),opened_at:String(f.get('opened_at')||''),source_url:String(f.get('source_url')||''),note:String(f.get('note')||'')};
   try{const r=await fetch('/api/new-openings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-   const d=await r.json();if(!r.ok)throw Error(d.error||'Fehler');setResult('Eröffnungsdatum mit Quelle gespeichert. Anzeige nur innerhalb von 90 Tagen bei aktueller Verifikation.');e.currentTarget.reset();
+   const d=await r.json();if(!r.ok)throw Error(d.error||'Fehler');setResult('Eröffnungsdatum mit Quelle gespeichert. Anzeige nur innerhalb von 90 Tagen bei aktueller Verifikation.');form.reset();
   }catch(e){setResult(e instanceof Error?e.message:'Speichern fehlgeschlagen')}finally{setBusy(false)}
  }
  return <section className="ffm-editorial-opening"><h3>Neu in Frankfurt · Eröffnung bestätigen</h3>
