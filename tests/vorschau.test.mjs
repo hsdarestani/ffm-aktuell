@@ -14,7 +14,7 @@ test('samples exist for all requested visitor surfaces but are not written to th
 });
 test('all live public views are filled with labeled photo previews',()=>{
  for(const word of ['sichtbareOrte','sichtbareVeranstaltungen','sichtbareBeitraege','sichtbarePosts','sichtbareAngebote'])assert.match(page,new RegExp(word));
- assert.match(page,/Musterveranstaltung · nicht buchbar/);
+ assert.match(page,/<EventsExplorer /);assert.match(read('components/EventsExplorer.tsx'),/\/api\/event-explorer/);
  assert.match(page,/MUSTERANGEBOT · NICHT EINLÖSBAR/);
  assert.match(page,/Musterbeitrag · erfundenes Profil/);
  assert.match(page,/v3-business-preview/);
