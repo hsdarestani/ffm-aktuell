@@ -35,7 +35,7 @@ export default function MapDiscovery({lang,places,onPlace,onEvents}:{lang:'de'|'
      <button onClick={onEvents}>Im Eventkalender ansehen</button></div>}
     {mode==='events'&&<p className="ffm-city-disclaimer">{lang==='de'?'Nächste 14 Tage. Nur eindeutig mit einem aktuell verifizierten Ort verknüpfte Events erscheinen als Kartenpin.':'Next 14 days. Only events linked to a currently verified venue appear as map pins.'}</p>}
     {visible.slice(0,35).map(p=>mode==='places'?
-     <button className="ffm-map-result" key={p.id} onClick={()=>onPlace(p.id)}><MapPin size={18}/><span><strong>{p.name}</strong><small>{(p as AtlasPlace).district||p.category}</small></span></button>:
+     <button className="ffm-map-result" key={p.id} onClick={()=>onPlace(p.id)}><MapPin size={18}/><span><strong>{(p as AtlasPlace).name}</strong><small>{(p as AtlasPlace).district||(p as AtlasPlace).category}</small></span></button>:
      <button className="ffm-map-result" key={p.id} onClick={()=>{setSelectedEvent(p as EventPin);if((p as EventPin).place_id)onPlace((p as EventPin).place_id!)}}>
       <CalendarDays size={18}/><span><strong>{(p as EventPin).title}</strong><small>{(p as EventPin).venue} · {new Date((p as EventPin).starts_at).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</small></span>
       {(p as EventPin).latitude==null&&<small>Ohne Pin</small>}
