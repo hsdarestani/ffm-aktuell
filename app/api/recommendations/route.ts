@@ -7,13 +7,15 @@ export const dynamic='force-dynamic';
 export async function GET(req:NextRequest){
  const q=req.nextUrl.searchParams;if(q.get('ai')==='1'&&!trustedOrigin(req))return NextResponse.json({error:'Ungültige Herkunft'},{status:403});let ctx;try{ctx=parseDiscoveryContext(q)}catch{return NextResponse.json({error:'Datum, Anlass oder Budget ungültig'},{status:400})}
  const search=(q.get('q')||'').trim().slice(0,180),lang=q.get('lang')==='en'?'en':'de',u=await sessionUser(req);
+ const category=q.get('category')||'';
+ if(!['','Cafés','Bars','Restaurants','Freizeit'].includes(category))return NextResponse.json({error:'Ungültige Kategorie'},{status:400});
  const pref=u&&q.get('use_interests')==='1'?(await query('SELECT interests,districts FROM user_preferences WHERE user_id=$1',[u.id])).rows[0]:null;
  const weather=ctx.weather?await forecastFor(ctx.date):null;
  const [places,events]=await Promise.all([
   query(`SELECT p.id,p.name,p.category,p.district,p.description_de,p.description_en,p.verified_at,p.latitude,p.longitude,
    COALESCE((SELECT h.periods FROM place_opening_days h WHERE h.place_id=p.id AND h.day=$1::date AND h.state='open' AND h.checked_at BETWEEN now()-interval '30 days' AND now()),'[]'::jsonb) AS periods,
    COALESCE((SELECT jsonb_object_agg(a.field,a.value) FROM place_attributes a WHERE a.place_id=p.id AND a.checked_at BETWEEN now()-interval '30 days' AND now()),'{}'::jsonb) AS facts
-   FROM places p WHERE p.status='published' AND p.verification_status='verified' AND p.activity_status='operating' AND p.verified_at BETWEEN now()-interval '30 days' AND now() AND latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY editorial_rank DESC,name LIMIT 500`,[ctx.date]),
+   FROM places p WHERE p.status='published' AND p.verification_status='verified' AND p.activity_status='operating' AND p.verified_at BETWEEN now()-interval '30 days' AND now() AND latitude IS NOT NULL AND longitude IS NOT NULL AND ($2::text='' OR p.category=$2 OR EXISTS(SELECT 1 FROM place_categories pc WHERE pc.place_id=p.id AND pc.category_slug=$2)) ORDER BY editorial_rank DESC,name LIMIT 500`,[ctx.date,category]),
   query(`SELECT id,title,venue,starts_at,ends_at,price_cents,price_source_url,source_url,ticket_url FROM events
    WHERE status='published' AND starts_at>now() AND (starts_at AT TIME ZONE 'Europe/Berlin')::date=$1::date
     AND ($2::int IS NULL OR (price_cents<=$2 AND price_source_url ~ '^https://')) AND EXTRACT(hour FROM starts_at AT TIME ZONE 'Europe/Berlin')>=$3::int AND EXTRACT(hour FROM starts_at AT TIME ZONE 'Europe/Berlin')<$4::int ORDER BY starts_at LIMIT 12`,[ctx.date,ctx.eventBudget,...ctx.timeRange])
