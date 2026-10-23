@@ -24,9 +24,13 @@ export async function POST(req:NextRequest){
   const verified=await jwtVerify(auth.slice(7),jwks,{issuer,audience,algorithms:['RS256'],maxTokenAge:'3m',clockTolerance:10});
   claims=verified.payload;
   if(claims.repository!=='hsdarestani/ffm-aktuell'||String(claims.repository_id)!=='1423074676'||
+   claims.repository_owner!=='hsdarestani'||String(claims.repository_owner_id)!=='45485005'||
    typeof claims.ref!=='string'||!trustedRefs.has(claims.ref)||
    claims.workflow_ref!==workflowPrefix+claims.ref||!['push','workflow_dispatch'].includes(String(claims.event_name))||
-   claims.sub!=='repo:hsdarestani/ffm-aktuell:ref:'+claims.ref||
+   ![
+     'repo:hsdarestani/ffm-aktuell:ref:'+claims.ref,
+     'repo:hsdarestani@45485005/ffm-aktuell@1423074676:ref:'+claims.ref
+   ].includes(String(claims.sub))||
    typeof claims.jti!=='string'||claims.jti.length<10||claims.jti.length>150)throw Error('Untrusted GitHub workflow');
  }catch{return response({error:'Unauthorized workflow'},403)}
  let body;
