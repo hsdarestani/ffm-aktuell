@@ -169,3 +169,12 @@
  .v3-site .v3-offer-copy{min-width:0;overflow-wrap:anywhere}
  .v3-site .v3-offer-copy h3{font-size:23px;overflow-wrap:anywhere}
 }
+
+/* Keep 3D retry and map controls clear of the sticky 70px page header and the mode switch.
+   Only the embedded visitor map uses these offsets; standalone Atlas is unchanged. */
+.ffm-map-explorer .atlas-root.atlas-full .atlas-topbar{top:55px;padding-top:12px}
+.ffm-map-explorer .atlas-root.atlas-full .atlas-category-tabs{top:118px}
+@media(max-width:800px){
+ .ffm-map-explorer .atlas-root.atlas-full .atlas-topbar{top:56px;padding:10px 12px}
+ .ffm-map-explorer .atlas-root.atlas-full .atlas-category-tabs{top:108px}
+}
