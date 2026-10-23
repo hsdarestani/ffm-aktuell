@@ -89,9 +89,9 @@
 /* Studio service status: scannable cards and clear access to the provider workflow. */
 .ffm-services-dashboard{max-width:1120px;margin:0 auto;padding:15px 0 35px}
 .ffm-services-dashboard .ffm-services-heading{padding-bottom:22px;border-bottom:1px solid #dce6dc}
-.ffm-services-dashboard .ffm-services-heading>span{font:800 11px 'DM Sans',sans-serif;letter-spacing:.12em;color:#627d69;text-transform:uppercase}
+.ffm-services-dashboard .ffm-services-heading>span{font:800 11px 'DM Sans',sans-serif;letter-spacing:.12em;color:#405a46;text-transform:uppercase}
 .ffm-services-dashboard .ffm-services-heading h1{font-size:clamp(32px,4vw,47px);line-height:1.12;letter-spacing:-.04em;margin:10px 0 12px}
-.ffm-services-dashboard .ffm-services-heading p{font-size:14px;line-height:1.65;color:#65796b;max-width:730px;margin:0}
+.ffm-services-dashboard .ffm-services-heading p{font-size:14px;line-height:1.65;color:#465b4a;max-width:730px;margin:0}
 .ffm-services-dashboard .ffm-services-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:23px 0}
 .ffm-services-dashboard .ffm-services-actions button{min-height:45px;padding:11px 19px;border:1px solid #285b40;border-radius:12px;background:#fff;color:#255238;font-weight:800;font-size:13px}
 .ffm-services-dashboard .ffm-services-actions button:nth-child(2){background:#295c40;color:#fff}
