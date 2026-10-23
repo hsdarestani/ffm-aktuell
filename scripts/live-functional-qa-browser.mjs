@@ -15,13 +15,14 @@ try{
   await ctx.route('**/api/**',route=>{
    const p=new URL(route.request().url()).pathname;let body={items:[]};
    if(p==='/api/me')body={user:null};
+   if(p==='/api/reviews')body={items:[],summary:{count:0,average:null}};
    if(p==='/api/location')body={place:{id:'node/8883508132',name:'QA map fixture',category:'Apotheken',address:'Frankfurt',latitude:50.11,longitude:8.68,candidate:true}};
    if(p==='/api/event-explorer'&&new URL(route.request().url()).searchParams.get('from')?.endsWith('-01')&&++eventRequests===1)return route.fulfill({status:503,json:{error:'Isolated retry fixture'}});
    if(p==='/api/guides'&&++guideRequests===1)return route.fulfill({status:503,json:{error:'Isolated retry fixture'}});
    if(p==='/api/recommendations')body={items:[],notice:'Keine passenden unabhängig geprüften Orte.'};
    return route.fulfill({json:body});
   });
-  await ctx.route('https://tile.openstreetmap.org/**',route=>route.abort());
+  await ctx.route('https://**/*',route=>route.abort());
   await page.goto(base,{waitUntil:'domcontentloaded'});
   const nav=page.locator(width>1000?'.desktop-nav':'.mobile-bottom');
   await nav.getByRole('button',{name:'Veranstaltungen',exact:true}).click();
