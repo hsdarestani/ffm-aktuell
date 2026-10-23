@@ -80,6 +80,7 @@ const date=(s:string,l:string)=>new Date(s).toLocaleDateString(l==='de'?'de-DE':
 export default function Home(){
  const ui=useUiText();
  const {locale:lang,setLocale:setLang}=useUiLocale();const t=words[lang];
+ const [mapInitialMode,setMapInitialMode]=useState<'places'|'events'>('places');
  const [page,setPage]=useState<Page>('map'),[places,setPlaces]=useState<Place[]>([]),[events,setEvents]=useState<Event[]>([]),[news,setNews]=useState<News[]>([]),[posts,setPosts]=useState<Post[]>([]),[deals,setDeals]=useState<Deal[]>([]);
  const [user,setUser]=useState<User|null>(null),[favorites,setFavorites]=useState<string[]>([]),[savedPlaces,setSavedPlaces]=useState<Place[]>([]),[savedLoading,setSavedLoading]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [query,setQuery]=useState(''),[category,setCategory]=useState('Alle'),[district,setDistrict]=useState(''),[selected,setSelected]=useState<Place|null>(null),[nurGepruefte,setNurGepruefte]=useState(false);
@@ -244,7 +245,7 @@ export default function Home(){
  const toggleNearby=()=>{if(nearby){setNearby(null);return;}if(!navigator.geolocation){flash(ui("Standortzugriff nicht verfügbar. Bitte normal suchen."));return;}setFindingNearby(true);navigator.geolocation.getCurrentPosition(pos=>{setFindingNearby(false);const {latitude:lat,longitude:lon}=pos.coords;if(lat<49.7||lat>50.4||lon<8.2||lon>9.1){flash(ui("Der Standort liegt außerhalb des Frankfurter Suchbereichs."));return;}setNearby({lat,lon});},()=>{setFindingNearby(false);flash(ui("Standort nicht freigegeben. Suche ohne Standort bleibt möglich."));},{enableHighAccuracy:false,timeout:10000,maximumAge:60000});};
  useEffect(()=>{const previous=window.history.scrollRestoration;window.history.scrollRestoration='manual';return()=>{window.history.scrollRestoration=previous}},[]);
  useEffect(()=>{window.scrollTo({top:0,behavior:'instant'})},[page]);
- const navigate=(p:Page)=>{if(new URLSearchParams(window.location.search).has('tour'))window.history.replaceState(null,'',window.location.pathname);setPage(p);setMenu(false)};
+ const navigate=(p:Page)=>{if(p==='map')setMapInitialMode('places');if(new URLSearchParams(window.location.search).has('tour'))window.history.replaceState(null,'',window.location.pathname);setPage(p);setMenu(false)};
  const selectPlace=useCallback((id:string)=>{
   const cached=[...sichtbareOrte,...candidates].find(p=>p.id===id);
   if(cached){setSelected(cached);return;}
@@ -393,14 +394,14 @@ export default function Home(){
  {page==='profile'&&<><ProfileSettings user={user} onLogin={()=>setAuth(true)} onNotice={flash}
   onSavedPlaces={()=>navigate('saved')} onTours={()=>navigate('tours')}
   onDeleted={()=>{setUser(null);setFavorites([]);setSelected(null);navigate('home');flash(ui("Dein Konto wurde gelöscht."))}}/><div className="ffm-profile-extras"><VerifyEmailAndTeamInvite loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>{user&&<TeamMemberWorkspace onNotice={flash}/>}<PremiumTariffPreview audience="user"/> {user&&<MediaRightsPanel onNotice={flash}/>}</div></>}
- {page==='map'&&<MapDiscovery lang={lang} places={places} onPlace={selectPlace} onEvents={()=>navigate('events')}/>}
+ {page==='map'&&<MapDiscovery lang={lang} places={places} initialMode={mapInitialMode} onPlace={selectPlace} onEvents={()=>navigate('events')}/>}
   {page==='matcher'&&<MatcherQuiz lang={lang} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onPlace={selectPlace}
     onDiscover={cat=>{setCategory(cat);setSelectedCategories([cat]);navigate('discover')}}/>}
   {page==='guides'&&<GuidesExplorer lang={lang}/>}
   {page==='events'&&<main className="inner-page v3-editorial-page">
  <div className="page-title v3-page-head"><small>{ui("03 / STADTJOURNAL")}</small><h1>{ui("Die Stadt lebt")}<em>.</em></h1><p>{ui("Ideen, Begegnungen und neue Perspektiven auf Frankfurt.")}</p></div>
  <EventsExplorer lang={lang} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onSaved={favoriteEvent}
-  saved={eventFavorites} onPlace={selectPlace} onNotice={flash} onMap={()=>navigate('map')}/>
+  saved={eventFavorites} onPlace={selectPlace} onNotice={flash} onMap={()=>{navigate('map');setMapInitialMode('events')}}/>
  <section className="v3-section v3-journal"><div className="v3-section-head"><div><span className="v3-eyebrow">{ui("WAS UNS BEWEGT")}</span><h2>{ui("Aus der Stadt.")}</h2></div><span className="v3-section-trail">{ui("Geschichten und Inspiration")}</span></div>
    <div className="v3-journal-grid">{sichtbareBeitraege.map((n,i)=><article className={'v3-journal-card '+(i===0?'v3-wide':'')} key={n.id}><div className="v3-journal-image"><ContentImage src={ortsbild('',n.image_url)} alt={ui("Stimmungsbild aus Frankfurt")} loading="lazy"/><span className="v3-image-note">{ui("Stimmungsbild")}</span></div><div className="v3-journal-copy"><span className="v3-eyebrow">{n.demo?'MUSTERBEITRAG':n.category||'STADTGESCHICHTE'} · {date(n.published_at,lang)}</span><h3>{n.title}</h3><p>{n.body_de}</p>{n.source_url&&<a href={n.source_url} rel="noopener noreferrer" target="_blank">{ui("Originalquelle ansehen")}</a>}</div></article>)}</div>
  </section>
