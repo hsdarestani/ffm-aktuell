@@ -24,6 +24,7 @@ import {DealActions,BusinessCouponRedeem} from '@/components/CouponPilot';
 import FollowButton from '@/components/FollowButton';
 import {validLocationId} from '@/lib/location-actions';
 import './assistant-discovery.css';
+import './city-experience.css';
 import './community-media.css';
 import './highlights.css';
 import {KATEGORIEN,passendeRubrik,frischBestaetigt,statusLabel} from '@/lib/ortskategorien';
@@ -32,6 +33,12 @@ const Atlas3D=dynamic(()=>import('@/components/Atlas3D'),{ssr:false});
 const TourPlanner=dynamic(()=>import('@/components/TourPlanner'),{ssr:false});
 const CuratedTours=dynamic(()=>import('@/components/CuratedTours'),{ssr:false});
 const SmartDiscover=dynamic(()=>import('@/components/SmartDiscover'),{ssr:false});
+const MatcherQuiz=dynamic(()=>import('@/components/MatcherQuiz'),{ssr:false});
+const GuidesExplorer=dynamic(()=>import('@/components/GuidesExplorer'),{ssr:false});
+const EventsExplorer=dynamic(()=>import('@/components/EventsExplorer'),{ssr:false});
+const MapDiscovery=dynamic(()=>import('@/components/MapDiscovery'),{ssr:false});
+const NewInFrankfurt=dynamic(()=>import('@/components/NewInFrankfurt'),{ssr:false});
+const GuidesPreview=dynamic(()=>import('@/components/GuidesPreview'),{ssr:false});
 const LocalTrends=dynamic(()=>import('@/components/LocalTrends'),{ssr:false});
 const ReviewReplies=dynamic(()=>import('@/components/ReviewReplies'),{ssr:false});
 const BusinessStories=dynamic(()=>import('@/components/BusinessStories'),{ssr:false});
@@ -60,7 +67,7 @@ type Event={id:string,title:string,venue:string,starts_at:string,description_de:
 type News={id:string,title:string,body_de:string,body_en:string,source_url:string|null,published_at:string,image_url?:string,demo?:true,category?:string};
 type Post={id:string,body:string,created_at:string,display_name:string,place_name:string|null,image_url?:string,media_id?:string,media_type?:string,demo?:true,likes_count?:number,comments_count?:number,liked?:boolean,author_id?:string,following_author?:boolean,own_post?:boolean};
 type Deal={id:string,title:string,details:string,business_name:string,image_url?:string,demo?:true};
-type Page='home'|'discover'|'map'|'saved'|'tours'|'profile'|'events'|'community'|'business'|'admin';
+type Page='home'|'discover'|'map'|'saved'|'tours'|'profile'|'events'|'community'|'business'|'admin'|'matcher'|'guides';
 const categories=KATEGORIEN.map(x=>x.id);
 const kategorienAnzeigen=Object.fromEntries(KATEGORIEN.map(x=>[x.id,x.label])) as Record<string,string>;
 const words={
@@ -251,7 +258,7 @@ export default function Home(){
  const favorite=async(id:string)=>{if(!validLocationId(id)){flash(ui("Dieser Musterort kann nicht gespeichert werden."));return}if(!user){setAuth(true);return}try{const active=!favorites.includes(id);await api('favorites',{place_id:id,active});setFavorites(a=>active?[...a,id]:a.filter(x=>x!==id));flash(active?ui("Ort gemerkt."):ui("Aus Merkliste entfernt."))}catch(e){flash((e as Error).message||ui("Die Merkliste konnte nicht geändert werden."))}};
  const handle=(e:FormEvent<HTMLFormElement>,path:string,transform?:(x:Record<string,FormDataEntryValue>)=>unknown)=>{e.preventDefault();const form=e.currentTarget;const data=Object.fromEntries(new FormData(form));submit(path,transform?transform(data):data,t.pending).then(success=>{if(success)form.reset()})};
  const onAuth=async(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.currentTarget));const ok=await submit(register?'auth/register':'auth/login',data,t.welcome);if(ok){setAuth(false);setRegister(false)}};
- const nav:[Page,any,string][]=[['home',Compass,t.home],['discover',Search,t.discover],['map',MapIcon,t.map]];
+ const nav:[Page,any,string][]=[['home',Compass,t.home],['events',CalendarDays,t.events],['matcher',Activity,'Matcher'],['discover',MapIcon,t.discover],['guides',Newspaper,'Guides']];
  const picture=(index:number,p?:Place)=> <div className="v3-photo"><ContentImage src={ortsbild(p?.name||'',p?.image_url)} alt={ui("Stimmungsbild zur Stadtempfehlung")} loading="lazy"/><span className="v3-photo-index">{String(index+1).padStart(2,'0')}</span><span className="v3-photo-credit">{ui("Stimmungsbild")}</span></div>;
  const cards=(arr:Place[])=>arr.length?<div className="cards v3-place-grid">{arr.map((p,i)=><article className="card v3-place-card" key={p.id}><button className="card-cover" onClick={()=>setSelected(p)} aria-label={p.name}>{picture(i,p)}<span className="v3-visit-mark"><Plus size={18}/></span></button><div className="card-info"><div className="v3-card-label"><span>{catBezeichnungen[p.category]||p.category} · {p.district||t.city}</span><span className="v4-check-label">{statusLabel(p)}</span></div><div><button onClick={()=>setSelected(p)}>{p.name}</button><button className={'heart '+(favorites.includes(p.id)?'liked':'')} onClick={()=>favorite(p.id)} aria-label={t.save}><Heart size={19} fill={favorites.includes(p.id)?'currentColor':'none'}/></button></div><p>{p.description_de}</p><span><MapPin size={14}/>{p.district||t.city}{nearby&&p.distance_km!=null?' · '+p.distance_km+ui(" km"):''}</span></div></article>)}</div>:<div className="empty"><Compass size={28}/><p>{t.empty}</p></div>;
  const sectionHeading=(index:string,head:string,sub:string)=> <div className="section-head"><small>{index} / FFM JOURNAL <span/></small><h2>{head}</h2><p>{sub}</p></div>;
@@ -270,7 +277,7 @@ export default function Home(){
   {(page==='events'||page==='community')&&<div className="v3-preview-strip" role="status"><span className="v3-preview-spark"/><strong>{ui("VORSCHAU")}</strong><span>{ui(VORSCHAU_HINWEIS)}</span></div>}
    {toast&&<div className="toast" role="status"><Check size={16}/>{ui(toast)}<button aria-label={ui("Mitteilung schließen")} onClick={()=>setToast('')}><X size={16}/></button></div>}
   {error&&<div className="error">{error}<button onClick={()=>setRefresh(x=>x+1)}>{lang==='de'?ui("Erneut laden"):ui("Retry")}</button></div>}
-  {page==='home'&&<><AtlasHome lang={lang} places={sichtbareOrte} events={sichtbareVeranstaltungen} news={sichtbareBeitraege} onDiscover={()=>navigate('discover')} onMap={()=>navigate('map')} onEvents={()=>navigate('events')} onCommunity={()=>navigate('community')} onBusiness={()=>navigate('business')} onPlace={selectPlace} onCategory={cat=>{setCategory(cat);setSelectedCategories(cat==='Alle'?[]:[cat]);navigate('discover')}} onSearch={value=>{setQuery(value);setCategory('Alle');setSelectedCategories([]);setDistrict('');navigate('discover')}} onTours={()=>navigate('tours')} tips={<DiscoveryTips onPlace={selectPlace}/>} assistant={<SmartDiscover onPlace={selectPlace} onDiscover={()=>navigate('discover')} lang={lang} loggedIn={Boolean(user)}/>} /></>}
+  {page==='home'&&<><AtlasHome lang={lang} places={sichtbareOrte} events={sichtbareVeranstaltungen} news={sichtbareBeitraege} onDiscover={()=>navigate('discover')} onMap={()=>navigate('map')} onEvents={()=>navigate('events')} onCommunity={()=>navigate('community')} onBusiness={()=>navigate('business')} onPlace={selectPlace} onCategory={cat=>{setCategory(cat);setSelectedCategories(cat==='Alle'?[]:[cat]);navigate('discover')}} onSearch={value=>{setQuery(value);setCategory('Alle');setSelectedCategories([]);setDistrict('');navigate('discover')}} onTours={()=>navigate('tours')} tips={<DiscoveryTips onPlace={selectPlace}/>} assistant={<SmartDiscover onPlace={selectPlace} onDiscover={()=>navigate('discover')} lang={lang} loggedIn={Boolean(user)}/>} newOpenings={<NewInFrankfurt lang={lang} onPlace={selectPlace}/>} guidesPreview={<GuidesPreview lang={lang} onOpen={()=>navigate('guides')}/>} /></>}
   {page==='discover'&&<main className="ffm-find-page ffm-find-visual" id="entdecken">
  <section className="ffm-find-head">
   <h1>{ui("Entdecken")}<span>.</span></h1>
@@ -386,15 +393,14 @@ export default function Home(){
  {page==='profile'&&<><ProfileSettings user={user} onLogin={()=>setAuth(true)} onNotice={flash}
   onSavedPlaces={()=>navigate('saved')} onTours={()=>navigate('tours')}
   onDeleted={()=>{setUser(null);setFavorites([]);setSelected(null);navigate('home');flash(ui("Dein Konto wurde gelöscht."))}}/><div className="ffm-profile-extras"><VerifyEmailAndTeamInvite loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>{user&&<TeamMemberWorkspace onNotice={flash}/>}<PremiumTariffPreview audience="user"/> {user&&<MediaRightsPanel onNotice={flash}/>}</div></>}
- {page==='map'&&<main className="atlas-app-map"><Atlas3D places={places} lang={lang} variant="full" onSelect={selectPlace}/><div className="atlas-app-map-note">{t.notice} {ui(" · © OpenStreetMap contributors, OpenMapTiles, OpenFreeMap")}</div></main>}
+ {page==='map'&&<MapDiscovery lang={lang} places={places} onPlace={selectPlace} onEvents={()=>navigate('events')}/>}
+  {page==='matcher'&&<MatcherQuiz lang={lang} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onPlace={selectPlace}
+    onDiscover={cat=>{setCategory(cat);setSelectedCategories([cat]);navigate('discover')}}/>}
+  {page==='guides'&&<GuidesExplorer lang={lang}/>}
   {page==='events'&&<main className="inner-page v3-editorial-page">
  <div className="page-title v3-page-head"><small>{ui("03 / STADTJOURNAL")}</small><h1>{ui("Die Stadt lebt")}<em>.</em></h1><p>{ui("Ideen, Begegnungen und neue Perspektiven auf Frankfurt.")}</p></div>
- <section className="v3-section"><div className="v3-section-head"><div><span className="v3-eyebrow">{ui("FÜR DEINEN KALENDER")}</span><h2>{ui("Was steht an?")}</h2></div><span className="v3-section-trail">{ui("Veranstaltungen in Frankfurt")}</span></div>
-   <div className="v3-events-grid">{sichtbareVeranstaltungen.map(e=><article className="v3-event-card" key={e.id}>
-     <div className="v3-event-photo"><ContentImage src={ortsbild('',e.image_url)} alt={ui("Stimmungsbild zur Veranstaltung")} loading="lazy"/><span className="v3-event-date">{date(e.starts_at,lang)}</span><span className="v3-image-note">{ui("Stimmungsbild")}</span></div>
-     <div className="v3-event-info">{e.demo&&<span className="v3-demo-label">{ui("Musterveranstaltung · nicht buchbar")}</span>}<h3>{e.title}</h3><p>{e.description_de}</p>{!e.demo&&e.category&&<small>{e.category}</small>}{!e.demo&&e.organizer&&<small>{ui("Veranstalter: ")}{e.organizer}</small>}{!e.demo&&e.price_cents!=null&&e.price_source_url&&<p className="ffm-event-price">{e.price_cents===0?ui("Eintritt frei"):ui("Preisangabe: ")+new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(e.price_cents/100)} · <a href={e.price_source_url} target="_blank" rel="noopener noreferrer">{ui("Preisquelle prüfen")}</a></p>}<span className="v3-place-meta"><MapPin size={15}/>{e.venue}</span><EventActions key={e.id} event={e} saved={eventFavorites.includes(e.id)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onSaved={favoriteEvent} onNotice={flash}/></div>
-   </article>)}</div>
- </section>
+ <EventsExplorer lang={lang} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onSaved={favoriteEvent}
+  saved={eventFavorites} onPlace={selectPlace} onNotice={flash} onMap={()=>navigate('map')}/>
  <section className="v3-section v3-journal"><div className="v3-section-head"><div><span className="v3-eyebrow">{ui("WAS UNS BEWEGT")}</span><h2>{ui("Aus der Stadt.")}</h2></div><span className="v3-section-trail">{ui("Geschichten und Inspiration")}</span></div>
    <div className="v3-journal-grid">{sichtbareBeitraege.map((n,i)=><article className={'v3-journal-card '+(i===0?'v3-wide':'')} key={n.id}><div className="v3-journal-image"><ContentImage src={ortsbild('',n.image_url)} alt={ui("Stimmungsbild aus Frankfurt")} loading="lazy"/><span className="v3-image-note">{ui("Stimmungsbild")}</span></div><div className="v3-journal-copy"><span className="v3-eyebrow">{n.demo?'MUSTERBEITRAG':n.category||'STADTGESCHICHTE'} · {date(n.published_at,lang)}</span><h3>{n.title}</h3><p>{n.body_de}</p>{n.source_url&&<a href={n.source_url} rel="noopener noreferrer" target="_blank">{ui("Originalquelle ansehen")}</a>}</div></article>)}</div>
  </section>
