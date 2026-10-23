@@ -1,5 +1,9 @@
 # FFM Aktuell web delivery ledger
 
+## 23 October city discovery parity (PR #49)
+The web feature branch now adds a short category Matcher, guided real events with date/month controls and event map pins, editorial Guides, independently proven newly opened venues and explicit admin-only OpenAI/OpenWeather connectivity checks. Native clients remain out of scope. Editorial content and provider acceptance are external. See [release acceptance](CITY_EXPERIENCE_RELEASE_20261023.md).
+
+
 Updated 22 October 2026 against the seven-page briefing. Native iOS/Android clients and email are excluded by the owner. This ledger distinguishes implemented web engineering from real external service/content acceptance. Deployment evidence belongs to the PR and deployment workflow for the exact source SHA.
 
 ## Delivered web implementation
