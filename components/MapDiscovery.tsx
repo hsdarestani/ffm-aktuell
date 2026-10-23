@@ -20,7 +20,7 @@ export default function MapDiscovery({lang,places,onPlace,onEvents}:{lang:'de'|'
    district:e.venue,description_de:e.venue})),[mode,visible]);
  function choose(id:string){if(id.startsWith('event:')){const ev=events.find(e=>e.id===id.slice(6));if(ev){setSelectedEvent(ev);setOpen(true)}}else onPlace(id)}
  return <main className="ffm-map-explorer">
-  <Atlas3D key={mode} variant="full" places={pins} lang={lang} onSelect={choose}/>
+  <Atlas3D key={mode} variant="full" places={pins} lang={lang} onSelect={choose} showRawCandidates={mode==='places'}/>
   <div className="ffm-map-top" role="group" aria-label="Auf Karte anzeigen">
    <button className={mode==='places'?'active':''} aria-pressed={mode==='places'} onClick={()=>{setMode('places');setSelectedEvent(null);setSearch('')}}><MapPin size={17}/>{lang==='de'?'Orte':'Places'}</button>
    <button className={mode==='events'?'active':''} aria-pressed={mode==='events'} onClick={()=>{setMode('events');setSelectedEvent(null);setSearch('')}}><CalendarDays size={17}/>Events</button>
