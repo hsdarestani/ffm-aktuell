@@ -1,3 +1,4 @@
+import {getProviderSecret} from '@/lib/provider-credentials';
 export const berlinDate=(d=new Date())=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
 export function parseDiscoveryContext(q:URLSearchParams,now=new Date()){
  const date=q.get('date')||berlinDate(now),occasion=q.get('occasion')||'',budget=q.get('budget')||'';
@@ -34,9 +35,10 @@ let unavailableUntil=0;
 let cached:{until:number;list:unknown;fetchedAt:string}|null=null;
 let inFlight:Promise<unknown>|null=null;
 export async function forecastFor(date:string){
- if(!process.env.OPENWEATHER_API_KEY||unavailableUntil>Date.now())return null;
+ const apiKey=await getProviderSecret('OPENWEATHER_API_KEY');
+ if(!apiKey||unavailableUntil>Date.now())return null;
  if(!cached||cached.until<Date.now()){
-  if(!inFlight)inFlight=(async()=>{const r=await fetch('https://api.openweathermap.org/data/2.5/forecast?lat=50.1109&lon=8.6821&units=metric&appid='+encodeURIComponent(process.env.OPENWEATHER_API_KEY!),{signal:AbortSignal.timeout(6000),cache:'no-store'});if(!r.ok)throw Error('Forecast unavailable');const d=await r.json();if(!Array.isArray(d.list)||d.list.length>50)throw Error('Forecast invalid');cached={until:Date.now()+30*60000,list:d.list,fetchedAt:new Date().toISOString()};return d.list})().finally(()=>{inFlight=null});
+  if(!inFlight)inFlight=(async()=>{const r=await fetch('https://api.openweathermap.org/data/2.5/forecast?lat=50.1109&lon=8.6821&units=metric&appid='+encodeURIComponent(apiKey),{signal:AbortSignal.timeout(6000),cache:'no-store'});if(!r.ok)throw Error('Forecast unavailable');const d=await r.json();if(!Array.isArray(d.list)||d.list.length>50)throw Error('Forecast invalid');cached={until:Date.now()+30*60000,list:d.list,fetchedAt:new Date().toISOString()};return d.list})().finally(()=>{inFlight=null});
   try{await inFlight}catch{unavailableUntil=Date.now()+15*60000;return null}
  }
  const summary=weatherSummary(cached?.list,date);return summary&&cached?{...summary,checked_at:cached.fetchedAt}:null;
