@@ -12,7 +12,7 @@ import {ortsbild} from '@/lib/vorschau';
 type RichAtlasPlace=AtlasPlace&{image_url?:string|null;demo?:boolean;verification_status?:'verified'|'unverified'|'disputed';activity_status?:'operating'|'unknown'|'temporarily_closed'|'permanently_closed';verified_at?:string|null};
 type Event={id:string;title:string;venue:string;starts_at:string;demo?:boolean;image_url?:string};
 type News={id:string;title:string;published_at:string;demo?:boolean;image_url?:string;body_de?:string};
-type Props={tips?:ReactNode;assistant?:ReactNode;lang:'de'|'en';places:RichAtlasPlace[];events:Event[];news:News[];onDiscover:()=>void;onMap:()=>void;onEvents:()=>void;onCommunity:()=>void;onBusiness:()=>void;onPlace:(id:string)=>void;onCategory:(category:string)=>void;onSearch:(query:string)=>void;onTours:()=>void};
+type Props={tips?:ReactNode;assistant?:ReactNode;newOpenings?:ReactNode;guidesPreview?:ReactNode;lang:'de'|'en';places:RichAtlasPlace[];events:Event[];news:News[];onDiscover:()=>void;onMap:()=>void;onEvents:()=>void;onCommunity:()=>void;onBusiness:()=>void;onPlace:(id:string)=>void;onCategory:(category:string)=>void;onSearch:(query:string)=>void;onTours:()=>void};
 
 const needs=[
  {id:'Cafés',label:'Café trinken',icon:Coffee,color:'cream'},
@@ -23,7 +23,7 @@ const needs=[
  {id:'Apotheken',label:'Apotheke finden',icon:Pill,color:'sage'}
 ] as const;
 function germanDate(value:string,locale:'de'|'en'){const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toLocaleDateString(locale==='de'?'de-DE':'en-GB',{day:'2-digit',month:'short'});}
-export default function AtlasHome({tips,assistant,lang,places,events,news,onDiscover,onMap,onEvents,onCommunity,onBusiness,onPlace,onCategory,onSearch,onTours}:Props){
+export default function AtlasHome({tips,assistant,newOpenings,guidesPreview,lang,places,events,news,onDiscover,onMap,onEvents,onCommunity,onBusiness,onPlace,onCategory,onSearch,onTours}:Props){
  const ui=useUiText();
  const [query,setQuery]=useState('');
  const [layout,setLayout]=useState<HomeModule[]>(defaultHomeLayout);useEffect(()=>{const c=new AbortController();fetch('/api/home-layout',{signal:c.signal,cache:'no-store'}).then(r=>r.json()).then(d=>{if(validHomeLayout(d.modules))setLayout(d.modules)}).catch(()=>{});return()=>c.abort()},[]);
@@ -88,7 +88,9 @@ export default function AtlasHome({tips,assistant,lang,places,events,news,onDisc
    </div>
   </section>
 
+  {newOpenings}
   {layout.filter(m=>m.enabled).map(m=><Fragment key={m.code}>{modules[m.code]}</Fragment>)}
+  {guidesPreview}
  </main>;
 }
 
