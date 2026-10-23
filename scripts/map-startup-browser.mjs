@@ -147,6 +147,7 @@ try{
   await ctx.route('**/api/explore?*',route=>{requested=new URL(route.request().url()).searchParams;return route.fulfill({json:{places:[],places_total:0,candidates:[],candidates_total:0}})});
   await page.goto(base,{waitUntil:'domcontentloaded'});
   await page.locator('.mobile-bottom').getByRole('button',{name:'Entdecken',exact:true}).click();
+  await page.locator('.ffm-find-advanced > summary').click();
   await page.getByText('Merkmale, Preisniveau und Bewertung',{exact:true}).click();
   await page.getByRole('checkbox',{name:'Familienfreundlich',exact:true}).check();
   await page.getByRole('checkbox',{name:'Laut Tagesplan jetzt geöffnet',exact:true}).check();
