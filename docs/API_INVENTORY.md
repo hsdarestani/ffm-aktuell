@@ -91,6 +91,7 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | GET | `/api/favorites/details` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/follows` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/follows` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
+| POST | `/api/internal/github-provider-sync` | [app/api/internal/github-provider-sync/route.ts](../app/api/internal/github-provider-sync/route.ts) |
 | GET | `/api/guides` | [app/api/guides/route.ts](../app/api/guides/route.ts) |
 | GET | `/api/health` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/highlights` | [app/api/highlights/route.ts](../app/api/highlights/route.ts) |
