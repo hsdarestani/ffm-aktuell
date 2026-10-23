@@ -1,6 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {sessionUser,trustedOrigin} from '@/lib/auth';
 import {canAdmin} from '@/lib/admin-permissions';
+import {getProviderSecret} from '@/lib/provider-credentials';
 export const dynamic='force-dynamic';
 type Probe='missing'|'ready'|'unauthorized'|'unavailable';
 async function probe(url:string,headers?:Record<string,string>):Promise<Probe>{
@@ -13,7 +14,7 @@ export async function POST(req:NextRequest){
  if(!trustedOrigin(req))return NextResponse.json({error:'Ungültige Herkunft'},{status:403});
  const user=await sessionUser(req);
  if(!user||!canAdmin(user,'operations'))return NextResponse.json({error:'Zugriff verweigert'},{status:403});
- const ai=process.env.OPENAI_API_KEY,weather=process.env.OPENWEATHER_API_KEY;
+ const [ai,weather]=await Promise.all([getProviderSecret('OPENAI_API_KEY'),getProviderSecret('OPENWEATHER_API_KEY')]);
  const model=process.env.OPENAI_RECOMMENDATION_MODEL||'gpt-4o-mini';
  const [assistant,forecast]=await Promise.all([
   ai?probe('https://api.openai.com/v1/models/'+encodeURIComponent(model),{Authorization:'Bearer '+ai}):Promise.resolve<Probe>('missing'),
