@@ -13,7 +13,7 @@ export async function POST(req:NextRequest){
  if(typeof post.body!=='string'||!post.body.trim()||post.body.length>4000)return reply({error:'Beitrag kann nicht übersetzt werden'},400);
  const hash=createHash('sha256').update(post.body).digest('hex');
  const cached=(await query('SELECT body FROM post_translations WHERE post_id=$1 AND language=$2 AND source_hash=$3',[d.post_id,d.language,hash])).rows[0];if(cached)return reply({text:cached.body,machine_translated:true});
- if(!process.env.OPENAI_API_KEY)return reply({error:'Übersetzungsdienst noch nicht eingerichtet'},503);
+ if(!process.env.OPENAI_API_KEY&&!(await (await import('@/lib/provider-credentials')).getProviderSecret('OPENAI_API_KEY')))return reply({error:'Übersetzungsdienst noch nicht eingerichtet'},503);
  if(!await reserveTextRequest(u.id,'translation'))return reply({error:'Übersetzungslimit erreicht. Bitte später erneut versuchen.'},429);
  try{const result=await textJSON('Translate only the supplied public post into '+(d.language==='de'?'German':'English')+'. Preserve meaning and uncertainty. Add no facts or advice. Return JSON {"text":"plain translated text"}. No HTML or markup.',{text:post.body});
  const translated=result.text;if(typeof translated!=='string'||!translated.trim()||translated.length>12000||/[<>]/.test(translated))throw Error('Invalid translation');
