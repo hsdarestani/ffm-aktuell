@@ -12502,6 +12502,77 @@
           }
         ]
       }
+    },
+    "/api/internal/github-provider-sync": {
+      "post": {
+        "operationId": "post__api_internal_github_provider_sync",
+        "summary": "POST /api/internal/github-provider-sync",
+        "description": "Identity checked via exact GitHub Actions OIDC issuer, audience, repository ID, workflow_ref, branch and one-time jti. Only two allowlisted keys accepted. Secrets encrypted at rest and never returned.",
+        "tags": [
+          "internal"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Short-lived, one-time GitHub Actions OIDC Bearer token. Not a user or API key."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "OPENAI_API_KEY": {
+                    "type": "string",
+                    "format": "password"
+                  },
+                  "OPENWEATHER_API_KEY": {
+                    "type": "string",
+                    "format": "password"
+                  }
+                },
+                "required": [
+                  "OPENAI_API_KEY",
+                  "OPENWEATHER_API_KEY"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Keys accepted and stored encrypted; values are never returned."
+          },
+          "400": {
+            "description": "Invalid request data"
+          },
+          "401": {
+            "description": "Missing signed GitHub identity"
+          },
+          "403": {
+            "description": "GitHub OIDC identity is not the exact FFM workflow"
+          },
+          "409": {
+            "description": "Already-used OIDC token"
+          },
+          "503": {
+            "description": "Encrypted private credential store unavailable"
+          }
+        },
+        "x-source": "app/api/internal/github-provider-sync/route.ts",
+        "x-authorization": "Verified short-lived GitHub Actions OIDC token from exact first-party FFM workflow and ref; one-time jti transaction.",
+        "x-query-validation": "",
+        "x-response-expressions": [],
+        "security": []
+      }
     }
   }
 }
