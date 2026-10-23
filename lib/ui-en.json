@@ -1768,5 +1768,15 @@
   "Bild nur mit gültigem HTTPS-Link und dokumentierten Nutzungsrechten": "Image requires a valid HTTPS URL and documented image rights",
   "Select a currently verified published venue": "Select a currently verified published venue",
   "Price requires a verifiable source URL": "Price requires a verifiable source URL",
-  "Ungültige Kategorie": "Invalid category"
+  "Ungültige Kategorie": "Invalid category",
+  "Was möchtest du entdecken?": "What would you like to discover?",
+  "Weitere Filter": "More filters",
+  "Authentication required": "Authentication required",
+  "JSON required": "JSON required",
+  "Request too large": "Request too large",
+  "Unauthorized workflow": "Unauthorized workflow",
+  "Invalid JSON": "Invalid JSON",
+  "Exactly two valid provider credentials required": "Exactly two valid provider credentials required",
+  "Already used": "Already used",
+  "Credential storage not available": "Credential storage not available"
 }
