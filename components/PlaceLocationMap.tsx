@@ -1,6 +1,7 @@
 'use client';
 import {useUiText} from '@/lib/ui-locale';
 
+import PlaceRasterMap from './PlaceRasterMap';
 import {ExternalLink,MapPin} from 'lucide-react';
 
 type Props={
@@ -35,14 +36,7 @@ export default function PlaceLocationMap({name,address,latitude,longitude}:Props
  const ui=useUiText();
  const {embed,external}=placeLocationLinks(latitude,longitude,address);
  return <aside className="ffm-place-location" aria-label={ui("Kartenposition: ")+name}>
-  {embed?<iframe
-   key={embed}
-   src={embed}
-   title={ui("OpenStreetMap: ")+name}
-   loading="lazy"
-   referrerPolicy="strict-origin-when-cross-origin"
-   className="ffm-place-location-map"
-  />:<div className="ffm-place-location-fallback"><MapPin size={34}/><strong>{ui("Keine Kartenposition vorhanden")}</strong><p>{ui("Bitte den Standort direkt beim Anbieter prüfen.")}</p></div>}
+  {embed?<PlaceRasterMap key={name+':'+latitude+':'+longitude} name={name} latitude={latitude!} longitude={longitude!}/>:<div className="ffm-place-location-fallback"><MapPin size={34}/><strong>{ui("Keine Kartenposition vorhanden")}</strong><p>{ui("Bitte den Standort direkt beim Anbieter prüfen.")}</p></div>}
   <div className="ffm-place-location-footer">
    <div className="ffm-place-location-label"><MapPin size={17}/><span>{embed?ui("Hier liegt der Ort"):ui("Standort suchen")}</span></div>
    {external&&<a href={external} target="_blank" rel="noopener noreferrer">{ui("Karte öffnen ")}<ExternalLink size={15}/></a>}

@@ -59,7 +59,7 @@ test('admin moderation supports approve/reject, queue and explicit removal for r
  assert.match(api,/review:removed:/);
 });
 test('reviews UI explains no verified visit, hides unused rating and allows user report',()=>{
- assert.match(page,/<VenueReviews key=\{selected.id\} placeId=\{selected.id\}/);
+ assert.match(page,/<VenueReviews key=\{'reviews:'\+selected.id\} placeId=\{selected.id\}/);
  assert.match(component,/Besuch nicht verifiziert/);
  assert.match(component,/Noch keine freigegebenen Bewertungen/);
  assert.match(component,/role="group" aria-label="Sterne vergeben"/);

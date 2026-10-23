@@ -34,3 +34,16 @@ export function eventCalendarContent(event:CalendarEvent,now=new Date()){
   'BEGIN:VALARM','TRIGGER:-PT60M','ACTION:DISPLAY','DESCRIPTION:'+escapeText('FFM Aktuell: '+event.title),'END:VALARM',
   'END:VEVENT','END:VCALENDAR',''].map(foldLine).join('\r\n');
 }
+
+/** Keep the selected date and visible calendar month in sync across month edges. */
+export function calendarMonthSelection(current:string,by:number,today:string){
+ const d=new Date(current.slice(0,7)+'-01T12:00:00Z');
+ d.setUTCMonth(d.getUTCMonth()+by);
+ const month=d.toISOString().slice(0,7)+'-01';
+ return {month,selected:month.slice(0,7)===today.slice(0,7)?today:month};
+}
+export function eventCalendarDate(d:Date){
+ const parts=new Intl.DateTimeFormat('en',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d);
+ const part=(type:string)=>parts.find(p=>p.type===type)!.value;
+ return `${part('year')}-${part('month')}-${part('day')}`;
+}

@@ -125,3 +125,12 @@
  .ffm-place-location-label{font-size:10px}
  .ffm-place-location-footer>a{font-size:10px}
 }
+/* Detail map deliberately uses raster tiles: no WebGL-only embedded document. */
+.ffm-place-raster{position:relative;overflow:hidden;min-height:330px;height:100%;background:#e6ebe2;isolation:isolate}
+.ffm-place-raster-tiles{position:absolute;inset:0;overflow:hidden}
+.ffm-place-raster-pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);color:#244e38;filter:drop-shadow(0 2px 3px #0005)}
+.ffm-place-raster-controls{position:absolute;right:12px;top:12px;display:grid;gap:4px}
+.ffm-place-raster-controls button{width:44px;height:44px;background:white;border:1px solid #9caf9f;border-radius:7px;display:grid;place-items:center;color:#244e38;cursor:pointer}
+.ffm-place-raster-controls button:disabled{opacity:.5}
+.ffm-place-raster-controls button:focus-visible{outline:3px solid #244e38;outline-offset:2px}
+.ffm-place-raster-error{position:absolute;bottom:0;margin:12px;padding:10px;background:#fff;color:#244e38;font-size:13px}

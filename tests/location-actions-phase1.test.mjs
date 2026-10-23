@@ -10,7 +10,7 @@ const css=read('app/place-actions.css'),layout=read('app/layout.tsx');
 const dialog=page.slice(page.indexOf('{selected&&<div className="overlay"'),page.indexOf('{auth&&<div className="overlay"'));
 
 test('main place detail offers Route, Merken, Teilen, website and real-number Call without faking verification',()=>{
- assert.match(dialog,/<PlaceActions key=\{selected\.id\}/);
+ assert.match(dialog,/<PlaceActions key=\{'actions:'\+selected\.id\}/);
  assert.match(dialog,/<PlaceLocationMap key=\{selected\.id\}/);
  for(const label of ['Route','Merken','Teilen','Anrufen','Website'])assert.ok(ui.includes(label),label);
  assert.match(ui,/navigator\.share/);

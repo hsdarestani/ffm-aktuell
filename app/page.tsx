@@ -33,9 +33,9 @@ const Atlas3D=dynamic(()=>import('@/components/Atlas3D'),{ssr:false});
 const TourPlanner=dynamic(()=>import('@/components/TourPlanner'),{ssr:false});
 const CuratedTours=dynamic(()=>import('@/components/CuratedTours'),{ssr:false});
 const SmartDiscover=dynamic(()=>import('@/components/SmartDiscover'),{ssr:false});
-const MatcherQuiz=dynamic(()=>import('@/components/MatcherQuiz'),{ssr:false});
-const GuidesExplorer=dynamic(()=>import('@/components/GuidesExplorer'),{ssr:false});
-const EventsExplorer=dynamic(()=>import('@/components/EventsExplorer'),{ssr:false});
+const MatcherQuiz=dynamic(()=>import('@/components/MatcherQuiz'),{ssr:false,loading:SectionLoading});
+const GuidesExplorer=dynamic(()=>import('@/components/GuidesExplorer'),{ssr:false,loading:SectionLoading});
+const EventsExplorer=dynamic(()=>import('@/components/EventsExplorer'),{ssr:false,loading:SectionLoading});
 const MapDiscovery=dynamic(()=>import('@/components/MapDiscovery'),{ssr:false});
 const NewInFrankfurt=dynamic(()=>import('@/components/NewInFrankfurt'),{ssr:false});
 const GuidesPreview=dynamic(()=>import('@/components/GuidesPreview'),{ssr:false});
@@ -75,8 +75,9 @@ const words={
  en:{home:'Home',discover:'Explore',map:'Map',community:'Community',events:'Events',business:'For business',sign:'Sign in',hero:'Your city.',hero2:'Rediscovered.',intro:'The real Frankfurt begins beyond the ordinary. Places, perspectives and special moments. All in one place.',cta:'Explore Frankfurt',curated:'Your Frankfurt, today.',curatedSub:'Find your next favorite place.',more:'Explore all',search:'Search places, neighborhoods or ideas',district:'All districts',news:'Around town',deals:'Local offers',stories:'Stories from the city',eventTitle:'What is on?',empty:'There are no confirmed entries yet.',saved:'Saved',save:'Save',source:'Source',website:'Open website',welcome:'Welcome to FFM',register:'Register',email:'Email',password:'Password',name:'Your name',send:'Submit',login:'Sign in',post:'Submit for review',postPlaceholder:'What did you discover in Frankfurt?',pending:'Your post will be reviewed before publication.',businessTitle:'Your business. Your city.',businessIntro:'Manage your listing, request ownership and publish local offers.',businessRegister:'Register business',company:'Business name',registry:'Business registration information (optional)',claim:'Claim a listing',claimNote:'Explanation / proof',offer:'Suggest an offer',offerText:'Terms / description',admin:'Editorial & moderation',queue:'Pending reviews',approve:'Approve',reject:'Reject',newPlace:'Publish a new place',title:'Title',category:'Category',address:'Address',description:'Description',latitude:'Latitude',longitude:'Longitude',submitPlace:'Save place',newNews:'Publish news',newEvent:'Publish event',venue:'Venue',datetime:'Date and time',logout:'Sign out',notice:'Confirm times and prices with the venue.',mapTitle:'Frankfurt at a glance.',mapSub:'One place at a time.',city:'Frankfurt am Main'}
 };
 function nutzerfehler(message:string){const msg=(message||'').toLowerCase();if(msg.includes('invalid credentials'))return 'E-Mail-Adresse oder Passwort ist falsch.';if(msg.includes('login required')||msg.includes('admin required'))return 'Bitte melde dich mit der erforderlichen Berechtigung an.';if(msg.includes('email already registered'))return 'Diese E-Mail-Adresse ist bereits registriert.';if(msg.includes('too many requests'))return 'Zu viele Anfragen. Bitte versuche es später erneut.';if(msg.includes('invalid fields'))return 'Bitte überprüfe deine Eingaben.';if(msg.includes('invalid request origin'))return 'Die Anfrage konnte nicht sicher verarbeitet werden.';if(msg.includes('register a business first'))return 'Bitte registriere zuerst dein Unternehmen.';return 'Die Anfrage konnte nicht abgeschlossen werden. Bitte versuche es erneut.';}
-async function api(path:string,body?:unknown){const r=await fetch('/api/'+path,{method:body===undefined?'GET':'POST',headers:body===undefined?undefined:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),credentials:'same-origin'});const d=await r.json();if(!r.ok)throw Error(nutzerfehler(d.error));return d;}
+async function api(path:string,body?:unknown){const r=await fetch('/api/'+path,{method:body===undefined?'GET':'POST',headers:body===undefined?undefined:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),credentials:'same-origin',signal:AbortSignal.timeout(15000)});const d=await r.json();if(!r.ok)throw Error(nutzerfehler(d.error));return d;}
 const date=(s:string,l:string)=>new Date(s).toLocaleDateString(l==='de'?'de-DE':'en-GB',{day:'2-digit',month:'short',year:'numeric'});
+function SectionLoading(){const ui=useUiText();return <p role="status" className="ffm-city-empty">{ui('Inhalte werden geladen …')}</p>}
 export default function Home(){
  const ui=useUiText();
  const {locale:lang,setLocale:setLang}=useUiLocale();const t=words[lang];
@@ -110,7 +111,13 @@ export default function Home(){
  const flash=(m:string)=>{setToast(m);window.setTimeout(()=>setToast(''),4500);};
  const load=useCallback(async()=>{
   setLoading(true);setError('');
-  try{const [p,e,n,m]=await Promise.all([api('places'),api('events'),api('news'),api('me')]);setPlaces(p.items);setEvents(e.items);setNews(n.items);setUser(m.user);if(m.user){void api('favorites').then(d=>setFavorites(d.items)).catch(()=>setFavorites([]))}else setFavorites([]);}catch(e){setError(ui("Die Inhalte konnten nicht geladen werden. Bitte versuche es erneut."))}finally{setLoading(false)}
+  try{const [p,e,n,m]=await Promise.allSettled([api('places'),api('events'),api('news'),api('me')]);
+   if(p.status==='fulfilled')setPlaces(p.value.items||[]);
+   if(e.status==='fulfilled')setEvents(e.value.items||[]);
+   if(n.status==='fulfilled')setNews(n.value.items||[]);
+   if(m.status==='fulfilled'){setUser(m.value.user);if(m.value.user){void api('favorites').then(d=>setFavorites(d.items)).catch(()=>setFavorites([]))}else setFavorites([]);}
+   if([p,e,n,m].some(r=>r.status==='rejected'))setError(ui("Einige Inhalte konnten nicht geladen werden. Bitte erneut versuchen."));
+  }finally{setLoading(false)}
  },[refresh]);
  useEffect(()=>{void load()},[load]);
  useEffect(()=>{document.documentElement.lang=lang},[lang]);
@@ -245,7 +252,7 @@ export default function Home(){
  const toggleNearby=()=>{if(nearby){setNearby(null);return;}if(!navigator.geolocation){flash(ui("Standortzugriff nicht verfügbar. Bitte normal suchen."));return;}setFindingNearby(true);navigator.geolocation.getCurrentPosition(pos=>{setFindingNearby(false);const {latitude:lat,longitude:lon}=pos.coords;if(lat<49.7||lat>50.4||lon<8.2||lon>9.1){flash(ui("Der Standort liegt außerhalb des Frankfurter Suchbereichs."));return;}setNearby({lat,lon});},()=>{setFindingNearby(false);flash(ui("Standort nicht freigegeben. Suche ohne Standort bleibt möglich."));},{enableHighAccuracy:false,timeout:10000,maximumAge:60000});};
  useEffect(()=>{const previous=window.history.scrollRestoration;window.history.scrollRestoration='manual';return()=>{window.history.scrollRestoration=previous}},[]);
  useEffect(()=>{window.scrollTo({top:0,behavior:'instant'})},[page]);
- const navigate=(p:Page)=>{if(p==='map')setMapInitialMode('places');if(new URLSearchParams(window.location.search).has('tour'))window.history.replaceState(null,'',window.location.pathname);setPage(p);setMenu(false)};
+ const navigate=(p:Page)=>{if(p==='map')setMapInitialMode('places');if(new URLSearchParams(window.location.search).has('tour'))window.history.replaceState(null,'',window.location.pathname);setPage(p);setMenu(false);window.scrollTo({top:0,behavior:'instant'})};
  const selectPlace=useCallback((id:string)=>{
   const cached=[...sichtbareOrte,...candidates].find(p=>p.id===id);
   if(cached){setSelected(cached);return;}
@@ -443,14 +450,14 @@ export default function Home(){
   {selected.opening_hours_text&&<div className="ffm-venue-hours"><strong>{ui("Reguläre Öffnungszeiten laut Anbieter")}</strong>
    <p>{selected.opening_hours_text}</p><small>{ui("Keine Live-Öffnungsprüfung. Sonderöffnungen vor dem Besuch bei der Quelle prüfen.")}</small></div>}
   {!selected.demo&&!selected.candidate&&selected.business_id&&<VisitCode placeId={selected.id} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)}/>}
-  <PlaceActions key={selected.id} venue={selected} saved={favorites.includes(selected.id)} loggedIn={Boolean(user)}
+  <PlaceActions key={'actions:'+selected.id} venue={selected} saved={favorites.includes(selected.id)} loggedIn={Boolean(user)}
  onSave={()=>favorite(selected.id)} onLogin={()=>setAuth(true)} onNotice={flash}
  onReport={(reason,message)=>submit('place-reports',{place_id:selected.id,reason,message},'Danke! Die Redaktion prüft deine Meldung.')}
  onPost={body=>submit('posts',{body,place_id:selected.id},'Dein Tipp wartet auf Freigabe.')}
 />{!selected.demo&&!selected.candidate&&selected.business_id&&<div className="ffm-venue-follow">
   <span>{ui("Dieses Unternehmen")}</span>
   <FollowButton key={selected.business_id} targetType="business" targetId={selected.business_id} initialFollowing={Boolean(selected.following_business)} own={false} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>
- </div>}{!selected.demo&&!selected.candidate&&selected.business_id&&<BusinessHighlights businessId={selected.business_id}/>}<VenueReviews key={selected.id} placeId={selected.id} demo={Boolean(selected.demo)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>{selected.candidate&&<p className="v5-candidate-alert">{ui("Betrieb und Öffnungszeiten nicht geprüft. Bitte beim Anbieter nachsehen.")}</p>}{selected.verification_source&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.verification_source}>{ui("Quelle der Betriebsprüfung")}</a>}{selected.source_url&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.source_url}>{t.source}<span className="ui-dot" aria-hidden="true"/></a>}<p className="fineprint">{t.notice}</p></div><PlaceLocationMap key={selected.id} name={selected.name} address={selected.address} latitude={selected.latitude} longitude={selected.longitude}/></div></div>}
+ </div>}{!selected.demo&&!selected.candidate&&selected.business_id&&<BusinessHighlights businessId={selected.business_id}/>}<VenueReviews key={'reviews:'+selected.id} placeId={selected.id} demo={Boolean(selected.demo)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>{selected.candidate&&<p className="v5-candidate-alert">{ui("Betrieb und Öffnungszeiten nicht geprüft. Bitte beim Anbieter nachsehen.")}</p>}{selected.verification_source&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.verification_source}>{ui("Quelle der Betriebsprüfung")}</a>}{selected.source_url&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.source_url}>{t.source}<span className="ui-dot" aria-hidden="true"/></a>}<p className="fineprint">{t.notice}</p></div><PlaceLocationMap key={selected.id} name={selected.name} address={selected.address} latitude={selected.latitude} longitude={selected.longitude}/></div></div>}
   {auth&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setAuth(false)}}><div className="auth-dialog" role="dialog" aria-modal="true" aria-labelledby="ffm-auth-title" tabIndex={-1}><button className="dialog-close" aria-label={ui("Schließen")} onClick={()=>setAuth(false)}><X/></button><span className="auth-mark">{ui("F✳")}</span><small>{ui("DEIN ZUGANG ZU FFM AKTUELL")}</small><h2 id="ffm-auth-title">{register?t.register:t.welcome}</h2><form onSubmit={onAuth}>{register&&formField(t.name,'display_name',true)}{formField(t.email,'email',true,'email')}{formField(t.password,'password',true,'password')}<button className="primary-btn">{register?t.register:t.login}<span className="ui-dot" aria-hidden="true"/></button></form>
  <PhoneAccess onDone={()=>{setAuth(false);setRefresh(v=>v+1)}}/>{(oauthReady.google||oauthReady.apple)&&<div className="ffm-oauth-actions">{oauthReady.google&&<a href="/api/auth/oauth/google/start">{ui("Mit Google anmelden")}</a>}{oauthReady.apple&&<a href="/api/auth/oauth/apple/start">{ui("Mit Apple anmelden")}</a>}</div>}
  <button className="switch-auth" onClick={()=>setRegister(!register)}>{register?t.login:t.register}<span className="ui-dot" aria-hidden="true"/></button></div></div>}

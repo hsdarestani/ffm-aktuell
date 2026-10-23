@@ -6,10 +6,11 @@ type Guide={id:string;title:string;category:string;body_de:string;body_en:string
 const cats=['Alle','Café','Restaurant','Bar','Club','Aktivitäten','Sonstige'];
 export default function GuidesExplorer({lang='de'}:{lang?:'de'|'en'}){
  const [items,setItems]=useState<Guide[]>([]),[category,setCategory]=useState('Alle'),[query,setQuery]=useState(''),[selected,setSelected]=useState<Guide|null>(null);
+ const [retry,setRetry]=useState(0);
  const [loading,setLoading]=useState(true),[failed,setFailed]=useState(false);
- useEffect(()=>{const ac=new AbortController();fetch('/api/guides',{signal:ac.signal,cache:'no-store'})
+ useEffect(()=>{const ac=new AbortController();setLoading(true);setFailed(false);fetch('/api/guides',{signal:AbortSignal.any([ac.signal,AbortSignal.timeout(12000)]),cache:'no-store'})
   .then(r=>r.ok?r.json():Promise.reject()).then(d=>setItems(d.items||[])).catch(()=>{if(!ac.signal.aborted)setFailed(true)}).finally(()=>{if(!ac.signal.aborted)setLoading(false)});
-  return()=>ac.abort()},[]);
+  return()=>ac.abort()},[retry]);
  const filtered=useMemo(()=>items.filter(g=>(category==='Alle'||g.category==='Guide:'+category)&&
   (g.title+' '+g.body_de+' '+g.body_en).toLocaleLowerCase().includes(query.toLocaleLowerCase())),[items,category,query]);
  const label=(g:Guide)=>g.category.replace(/^Guide:/,'')||'Sonstige';
@@ -21,12 +22,12 @@ export default function GuidesExplorer({lang='de'}:{lang?:'de'|'en'}){
    <div className="ffm-guide-full-body">{content(selected).split(/\n+/).filter(Boolean).map((p,i)=><p key={i}>{p}</p>)}</div>
    {selected.source_url&&<a target="_blank" rel="noopener noreferrer" href={selected.source_url}>{lang==='de'?'Quelle ansehen':'View source'} <ExternalLink size={16}/></a>}
   </article>:<>
-   <header className="ffm-city-head"><span className="ffm-city-eyebrow">DEIN FRANKFURT</span><h1>Guides<span>.</span></h1>
+   <header className="ffm-city-head"><span className="ffm-city-eyebrow">{lang==='de'?'DEIN FRANKFURT':'YOUR FRANKFURT'}</span><h1>Guides<span>.</span></h1>
     <p>{lang==='de'?'Insider-Tipps aus Frankfurt – recherchiert und von der Redaktion ausgewählt.':'Local stories and guides – researched and selected by our editors.'}</p></header>
    <div className="ffm-guide-toolbar"><div className="ffm-guide-chips" aria-label={lang==='de'?'Kategorien':'Categories'}>
-    {cats.map(c=><button key={c} className={c===category?'active':''} aria-pressed={c===category} onClick={()=>setCategory(c)}>{c}</button>)}</div>
-    <label className="ffm-guide-search"><Search size={18}/><input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder={lang==='de'?'Guides durchsuchen':'Search guides'}/></label></div>
-   {loading?<p role="status">Guides werden geladen …</p>:failed?<p role="alert">Guides sind derzeit nicht erreichbar.</p>:!filtered.length?
+    {cats.map(c=><button key={c} className={c===category?'active':''} aria-pressed={c===category} onClick={()=>setCategory(c)}>{lang==='de'?c:({Alle:'All',Aktivitäten:'Activities',Sonstige:'Other'} as Record<string,string>)[c]||c}</button>)}</div>
+    <label className="ffm-guide-search"><Search size={18}/><input aria-label={lang==='de'?'Guides durchsuchen':'Search guides'} type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder={lang==='de'?'Guides durchsuchen':'Search guides'}/></label></div>
+   {loading?<p role="status">{lang==='de'?'Guides werden geladen …':'Loading guides …'}</p>:failed?<div role="alert"><p>{lang==='de'?'Guides sind derzeit nicht erreichbar.':'Guides are currently unavailable.'}</p><button onClick={()=>setRetry(v=>v+1)}>{lang==='de'?'Erneut versuchen':'Try again'}</button></div>:!filtered.length?
     <div className="ffm-city-empty"><BookOpen size={30}/><strong>{lang==='de'?'Noch keine passenden Guides veröffentlicht.':'No guides published in this category yet.'}</strong><p>{lang==='de'?'Hier erscheinen nur redaktionell freigegebene Artikel mit überprüften Quellen.':'Only editor-approved articles with checked sources appear here.'}</p></div>:
     <div className="ffm-guide-grid">{filtered.map(g=><article key={g.id} className="ffm-guide-card">
       <button type="button" className="ffm-guide-card-button" onClick={()=>setSelected(g)}>

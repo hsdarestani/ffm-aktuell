@@ -40,7 +40,13 @@ jobs:
           NEXT_TELEMETRY_DISABLED: "1"
         run: npm run build
       - name: Install Chromium for map recovery checks
-        run: npx playwright install --with-deps chromium
+        timeout-minutes: 6
+        env:
+          PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: '60000'
+        # ubuntu-latest already includes Chrome/Chromium and their system libraries.
+        run: npx playwright install chromium
+      - name: Live QA functional regressions on desktop and mobile
+        run: node scripts/live-functional-qa-browser.mjs
       - name: Admin workspace desktop and mobile browser checks
         run: node scripts/admin-workspace-browser.mjs
       - name: Admin workspace screenshots
