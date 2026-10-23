@@ -17,7 +17,7 @@ test('owner branch changes staged, uniquely pending, audited and do not alter pu
 });
 test('approval requires admin and invalidates status verification until independently rechecked',()=>{
  const block=api.slice(api.indexOf("if(method==='POST'&&path==='admin/review-place-change'"),api.indexOf("if(method==='POST'&&path==='admin/moderate-review'"));
- assert.match(block,/const u=admin\(user\)/);
+ assert.match(block,/const u=admin\(user,'business'\)/);
  assert.match(block,/FOR UPDATE/);
  assert.match(block,/business_id=\$7 AND status='published'/);
  assert.match(block,/verification_status='unverified'/);
@@ -34,7 +34,7 @@ test('owner has concise branch editor and editors see approval queue',()=>{
  assert.match(ui,/onChanged\(\)/);
  assert.match(admin,/key:'branchChanges'/);
  assert.match(admin,/admin\/review-place-change/);
- assert.match(api,/branchChanges:branchChanges.rows/);
+ assert.match(api,/branchChanges:canAdmin\(user,'business'\)\?branchChanges.rows/);
 });
 test('real database flow defends against outsider changes, pending leakage and rejected edits',()=>{
  assert.match(e2e,/Unrelated person could edit a business venue/);
@@ -42,3 +42,4 @@ test('real database flow defends against outsider changes, pending leakage and r
  assert.match(e2e,/stale verified status remains/);
  assert.match(e2e,/Rejected change overwrote public details/);
 });
+

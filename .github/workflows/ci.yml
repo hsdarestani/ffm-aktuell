@@ -29,6 +29,8 @@ jobs:
           node-version: 22
       - name: Install
         run: npm install --no-audit --no-fund
+      - name: Validate operational scripts
+        run: bash scripts/validate-operations.sh
       - name: Tests
         run: npm test
       - name: TypeScript
@@ -37,11 +39,48 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: "1"
         run: npm run build
+      - name: Install Chromium for map recovery checks
+        run: npx playwright install --with-deps chromium
+      - name: Admin workspace desktop and mobile browser checks
+        run: node scripts/admin-workspace-browser.mjs
+      - name: Admin workspace screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-workspace-browser
+          path: artifacts/admin-workspace
+          if-no-files-found: ignore
+      - name: Public site design and business workspace browser checks
+        env:
+          SITE_DESIGN_VERIFY: "1"
+        run: node scripts/site-design-browser.mjs
+      - name: Public site design screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-design-browser
+          path: artifacts/site-design
+          if-no-files-found: ignore
+      - name: Mobile map startup and stalled-network recovery
+        run: npm run test:map-browser
+      - name: Map recovery screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: map-startup-browser
+          path: artifacts/map-startup
+          if-no-files-found: ignore
       - name: Admin activation end-to-end on temporary PostgreSQL
         env:
           ACTIVATION_CI_DATABASE_URL: postgres://ffm:ci-only@127.0.0.1:5432/ffm_activation_ci
         run: node scripts/ci-admin-activation-e2e.mjs
+      - name: Rehearse isolated PostgreSQL backup and restore
+        env:
+          ACTIVATION_CI_DATABASE_URL: postgres://ffm:ci-only@127.0.0.1:5432/ffm_activation_ci
+          FFM_CI_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: node scripts/ci-backup-restore.mjs
       - name: Validate compose
         run: |
           printf 'POSTGRES_PASSWORD=ci-only\nSESSION_SECRET=ci-only-long-session-key\n' > .env
           docker compose config -q
+

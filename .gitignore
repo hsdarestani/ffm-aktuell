@@ -5,3 +5,8 @@ node_modules
 !.env.example
 *.tsbuildinfo
 .DS_Store
+
+service-config.json
+
+artifacts/
+__pycache__/

@@ -1,5 +1,7 @@
 # FFM Aktuell — milestone plan from the 17 October 2026 IT Briefing
 
+The dated phases below retain milestone history. Later sections supersede earlier open-item statements. The current backlog is maintained in [technical handover](TECHNICAL_HANDOVER.md).
+
 This is an implementation ledger, **not** a claim of complete product delivery. The brief's 7-page specification requires native clients, media rights, subscriptions and other services not present in the initial vertical slice. Track all milestones separately; never mislabel unverified OSM locations as operating.
 
 ## Phase 1: Location actions (this PR)
@@ -101,3 +103,94 @@ Global point earning/rewards, in-app restaurant bookings, direct ticket checkout
 
 ## Decisions the team must obtain
 Name/trademark, prices & trial rules, billing/tax/PSP, operator verification, verified-visit methods, license/consent terms for photos/OSM, moderation policy and appeal process, default language, public privacy and release signoff.
+
+## Phase 3c: Admin-managed taxonomy, real multi-category assignment (2026-10-19)
+- A new `catalog_categories` table provides German and English labels, optional one-level parent category, active state and audit records.
+- Existing standard categories are seeded but never silently overwritten during schema reruns.
+- A real `place_categories` relationship gives each published place up to eight categories while preserving its canonical category.
+- `GET /api/places` and `GET /api/location` expose the assigned tags; publication filters match secondary categories.
+- Admin `Kategorien` screen manages labels, subcategories, activation and multi-tag assignment; all writes require an admin session.
+- Public discovery combines the installed static catalog and dynamic active categories, and falls back cleanly if the API is unavailable.
+- **Open:** OSM data importer still emits source-native primary tags and does not infer custom editorial subcategories, public result comparisons and multi-filter UI not yet complete.
+
+## Phase 4c: Non-publishing advertisement proposals and editorial approvals (2026-10-19)
+- Approved business owners can create structured ad proposal drafts for search, homepage, feed, Stories, events, districts or categories, selecting a real owned published branch and requested dates.
+- Submission is explicit and rate-limited; only the business owner sees their records.
+- Admin reviews proposals, with reasons on rejection and audit records.
+- Approval advances to `awaiting_commercial_setup`, **never** `live`, billable or public. No arbitrary tariffs, discount prices, or fake payments.
+- Actual ad placement, approved price lists, SEPA/cards, subscription entitlements, impressions/click data, invoicing and customer-facing publication remain pending the documented commercial decisions.
+- End-to-end tests exercise the real disposable PostgreSQL database, read/write permission gates, approval transition, no-checkout contract and cancellation.
+
+## Cross-cutting release gate
+- All current draft-PR code requires merge, DB migration, safe publication and real mobile/browser acceptance. CI passing is not proof of STRATO production readiness.
+- OAuth client keys, ClamAV scanner and owner/copyright policies remain external prerequisites; Apple/Google app store clients are not included.
+
+## Phase 4d: Verifiable company staffing and restricted delegated edit (2026-10-19)
+- `business_team_members` and hashed seven-day `business_team_invites`, scoped by business. Unverified email/password accounts cannot redeem a third-party invite. Sign-in with Google/Apple marks email verified only when cryptographically validated; optional transactional email verification is otherwise needed.
+- Business owner may invite, revoke, promote/demote and remove staff, but only when the business is approved, staff seats were explicitly allocated by admin, and an independent trusted sender can deliver the invitation. Default capacity is zero.
+- Admin seat changes require recorded reason and explicit terms approval; cannot reduce below existing active + unexpired reserved seats. Staff viewers can read company listings and aggregated metrics, staff editors can submit scoped venue corrections, never self-approve or publish.
+- **Open:** full commercial staff entitlements/tariff integration, multiple independent team owners/admin organizational roles, proof of registration/ownership documents, and a configured live email sender.
+
+## Phase 4e: Honest merchant analytics (2026-10-19)
+- Real Postgres aggregations for published places, active deal records, last-30-day coupon claims/redemptions, moderated posts and ad proposals. No per-user identities in analytics, follower count withheld under five.
+- There are **no fabricated impression, click, revenue or verified-visit counts**. Actual ad delivery is not active.
+
+## Phase 4f: Premium tariff configuration without subscription activation (2026-10-19)
+- Draft, bilingual, auditable pricing/feature catalogue for personal and two business Premium plans. No real price values are seeded or approved. The user's brief identifies seven-day personal trial but full terms remain subject to approval.
+- Admin can store proposed pricing/features and explicitly sign off a price for *display* only, with approval note and HTTPS terms link; withdraw immediately. Every change logs an audit record. Checkout stays disabled.
+- **Open:** app-store-approved user IAP, card and SEPA PSP onboarding, entitlement checks, subscription ledgers, tax/legal invoicing, cancellation, refunds, failed payment handling, receipt verification and real trials.
+
+## Phase 5a: Account data rights and safe deletion (2026-10-19)
+- User JSON export now covers staff and email status, social providers, uploads, Stories, rights grants and coupons, in addition to original preferences, posts, tours and bookmarks, without exporting secret token hashes.
+- Social-only accounts created with random internal passwords can request self-deletion with exact confirmation after a fresh OAuth session; stale sessions cannot delete. Admin and verified-business transfer gates remain. 
+- **Open:** comprehensive DSA/GDPR review, immutable legal retention, object/DB backup erasure procedures and real OAuth account deletion device tests.
+
+
+## 21 October 2026 increment
+
+Default 3D landing, bounded startup/recovery, complete editorial pagination and distance sorting, cancellation-safe load-more, private saved-event list and organizer-end-aware RFC 5545 export are implemented. See [increment and validation](INCREMENT_20261021.md). This does not complete media/OAuth/push/payment/native operational requirements.
+
+## 21 October 2026 service activation increment
+
+Web Push device opt-in/removal, bookmarked event reminders, new editorial news, a bounded retry/deduplication ledger and an isolated scheduler are implemented. VAPID credentials are generated privately at first deployment. OpenAI configuration now reaches the production container. Optional Google/Apple/OpenAI/scanner credentials can be applied through one allowlisted deployment secret without editing source code. See [activation and remaining prerequisites](SERVICE_ACTIVATION.md). Offer/business/tip push, payment entitlements, native clients and product/legal decisions are still incomplete.
+
+## 21 October 2026 source-backed discovery filters
+
+Combined indoor/outdoor, family-friendly, wheelchair accessibility, relative price level and minimum published-review rating filters are implemented. Editors manage each fact with an HTTPS source, a recent check date, a statement and a before/after history. Facts older than 30 days leave public filtering automatically. Unknown facts never match affirmative filters; raw OSM records are omitted while unsupported factual filters are active. Place details show the current source and check date. No facts were fabricated or seeded. Live opening status, occasion/weather interpretation and verified inventory remain incomplete.
+
+## 21 October 2026 operator handover
+
+Admin service readiness reports only configuration/reachability and actual inventory; no secrets are returned. [Technical handover](TECHNICAL_HANDOVER.md) records architecture, sitemap, domain and role boundaries, actual workflow acceptance, provider prerequisites, operational limitations and a remaining backlog. The generated [API inventory](API_INVENTORY.md) lists 114 literal handlers; full request/response OpenAPI coverage and granular admin roles remain open.
+
+## 21 October 2026 delegated roles and commercial lifecycle
+
+Department permissions and branch-scoped business staff are implemented in both APIs and navigation, with audited editable roles and immediate revocation. Real PostgreSQL HTTP CI passed for 05e14b0395bf81b5dc601c406a7063bc1d2422bb. Hosted web subscriptions, signed provider synchronization, immutable tariff snapshots, cancellation/portal changes, invoices, credits/refunds, expiry and paid analytics/staff/branch checks are now implemented. Editable initial price and capacity defaults are drafts until real contract release. See [decisions, tests and limits](COMMERCIAL_AND_ACCESS_20261021.md). Live provider acceptance, paid ad delivery, loyalty, remaining notification categories, phone authentication and the remaining assistant features are still open.
+
+## Remaining web notification categories
+
+Offers, new moderated contributions at followed businesses and source-backed editorial city tips now have separate opt-ins and delivery-time eligibility checks. Publication timestamps are recorded on actual status transitions; migration does not manufacture notifications for old content. Unfollowing, unpublishing, expired offers, withdrawn tips and stale venue verification cancel pending deliveries. Tip scheduling/archiving is available to the editorial role and public tips resolve to real verified venue records. A malformed billing status response no longer crashes the surrounding private profile. Browser/HTTP CI must pass on the combined increment before deployment.
+
+## Merchant-confirmed visits and loyalty
+
+One-time private confirmation codes, merchant/branch authorization, interval/rate limits, immutable per-card reward/rule snapshots, marketing approval, one-time reward redemption, subsequent cycles, private profile wallet/export and merchant-confirmed review badges are implemented. Defaults and editable decisions are documented in [loyalty decisions](LOYALTY_DECISIONS_20261021.md). The evidence is specifically business confirmation, not GPS or purchase proof. Real rewards/conditions and live operator acceptance remain external prerequisites.
+
+## Combined acceptance, 21 October 2026
+
+All 176 tests, TypeScript, production build, Chromium regressions, actual PostgreSQL HTTP acceptance and Compose validation passed for `6f81be9f49a2cd84f13a95693570631cd36bed3c` in [CI 39638646930](https://github.com/hsdarestani/ffm-aktuell/actions/runs/39638646930). Department roles, scoped staff, hosted subscription lifecycle, remaining web notification categories and merchant-confirmed loyalty now supersede their earlier pending milestones. Paid ad delivery, phone authentication, extended assistant/translation, live provider acceptance and operational/legal work remain open. Native clients and email remain excluded.
+
+## Remaining named web modules implemented
+
+Paid ad booking/delivery/receipt measurement, linked phone authentication, contextual date/occasion/relative venue budget and exact event entry budget, weather integration, opt-in AI ranking and public-post translation are implemented. See [decisions, defaults and acceptance boundaries](WEB_COMPLETION_20261021.md). Historical statements that these modules have not been developed are superseded. External service acceptance, scanner capacity, authentic inventory and legal/operational signoff remain separate.
+
+## 22 October: entitlement and moderation completion
+
+Personal exclusive offers are checked at claim, wallet and redemption. Business offers, branch-attributed stories and licensed highlights now enforce current business subscription capabilities at submission, editorial approval and public/direct-media delivery. Review authors can inspect/edit/delete their own review and sort public results. Businesses can submit independently moderated responses tied to the actual review text/rating. Moderation can suspend/restore accounts and recover hidden posts/reviews/comments/deals/places to their review queues, with atomic audit records and session/notification revocation. Advertising includes new openings and 1/7/30 day presets. Local trends use only actual consented, recent activity with a distinct-account disclosure threshold. See the detailed decisions and tests in [web completion](WEB_COMPLETION_20261021.md). These changes do not certify full bilingual, independent accessibility/legal or live provider acceptance.
+
+
+## 22 October: bilingual interface, keyboard access and API handover
+
+Shared explicit German/English UI translations now apply to public discovery, details, account controls, merchant workspaces and administration, with persisted language, document language and locale-aware date/currency presentation. API error/notice literals have explicit English translations. Names, posts, reviews, evidence, contractual wording and other supplied content retain the source language; public post translation remains a separate consent-based provider action. The catalogue test prevents uncovered explicit UI literals and API messages.
+
+Keyboard support includes a skip link, visible focus, named navigation controls, modal initial focus/Tab containment/Escape/opener restoration, inert background, reduced motion and forced-colour support. Real Chromium runs automated axe checks on German and English home, discovery, account and authentication screens plus keyboard and localization regressions. Automated checks do not certify every assistive technology or constitute independent accessibility acceptance.
+
+The generated OpenAPI and operation handbook cover all 149 current HTTP operations, including OAuth callbacks, binary/range media, multipart uploads, signed webhooks and action-based request structures. `/api-docs` and `/api/openapi` publish the same contracts. The original dated ledger entries above remain historical; [current roadmap](ROADMAP.md) supersedes their implementation backlog. External accounts, scanner capacity, factual inventory, licensed media, legal/commercial approval and real-device/provider acceptance remain external inputs. Native apps and email remain excluded.

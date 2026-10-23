@@ -1,7 +1,8 @@
+import {readUiSource} from './ui-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const file=path=>readFileSync(path,'utf8');
+const file=path=>readUiSource(path);
 const api=file('app/api/[[...path]]/route.ts'),page=file('app/page.tsx');
 const css=file('app/saved-places.css'),layout=file('app/layout.tsx');
 test('private saved locations endpoint joins OSM and published venues only for logged in user',()=>{
@@ -31,3 +32,4 @@ test('responsive saved list has proper page CSS',()=>{
  assert.match(css,/@media\(max-width:540px\)/);
  assert.match(css,/ffm-saved-item/);
 });
+

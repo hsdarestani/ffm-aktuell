@@ -1,7 +1,8 @@
+import {readUiSource} from './ui-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const read=p=>readFileSync(p,'utf8');
+const read=p=>readUiSource(p);
 const home=read('components/AtlasHome.tsx'),page=read('app/page.tsx'),css=read('app/quick-home.css'),find=read('app/find-fast.css'),layout=read('app/layout.tsx');
 test('a visitor can begin with one search or exactly six immediate activity choices',()=>{
  assert.match(home,/Was hast du/);
@@ -37,7 +38,7 @@ test('real search is first, preview cards are folded, advanced categories are no
  assert.doesNotMatch(page,/const nav:[^;]*\['community',Users,t.community\]/);
 });
 test('full category catalog, official pharmacy duty search and 3D map remain accessible',()=>{
- assert.match(page,/categories.filter\(cat=>/);
+ assert.match(page,/categoryIds.filter\(cat=>/);
  assert.match(page,/Apotheken Notdienst/);
  assert.match(page,/aponet.de\/notdienstsuche/);
  assert.match(page,/Atlas3D places=\{places\}/);
@@ -53,3 +54,4 @@ test('responsive mobile experience limits distraction and retains keyboard inter
  assert.match(layout,/quick-home\.css/);
  assert.match(layout,/find-fast\.css/);
 });
+

@@ -1,7 +1,8 @@
+import {readUiSource} from './ui-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const read=p=>readFileSync(p,'utf8');
+const read=p=>readUiSource(p);
 const schema=read('db/schema.sql'),api=read('app/api/[[...path]]/route.ts'),
  page=read('app/page.tsx'),ui=read('components/TourPlanner.tsx'),
  css=read('app/tour-planner.css'),ci=read('scripts/ci-admin-activation-e2e.mjs');
@@ -47,7 +48,8 @@ test('compact UI handles route, reorder, accessible controls and share link open
  assert.match(ui,/new URLSearchParams/);
  assert.match(ui,/www.google.com\/maps\/dir/);
  assert.match(ui,/Ungeprüft/);
- assert.match(page,/page==='tours'&&<TourPlanner/);
+ assert.match(page,/page==='tours'&&<>/);
+ assert.match(page,/<TourPlanner loggedIn=/);
  assert.match(page,/new URLSearchParams\(window.location.search\).has\('tour'\)/);
  assert.match(page,/Tour planen/);
  assert.match(css,/@media\(max-width:500px\)/);
@@ -56,3 +58,4 @@ test('PostgreSQL e2e checks route privacy, share and revoke',()=>{
  for(const fragment of ["Guest could list private tours","Other account read a private tour","Shared tour leaked private details","Revoked tour still publicly accessible","Ordered stops did not update"])
   assert.ok(ci.includes(fragment),fragment);
 });
+

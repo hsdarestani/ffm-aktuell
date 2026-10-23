@@ -1,0 +1,5 @@
+.ffm-tariffs{padding:16px 0}.ffm-tariffs>p{color:#677c6c;font-size:13px}.ffm-tariffs-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:15px;margin-top:18px}
+.ffm-tariffs article{background:white;border:1px solid #dce6de;border-radius:15px;padding:17px;display:grid;gap:10px}.ffm-tariffs h2{font-size:21px;margin:0}
+.ffm-tariffs form{display:grid;gap:10px}.ffm-tariffs label{display:grid;gap:5px;font-size:12px;color:#3c5e46}.ffm-tariffs input,.ffm-tariffs textarea{border:1px solid #d0ddd1;border-radius:8px;background:white;padding:10px;min-width:0;color:#1e4430}
+.ffm-tariffs fieldset{display:flex;flex-wrap:wrap;gap:9px;border:1px solid #e0e9e0;border-radius:9px}.ffm-tariffs fieldset label{display:flex;align-items:center;gap:6px}
+.ffm-tariffs input[type=checkbox]{width:auto}.ffm-tariffs button{border:0;background:#245540;color:white;padding:10px;border-radius:9px}

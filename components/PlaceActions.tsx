@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/lib/ui-locale';
 
 import {useState,type FormEvent} from 'react';
 import {Navigation,Bookmark,BookmarkCheck,Share2,Phone,Globe,Flag,SquarePen,ExternalLink,ChevronDown} from 'lucide-react';
@@ -21,6 +22,7 @@ const safeHttp=(value:string|null|undefined)=>{
 };
 
 export default function PlaceActions({venue,saved,loggedIn,onSave,onLogin,onReport,onPost,onNotice}:Props){
+ const ui=useUiText();
  const [busy,setBusy]=useState(false);
  const [reportOpen,setReportOpen]=useState(false);
  const [postOpen,setPostOpen]=useState(false);
@@ -30,18 +32,18 @@ export default function PlaceActions({venue,saved,loggedIn,onSave,onLogin,onRepo
  const share=async()=>{
   if(venue.demo)return;
   const url=locationShareUrl(venue.id,window.location.origin);
-  if(!url){onNotice('Für diesen Musterort ist noch kein Link verfügbar.');return;}
+  if(!url){onNotice(ui("Für diesen Musterort ist noch kein Link verfügbar."));return;}
   try{
    if(navigator.share){
     await navigator.share({title:venue.name,url});return;
    }
    if(navigator.clipboard&&window.isSecureContext){
-    await navigator.clipboard.writeText(url);onNotice('Link kopiert.');return;
+    await navigator.clipboard.writeText(url);onNotice(ui("Link kopiert."));return;
    }
-   window.prompt('Link zum Ort kopieren',url);
+   window.prompt(ui("Link zum Ort kopieren"),url);
   }catch(e){
    if((e as DOMException).name==='AbortError')return;
-   window.prompt('Link zum Ort kopieren',url);
+   window.prompt(ui("Link zum Ort kopieren"),url);
   }
  };
  const submitReport=async(e:FormEvent<HTMLFormElement>)=>{
@@ -59,47 +61,48 @@ export default function PlaceActions({venue,saved,loggedIn,onSave,onLogin,onRepo
   const form=e.currentTarget;
   if(!loggedIn){onLogin();return;}
   const body=String(new FormData(form).get('body')||'').trim();
-  if(body.length<3){onNotice('Bitte beschreibe deinen Tipp etwas genauer.');return;}
+  if(body.length<3){onNotice(ui("Bitte beschreibe deinen Tipp etwas genauer."));return;}
   setBusy(true);
   try{if(await onPost(body)){setPostOpen(false);form.reset();}}
   finally{setBusy(false)}
  };
- const save=()=>{if(venue.demo){onNotice('Musterorte können nicht gespeichert werden.');return;}if(!loggedIn){onLogin();return;}void onSave();};
- return <section className="ffm-place-actions" aria-label="Aktionen zu diesem Ort">
+ const save=()=>{if(venue.demo){onNotice(ui("Musterorte können nicht gespeichert werden."));return;}if(!loggedIn){onLogin();return;}void onSave();};
+ return <section className="ffm-place-actions" aria-label={ui("Aktionen zu diesem Ort")}>
   <div className="ffm-place-action-core">
-   {route?<a className="ffm-place-action ffm-place-action-route" href={route} target="_blank" rel="noopener noreferrer"><Navigation size={20}/><span>Route</span></a>:
-    <span className="ffm-place-action disabled" title="Keine überprüfbare Adresse"><Navigation size={20}/><span>Route</span></span>}
+   {route?<a className="ffm-place-action ffm-place-action-route" href={route} target="_blank" rel="noopener noreferrer"><Navigation size={20}/><span>{ui("Route")}</span></a>:
+    <span className="ffm-place-action disabled" title={ui("Keine überprüfbare Adresse")}><Navigation size={20}/><span>{ui("Route")}</span></span>}
    <button type="button" className="ffm-place-action" onClick={save} disabled={Boolean(venue.demo)}>
-    {saved?<BookmarkCheck size={20}/>:<Bookmark size={20}/>}<span>{saved?'Gemerkt':'Merken'}</span>
+    {saved?<BookmarkCheck size={20}/>:<Bookmark size={20}/>}<span>{saved?ui("Gemerkt"):ui("Merken")}</span>
    </button>
-   <button type="button" className="ffm-place-action" onClick={()=>void share()} disabled={Boolean(venue.demo)}><Share2 size={20}/><span>Teilen</span></button>
+   <button type="button" className="ffm-place-action" onClick={()=>void share()} disabled={Boolean(venue.demo)}><Share2 size={20}/><span>{ui("Teilen")}</span></button>
   </div>
   {(phone||website)&&<div className="ffm-place-action-links">
-   {phone&&<a href={phone}><Phone size={16}/> Anrufen</a>}
-   {website&&<a href={website} target="_blank" rel="noopener noreferrer"><Globe size={16}/> Website <ExternalLink size={12}/></a>}
+   {phone&&<a href={phone}><Phone size={16}/> {ui(" Anrufen")}</a>}
+   {website&&<a href={website} target="_blank" rel="noopener noreferrer"><Globe size={16}/> {ui(" Website ")}<ExternalLink size={12}/></a>}
   </div>}
   {!venue.demo&&<details className="ffm-place-action-more">
-   <summary>Mehr zum Ort <ChevronDown size={16}/></summary>
+   <summary>{ui("Mehr zum Ort ")}<ChevronDown size={16}/></summary>
    <div className="ffm-place-action-more-buttons">
-    <button type="button" aria-expanded={postOpen} onClick={()=>{setPostOpen(v=>!v);setReportOpen(false)}}><SquarePen size={16}/> Tipp schreiben</button>
-    <button type="button" aria-expanded={reportOpen} onClick={()=>{setReportOpen(v=>!v);setPostOpen(false)}}><Flag size={16}/> Fehler melden</button>
+    <button type="button" aria-expanded={postOpen} onClick={()=>{setPostOpen(v=>!v);setReportOpen(false)}}><SquarePen size={16}/> {ui(" Tipp schreiben")}</button>
+    <button type="button" aria-expanded={reportOpen} onClick={()=>{setReportOpen(v=>!v);setPostOpen(false)}}><Flag size={16}/> {ui(" Fehler melden")}</button>
    </div>
    {postOpen&&<form className="ffm-place-action-form" onSubmit={submitPost}>
-    <label>Dein Tipp für andere<textarea name="body" minLength={3} maxLength={1000} rows={3} placeholder="Was sollten Besucher wissen?" required/></label>
-    <p>Dein Beitrag wird vor der Veröffentlichung geprüft.</p>
-    <button type="submit" disabled={busy}>{loggedIn?'Tipp einreichen':'Zum Anmelden'}</button>
+    <label>{ui("Dein Tipp für andere")}<textarea name="body" minLength={3} maxLength={1000} rows={3} placeholder={ui("Was sollten Besucher wissen?")} required/></label>
+    <p>{ui("Dein Beitrag wird vor der Veröffentlichung geprüft.")}</p>
+    <button type="submit" disabled={busy}>{loggedIn?ui("Tipp einreichen"):ui("Zum Anmelden")}</button>
    </form>}
    {reportOpen&&<form className="ffm-place-action-form" onSubmit={submitReport}>
-    <label>Was stimmt nicht?<select name="reason" defaultValue="details">
-     <option value="details">Informationen stimmen nicht</option>
-     <option value="closed">Ort möglicherweise geschlossen</option>
-     <option value="address">Adresse oder Standort falsch</option>
-     <option value="other">Anderes Problem</option>
+    <label>{ui("Was stimmt nicht?")}<select name="reason" defaultValue="details">
+     <option value="details">{ui("Informationen stimmen nicht")}</option>
+     <option value="closed">{ui("Ort möglicherweise geschlossen")}</option>
+     <option value="address">{ui("Adresse oder Standort falsch")}</option>
+     <option value="other">{ui("Anderes Problem")}</option>
     </select></label>
-    <label>Kurze Beschreibung<textarea name="message" rows={3} minLength={12} maxLength={750} placeholder="Was sollte überprüft werden?" required/></label>
-    <p>Die Redaktion prüft die Meldung. Der Ort wird nicht automatisch gesperrt.</p>
-    <button type="submit" disabled={busy}>{loggedIn?'Meldung senden':'Zum Anmelden'}</button>
+    <label>{ui("Kurze Beschreibung")}<textarea name="message" rows={3} minLength={12} maxLength={750} placeholder={ui("Was sollte überprüft werden?")} required/></label>
+    <p>{ui("Die Redaktion prüft die Meldung. Der Ort wird nicht automatisch gesperrt.")}</p>
+    <button type="submit" disabled={busy}>{loggedIn?ui("Meldung senden"):ui("Zum Anmelden")}</button>
    </form>}
   </details>}
  </section>;
 }
+

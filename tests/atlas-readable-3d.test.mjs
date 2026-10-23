@@ -1,7 +1,8 @@
+import {readUiSource} from './ui-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const read=p=>readFileSync(p,'utf8');
+const read=p=>readUiSource(p);
 const atlas=read('components/Atlas3D.tsx'),css=read('app/atlas-readable.css'),layout=read('app/layout.tsx');
 test('3D stays enabled by default, with a more legible city perspective',()=>{
  assert.match(atlas,/\[is3D,set3D\]=useState\(true\)/);
@@ -35,7 +36,7 @@ test('map controls and selected place do not cover the phone screen',()=>{
 });
 test('source transparency and non-verified operations remain truthful',()=>{
  assert.match(atlas,/selectedIsOSM\?'Ungeprüft'/);
- assert.match(atlas,/\{'Details'\}/);
+ assert.match(atlas,/>Details</);
  assert.match(atlas,/selectedIsOSM\?'Ungeprüft'/);
  assert.match(atlas,/HLBG|Hessische/);
  assert.match(atlas,/addCandidatePins\(map\)/);
@@ -55,3 +56,4 @@ test('street detail stays visible and selected venues show useful address',()=>{
  assert.match(atlas,/center:CENTER,zoom:14\.35,pitch:CITY_PITCH/);
  assert.match(atlas,/selectedPlace\.address&&<small/);
 });
+

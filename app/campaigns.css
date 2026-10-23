@@ -1,0 +1,24 @@
+.ffm-campaign-panel,.ffm-campaign-studio{color:#263b2d}
+.ffm-campaign-panel{margin:24px 0;padding:22px;border:1px solid #dedfd9;background:#fafcf7;border-radius:18px}
+.ffm-campaign-panel header{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
+.ffm-campaign-panel h2{font-size:22px;margin:0 0 5px}
+.ffm-campaign-panel p,.ffm-campaign-studio p{font-size:14px;color:#667367;line-height:1.5}
+.ffm-campaign-panel button,.ffm-campaign-studio button{padding:10px 14px;border:0;border-radius:10px;background:#1c4b36;color:#fff;cursor:pointer}
+.ffm-campaign-panel button.secondary{background:transparent;color:#315342;border:1px solid #c9d7cb}
+.ffm-campaign-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}
+.ffm-campaign-form label,.ffm-campaign-review-actions label{font-size:13px;display:grid;gap:6px}
+.ffm-campaign-form input,.ffm-campaign-form select,.ffm-campaign-form textarea,.ffm-campaign-review-actions textarea{width:100%;min-width:0;background:#fff;border:1px solid #ccd9cd;padding:10px;border-radius:9px}
+.ffm-campaign-form label:has(textarea),.ffm-campaign-note{grid-column:1/-1}
+.ffm-campaign-note{background:#f5f3e9;border:1px solid #e6debf;padding:12px;border-radius:10px;color:#685a33!important;font-size:13px}
+.ffm-campaign-list{display:grid;gap:10px;margin-top:20px}
+.ffm-campaign-list article{display:flex;flex-wrap:wrap;align-items:center;gap:12px;border-top:1px solid #dee6dc;padding-top:12px}
+.ffm-campaign-list article>div{flex:1;display:grid;gap:5px;min-width:160px}
+.ffm-campaign-list article small{color:#617367}
+.ffm-campaign-list article span{font-size:12px;color:#855e31}
+.ffm-campaign-review{display:grid;gap:15px;margin-top:18px}
+.ffm-campaign-review article{background:#fff;border:1px solid #dfebdf;border-radius:15px;padding:20px;display:flex;gap:20px;justify-content:space-between;flex-wrap:wrap}
+.ffm-campaign-meta{flex:2;min-width:200px;display:grid;gap:8px}
+.ffm-campaign-meta small{color:#637468}
+.ffm-campaign-review-actions{flex:1;display:grid;gap:10px;min-width:200px}
+.ffm-campaign-review-actions button.danger{background:#8b4040}
+@media(max-width:750px){.ffm-campaign-form{grid-template-columns:1fr}.ffm-campaign-panel{padding:16px}.ffm-campaign-review article{padding:14px}}

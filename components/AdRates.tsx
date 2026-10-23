@@ -1,0 +1,11 @@
+'use client';
+import {useUiText} from '@/lib/ui-locale';
+import {adLabels} from '@/lib/ad-labels';
+import {useEffect,useState,type FormEvent} from 'react';
+type Rate={placement:string;daily_cents:number;terms_url:string|null;approved:boolean};
+export default function AdRates(){
+ const ui=useUiText();const [items,setItems]=useState<Rate[]>([]),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
+ function reload(){fetch('/api/ad-rates',{cache:'no-store'}).then(r=>r.json()).then(d=>setItems(d.items||[])).catch(()=>setMessage(ui("Werbetarife nicht verfügbar")))}useEffect(reload,[]);
+ async function save(e:FormEvent<HTMLFormElement>,placement:string){e.preventDefault();const d=Object.fromEntries(new FormData(e.currentTarget));setBusy(true);try{const r=await fetch('/api/ad-rates',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({placement,daily_cents:Math.round(Number(d.euros)*100),terms_url:d.terms_url,reason:d.reason,approved:d.approved==='on'})}),x=await r.json();if(!r.ok)throw Error(x.error);setMessage(ui("Werbetarif gespeichert. Bestehende Buchungen behalten ihre Bedingungen."));reload()}catch(e){setMessage(e instanceof Error?e.message:ui("Speichern fehlgeschlagen"))}finally{setBusy(false)}}
+ return <section className="ffm-catalog-studio"><h2>{ui("Werbetarife pro Tag")}</h2><p>{ui("Festpreis je Kalendertag in Frankfurt. Keine zugesagte Anzahl an Aufrufen. Entwürfe erst nach Prüfung der Vertragsbedingungen freigeben.")}</p><div className="ffm-context-grid">{items.map(r=><form key={r.placement+String(r.approved)+r.daily_cents} className="ffm-catalog-panel" onSubmit={e=>void save(e,r.placement)}><h3>{ui(adLabels[r.placement])}</h3><label>{ui("Euro pro Tag")}<input name="euros" type="number" min="0.01" max="10000" step="0.01" required defaultValue={(r.daily_cents/100).toFixed(2)}/></label><label>{ui("Vertragsbedingungen")}<input name="terms_url" type="url" required defaultValue={r.terms_url||''}/></label><label>{ui("Entscheidungsgrund")}<textarea name="reason" required minLength={20} maxLength={1000}/></label><label><input name="approved" type="checkbox" defaultChecked={r.approved}/> {ui(" Tarif verbindlich freigeben")}</label><button disabled={busy}>{ui("Speichern")}</button></form>)}</div>{message&&<p role="status">{ui(message)}</p>}</section>;
+}

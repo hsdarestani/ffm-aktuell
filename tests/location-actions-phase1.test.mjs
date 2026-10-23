@@ -1,7 +1,8 @@
+import {readUiSource} from './ui-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const read=(name)=>readFileSync(name,'utf8');
+const read=(name)=>readUiSource(name);
 const page=read('app/page.tsx'),api=read('app/api/[[...path]]/route.ts');
 const db=read('db/schema.sql'),ui=read('components/PlaceActions.tsx'),atlas=read('components/Atlas3D.tsx');
 const helpers=read('lib/location-actions.ts'),admin=read('components/AdminStudio.tsx');
@@ -60,7 +61,8 @@ test('bad-location reports enter admin queue, but never directly hide a business
 });
 test('tips attached to imported OSM venues are moderated',()=>{
  assert.match(db,/ALTER TABLE posts ADD COLUMN IF NOT EXISTS candidate_osm_id/);
- assert.match(api,/INSERT INTO posts\(user_id,place_id,candidate_osm_id,body,media_url\)/);
+ assert.match(api,/INSERT INTO posts\(user_id,place_id,candidate_osm_id,body,media_id\)/);
+ assert.match(api,/owner_id=\$2 AND status IN \('pending','approved'\)/);
  assert.match(api,/COALESCE\(pl.name,dc.name\) AS place_name/);
  assert.match(ui,/Dein Beitrag wird vor der Veröffentlichung geprüft/);
  assert.match(ui,/onPost\(body\)/);
@@ -74,3 +76,4 @@ test('actions are responsive, accessible and only reveal the advanced tools on d
  assert.match(ui,/disabled=\{Boolean\(venue.demo\)\}/);
  assert.match(layout,/place-actions\.css/);
 });
+

@@ -1,7 +1,9 @@
 'use client';
+import {useUiText} from '@/lib/ui-locale';
 import {useEffect,useRef} from 'react';
 export type MapPlace={id:string,name:string,latitude:number|null,longitude:number|null,category:string};
 export default function CityMap({places,onSelect}:{places:MapPlace[],onSelect:(id:string)=>void}){
+ const ui=useUiText();
  const el=useRef<HTMLDivElement>(null);
  useEffect(()=>{
    if(!el.current)return;
@@ -19,5 +21,6 @@ export default function CityMap({places,onSelect}:{places:MapPlace[],onSelect:(i
    }).catch(()=>{if(el.current)el.current.textContent='Map unavailable';});
    return ()=>{cancelled=true;dispose();};
  },[places,onSelect]);
- return <div className="city-map" ref={el} aria-label="Frankfurt map"/>;
+ return <div className="city-map" ref={el} aria-label={ui("Frankfurt map")}/>;
 }
+

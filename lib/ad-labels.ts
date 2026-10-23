@@ -1,0 +1,2 @@
+export const adLabels:Record<string,string>={search:'Suche',home:'Startseite',feed:'Beiträge',stories:'Geschichten',events:'Veranstaltungen',district:'Stadtteile',category:'Kategorien',new_openings:'Neueröffnungen'};
+export const adPaymentLabels:Record<string,string>={pending:'Zahlung offen',processing:'Bankzahlung wird verarbeitet',paid:'Bezahlt',expired:'Abgelaufen',refunded:'Erstattung, Ausspielung gesperrt',failed:'Zahlung fehlgeschlagen'};

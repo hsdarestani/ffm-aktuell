@@ -1,8 +1,9 @@
+import {readUiSource} from './ui-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const page=readFileSync('app/page.tsx','utf8');
-const css=readFileSync('app/find-fast.css','utf8');
+const page=readUiSource('app/page.tsx');
+const css=readUiSource('app/find-fast.css');
 const segment=page.slice(page.indexOf("{page==='discover'&&"),page.indexOf("{page==='map'&&"));
 test('visual discovery is one small heading, one search and category icons',()=>{
  assert.match(segment,/<h1>Entdecken<span>\.<\/span><\/h1>/);
@@ -27,7 +28,8 @@ test('unverified venues are represented by honest category drawings, not invente
  assert.match(segment,/ffm-find-place-visual/);
  assert.match(segment,/const Icon=p.category/);
  assert.doesNotMatch(segment,/<img[^>]*src=\{ortsbild\(p.name/);
- assert.doesNotMatch(segment,/rating|bewertet|jetzt geöffnet/);
+ const candidateCards=segment.slice(segment.indexOf('candidates.map(p=>{'));
+ assert.doesNotMatch(candidateCards,/p\.rating|bewertet|jetzt geöffnet/);
 });
 test('responsive cards visually prioritize names, not repetitive descriptions',()=>{
  assert.match(css,/\.ffm-find-visual \.ffm-find-list\{display:grid;grid-template-columns:repeat\(3/);
@@ -37,3 +39,4 @@ test('responsive cards visually prioritize names, not repetitive descriptions',(
  assert.match(css,/prefers-reduced-motion:reduce/);
  assert.match(segment,/<details className="ffm-find-more">/);
 });
+

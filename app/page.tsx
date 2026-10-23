@@ -1,29 +1,64 @@
 'use client';
-import {useState,useEffect,useMemo,useCallback,type FormEvent} from 'react';
+import ContentImage from '@/components/ContentImage';
+import {useUiText,useUiLocale} from '@/lib/ui-locale';
+import {useModalFocus} from '@/lib/use-modal-focus';
+import {OpeningStatus} from '@/components/OpeningHours';
+import SponsoredPlace from '@/components/SponsoredPlace';
+import PostTranslation from '@/components/PostTranslation';
+import PhoneAccess from '@/components/PhoneAccess';
+import {useState,useRef,useEffect,useMemo,useCallback,type FormEvent} from 'react';
 import dynamic from 'next/dynamic';
 import {Compass,MapPin,Map as MapIcon,Heart,CalendarDays,Users,UserRound,Search,Menu,X,Globe,Plus,Check,Building2,Newspaper,LockKeyhole,Coffee,UtensilsCrossed,Martini,Activity,Landmark,Pill,Info,ChevronRight,ShieldAlert} from 'lucide-react';
 import type {MapPlace} from '@/components/CityMap';
 import AtlasHome from '@/components/AtlasHome';
 import AdminStudio from '@/components/AdminStudio';
 import PlaceLocationMap from '@/components/PlaceLocationMap';
+import {canAdmin} from '@/lib/admin-permissions';
+import {BusinessLoyalty,VisitCode} from '@/components/Loyalty';
+import DiscoveryTips from '@/components/DiscoveryTips';
+import PlaceFacts from '@/components/PlaceFacts';
 import PlaceActions from '@/components/PlaceActions';
 import VenueReviews from '@/components/VenueReviews';
 import PostEngagement from '@/components/PostEngagement';
 import {DealActions,BusinessCouponRedeem} from '@/components/CouponPilot';
 import FollowButton from '@/components/FollowButton';
 import {validLocationId} from '@/lib/location-actions';
+import './assistant-discovery.css';
+import './community-media.css';
+import './highlights.css';
 import {KATEGORIEN,passendeRubrik,frischBestaetigt,statusLabel} from '@/lib/ortskategorien';
 import {VORSCHAU_HINWEIS,ortsbild,vorschauOrte,vorschauVeranstaltungen,vorschauBeitraege,vorschauPosts,vorschauAngebote,vorschauGruppen} from '@/lib/vorschau';
 const Atlas3D=dynamic(()=>import('@/components/Atlas3D'),{ssr:false});
 const TourPlanner=dynamic(()=>import('@/components/TourPlanner'),{ssr:false});
+const CuratedTours=dynamic(()=>import('@/components/CuratedTours'),{ssr:false});
+const SmartDiscover=dynamic(()=>import('@/components/SmartDiscover'),{ssr:false});
+const LocalTrends=dynamic(()=>import('@/components/LocalTrends'),{ssr:false});
+const ReviewReplies=dynamic(()=>import('@/components/ReviewReplies'),{ssr:false});
+const BusinessStories=dynamic(()=>import('@/components/BusinessStories'),{ssr:false});
+const CommunityMediaComposer=dynamic(()=>import('@/components/CommunityMediaComposer'),{ssr:false});
+const StoriesStrip=dynamic(()=>import('@/components/StoriesStrip'),{ssr:false});
+const MediaRightsPanel=dynamic(()=>import('@/components/MediaRightsPanel'),{ssr:false});
+const BusinessHighlights=dynamic(()=>import('@/components/BusinessHighlights'),{ssr:false});
+const BusinessHighlightsManager=dynamic(()=>import('@/components/BusinessHighlightsManager'),{ssr:false});
+const BusinessCampaigns=dynamic(()=>import('@/components/BusinessCampaigns'),{ssr:false});
+const BusinessTeam=dynamic(()=>import('@/components/BusinessTeam'),{ssr:false});
+const BusinessInsights=dynamic(()=>import('@/components/BusinessInsights'),{ssr:false});
+const PremiumTariffPreview=dynamic(()=>import('@/components/PremiumTariffPreview'),{ssr:false});
+const TeamMemberWorkspace=dynamic(()=>import('@/components/TeamMemberWorkspace'),{ssr:false});
+const VerifyEmailAndTeamInvite=dynamic(()=>import('@/components/VerifyEmailAndTeamInvite'),{ssr:false});
+import './campaigns.css';
+import './team-management.css';
+import './business-insights.css';
+import './venue-hours.css';
+import './premium-preview.css';
 const ProfileSettings=dynamic(()=>import('@/components/ProfileSettings'),{ssr:false});
 const EventActions=dynamic(()=>import('@/components/EventActions'),{ssr:false});
 const BusinessBranchEditor=dynamic(()=>import('@/components/BusinessBranchEditor'),{ssr:false});
-type Place=MapPlace & {district:string,address:string,description_de:string,description_en:string,website:string|null,source_url:string|null,image_url?:string|null,demo?:true,candidate?:boolean,osm_id?:string,phone?:string,verification_status?:'verified'|'unverified'|'disputed',activity_status?:'unknown'|'operating'|'temporarily_closed'|'permanently_closed',verified_at?:string|null,verification_source?:string|null,editorial_rank?:number|null,opening_hours_text?:string|null,business_id?:string|null,following_business?:boolean};
-type User={id:string,email:string,display_name:string,role:string};
-type Event={id:string,title:string,venue:string,starts_at:string,description_de:string,description_en:string,ticket_url:string|null,image_url?:string,demo?:true};
-type News={id:string,title:string,body_de:string,body_en:string,source_url:string|null,published_at:string,image_url?:string,demo?:true};
-type Post={id:string,body:string,created_at:string,display_name:string,place_name:string|null,image_url?:string,demo?:true,likes_count?:number,comments_count?:number,liked?:boolean,author_id?:string,following_author?:boolean,own_post?:boolean};
+type Place=MapPlace & {categories?:string[];district:string,address:string,description_de:string,description_en:string,website:string|null,source_url:string|null,image_url?:string|null,demo?:true,candidate?:boolean,osm_id?:string,phone?:string,verification_status?:'verified'|'unverified'|'disputed',activity_status?:'unknown'|'operating'|'temporarily_closed'|'permanently_closed',verified_at?:string|null,verification_source?:string|null,editorial_rank?:number|null,opening_hours_text?:string|null,business_id?:string|null,following_business?:boolean,distance_km?:number|null};
+type User={id:string,email:string,display_name:string,role:string,admin_permissions?:string[]};
+type Event={id:string,title:string,venue:string,starts_at:string,description_de:string,description_en:string,ticket_url:string|null,image_url?:string,demo?:true,organizer?:string,category?:string,price_cents?:number|null,price_source_url?:string|null,ends_at?:string|null};
+type News={id:string,title:string,body_de:string,body_en:string,source_url:string|null,published_at:string,image_url?:string,demo?:true,category?:string};
+type Post={id:string,body:string,created_at:string,display_name:string,place_name:string|null,image_url?:string,media_id?:string,media_type?:string,demo?:true,likes_count?:number,comments_count?:number,liked?:boolean,author_id?:string,following_author?:boolean,own_post?:boolean};
 type Deal={id:string,title:string,details:string,business_name:string,image_url?:string,demo?:true};
 type Page='home'|'discover'|'map'|'saved'|'tours'|'profile'|'events'|'community'|'business'|'admin';
 const categories=KATEGORIEN.map(x=>x.id);
@@ -36,23 +71,63 @@ function nutzerfehler(message:string){const msg=(message||'').toLowerCase();if(m
 async function api(path:string,body?:unknown){const r=await fetch('/api/'+path,{method:body===undefined?'GET':'POST',headers:body===undefined?undefined:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),credentials:'same-origin'});const d=await r.json();if(!r.ok)throw Error(nutzerfehler(d.error));return d;}
 const date=(s:string,l:string)=>new Date(s).toLocaleDateString(l==='de'?'de-DE':'en-GB',{day:'2-digit',month:'short',year:'numeric'});
 export default function Home(){
- const lang:'de'='de';const t=words.de;
- const [page,setPage]=useState<Page>('home'),[places,setPlaces]=useState<Place[]>([]),[events,setEvents]=useState<Event[]>([]),[news,setNews]=useState<News[]>([]),[posts,setPosts]=useState<Post[]>([]),[deals,setDeals]=useState<Deal[]>([]);
+ const ui=useUiText();
+ const {locale:lang,setLocale:setLang}=useUiLocale();const t=words[lang];
+ const [page,setPage]=useState<Page>('map'),[places,setPlaces]=useState<Place[]>([]),[events,setEvents]=useState<Event[]>([]),[news,setNews]=useState<News[]>([]),[posts,setPosts]=useState<Post[]>([]),[deals,setDeals]=useState<Deal[]>([]);
  const [user,setUser]=useState<User|null>(null),[favorites,setFavorites]=useState<string[]>([]),[savedPlaces,setSavedPlaces]=useState<Place[]>([]),[savedLoading,setSavedLoading]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [query,setQuery]=useState(''),[category,setCategory]=useState('Alle'),[district,setDistrict]=useState(''),[selected,setSelected]=useState<Place|null>(null),[nurGepruefte,setNurGepruefte]=useState(false);
+ const [openNow,setOpenNow]=useState(false);
+ const [factFilters,setFactFilters]=useState<string[]>([]),[priceMax,setPriceMax]=useState(0),[ratingMin,setRatingMin]=useState(0);
+ const [selectedCategories,setSelectedCategories]=useState<string[]>([]);
+ const [radiusKm,setRadiusKm]=useState<1|3|5|10>(3);
+ const [districtOptions,setDistrictOptions]=useState<string[]>([]);
+ const [discoverPlaces,setDiscoverPlaces]=useState<Place[]>([]),[discoverPlacesTotal,setDiscoverPlacesTotal]=useState(0);
+ const [discoverLoadError,setDiscoverLoadError]=useState(false);
+ const [moreLoading,setMoreLoading]=useState<'places'|'candidates'|null>(null);
+ const pageRequest=useRef<AbortController|null>(null);
+ const [candidateDistrictUnsupported,setCandidateDistrictUnsupported]=useState(false);
  const [followingOnly,setFollowingOnly]=useState(false);
+  const [comparePlaces,setComparePlaces]=useState<Place[]>([]);
+ const [nearby,setNearby]=useState<{lat:number;lon:number}|null>(null);
+ const [findingNearby,setFindingNearby]=useState(false);
+  const [managedCategories,setManagedCategories]=useState<{slug:string;label_de:string;label_en:string;parent_slug:string|null}[]>([]);
  const [eventFavorites,setEventFavorites]=useState<string[]>([]);
+ const [oauthReady,setOauthReady]=useState({google:false,apple:false});
  const [auth,setAuth]=useState(false),[register,setRegister]=useState(false),[menu,setMenu]=useState(false),[toast,setToast]=useState(''),[refresh,setRefresh]=useState(0);
+ const closeTopModal=useCallback(()=>{if(auth)setAuth(false);else setSelected(null)},[auth]);
+ useModalFocus(auth||Boolean(selected),closeTopModal);
  const [candidates,setCandidates]=useState<Place[]>([]),[candidateTotal,setCandidateTotal]=useState(0),[candidateLoading,setCandidateLoading]=useState(false);
+ const [businessView,setBusinessView]=useState('locations');
  const [business,setBusiness]=useState<any>(null),[businessDetail,setBusinessDetail]=useState<any>(null),[queue,setQueue]=useState<Record<string,any[]>|null>(null);
  const flash=(m:string)=>{setToast(m);window.setTimeout(()=>setToast(''),4500);};
  const load=useCallback(async()=>{
   setLoading(true);setError('');
-  try{const [p,e,n,m]=await Promise.all([api('places'),api('events'),api('news'),api('me')]);setPlaces(p.items);setEvents(e.items);setNews(n.items);setUser(m.user);if(m.user){void api('favorites').then(d=>setFavorites(d.items)).catch(()=>setFavorites([]))}else setFavorites([]);}catch(e){setError('Die Inhalte konnten nicht geladen werden. Bitte versuche es erneut.')}finally{setLoading(false)}
+  try{const [p,e,n,m]=await Promise.all([api('places'),api('events'),api('news'),api('me')]);setPlaces(p.items);setEvents(e.items);setNews(n.items);setUser(m.user);if(m.user){void api('favorites').then(d=>setFavorites(d.items)).catch(()=>setFavorites([]))}else setFavorites([]);}catch(e){setError(ui("Die Inhalte konnten nicht geladen werden. Bitte versuche es erneut."))}finally{setLoading(false)}
  },[refresh]);
  useEffect(()=>{void load()},[load]);
  useEffect(()=>{document.documentElement.lang=lang},[lang]);
- useEffect(()=>{if(new URLSearchParams(window.location.search).has('tour'))setPage('tours')},[]);
+  useEffect(()=>{let alive=true;fetch('/api/categories',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject()).then(d=>{if(alive)setManagedCategories(d.items||[])}).catch(()=>{});return()=>{alive=false}},[refresh]);
+ useEffect(()=>{if(!auth)return;let current=true;fetch('/api/auth/oauth/status',{cache:'no-store'}).then(r=>r.json()).then(d=>{if(current)setOauthReady({google:Boolean(d.google),apple:Boolean(d.apple)})}).catch(()=>{});return()=>{current=false}},[auth]);
+ useEffect(()=>{const problem=new URLSearchParams(window.location.search).get('login_error');
+  if(problem){flash(problem==='existing_account'?ui("Dieses E-Mail-Konto besteht bereits. Bitte zuerst mit E-Mail und Passwort anmelden."):ui("Social Login ist derzeit nicht verfügbar. Bitte E-Mail Anmeldung nutzen."));
+   const url=new URL(window.location.href);url.searchParams.delete('login_error');window.history.replaceState(null,'',url.pathname+url.search);}
+ },[]);
+ useEffect(()=>{const p=new URLSearchParams(window.location.search);if(p.has('team_invite')||p.has('verify_email'))setPage('profile');else if(p.has('offer'))setPage('events');else if(p.has('billing'))setPage('profile');else if(p.has('tour'))setPage('tours')},[]);
+ // Push links resolve public content directly, including records beyond the first page.
+ useEffect(()=>{
+  if(loading)return;
+  const params=new URLSearchParams(window.location.search);
+  const kind=params.has('event')?'event':params.has('news')?'news':null;
+  if(!kind)return;const id=params.get(kind)||'';
+  if(!/^[0-9a-f-]{36}$/i.test(id))return;
+  let live=true;setPage('events');
+  fetch('/api/content?'+new URLSearchParams({kind,id}),{cache:'no-store'})
+   .then(async r=>{if(!r.ok)throw Error(ui("unavailable"));return r.json()})
+   .then(d=>{if(!live)return;if(kind==='event')setEvents(v=>[d.item,...v.filter(x=>x.id!==id)]);else setNews(v=>[d.item,...v.filter(x=>x.id!==id)])})
+   .catch(()=>{if(live)flash(ui("Dieser Inhalt ist nicht mehr öffentlich verfügbar."))});
+  return()=>{live=false};
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[loading]);
  // Deep links resolve directly to the actual place record, even when that
  // raw OSM candidate isn't in the first search page. Never invent demo venues.
  useEffect(()=>{
@@ -60,35 +135,79 @@ export default function Home(){
   if(!validLocationId(placeId))return;
   let live=true;
   void fetch('/api/location?id='+encodeURIComponent(placeId),{cache:'no-store'})
-   .then(async r=>{if(!r.ok)throw Error('not found');return r.json()})
+   .then(async r=>{if(!r.ok)throw Error(ui("not found"));return r.json()})
    .then(data=>{if(live&&data.place)setSelected(data.place as Place)})
-   .catch(()=>{if(live)flash('Der geteilte Ort ist derzeit nicht verfügbar.')});
+   .catch(()=>{if(live)flash(ui("Der geteilte Ort ist derzeit nicht verfügbar."))});
   return()=>{live=false};
  // Landing deep link should only resolve on initial load.
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[]);
  
- useEffect(()=>{if(page!=='discover')return;let disposed=false;const controller=new AbortController();setCandidateLoading(true);setCandidates([]);setCandidateTotal(0);const timer=window.setTimeout(()=>{
-  const q=new URLSearchParams({limit:'18',offset:'0'});
-  if(category!=='Alle')q.set('category',category==='Apotheken Notdienst'?'Apotheken':category);
+ useEffect(()=>{if(page!=='discover')return;let alive=true;
+  fetch('/api/explore/districts',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject())
+   .then(d=>{if(alive)setDistrictOptions(Array.isArray(d.items)?d.items:[])}).catch(()=>{});
+  return()=>{alive=false};
+ },[page,refresh]);
+ const filterKey=JSON.stringify([page,selectedCategories,district,query,nurGepruefte,nearby,radiusKm,factFilters,priceMax,ratingMin,openNow,refresh]);
+ const latestFilter=useRef(filterKey);latestFilter.current=filterKey;
+ const exploreParams=(offset:number,placeOffset=0)=>{
+  const q=new URLSearchParams({offset:String(offset),place_offset:String(placeOffset),radius:String(radiusKm),verified:nurGepruefte?'1':'0'});
+  for(const cat of selectedCategories)q.append('category',cat);
   if(query.trim())q.set('q',query.trim());
-  fetch('/api/discovery?'+q,{signal:controller.signal,cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('Fehler');return r.json()})
-   .then(data=>{if(!disposed){setCandidates(data.items||[]);setCandidateTotal(data.total||0);}})
-   .catch(()=>{if(!disposed){setCandidates([]);setCandidateTotal(0);}})
-   .finally(()=>{if(!disposed)setCandidateLoading(false)});
-  },240);return()=>{disposed=true;window.clearTimeout(timer);controller.abort()};
- },[page,category,query,refresh]);
- const mehrLaden=async()=>{if(candidateLoading||candidates.length>=candidateTotal)return;
-  setCandidateLoading(true);try{const q=new URLSearchParams({limit:'18',offset:String(candidates.length)});
-   if(category!=='Alle')q.set('category',category==='Apotheken Notdienst'?'Apotheken':category);
-   if(query.trim())q.set('q',query.trim());
-   const r=await fetch('/api/discovery?'+q);if(!r.ok)throw Error('Fehler');const d=await r.json();
-   setCandidates(prev=>[...prev,...d.items.filter((p:Place)=>!prev.some(o=>o.id===p.id))]);
-  }catch{flash('Weitere Orte konnten nicht geladen werden.')}finally{setCandidateLoading(false)}
+  if(district)q.set('district',district);
+  for(const f of factFilters)q.append('feature',f);
+  if(openNow)q.set('open_now','1');
+  if(priceMax)q.set('price_max',String(priceMax));
+  if(ratingMin)q.set('rating_min',String(ratingMin));
+  if(nearby){q.set('lat',String(nearby.lat));q.set('lon',String(nearby.lon));}
+  return q;
+ };
+ const toggleDiscoveryCategory=(id:string)=>{
+  const next=id==='Alle'?[]:selectedCategories.includes(id)?
+   selectedCategories.filter(c=>c!==id):selectedCategories.length<6?[...selectedCategories,id]:selectedCategories;
+  if(id!=='Alle'&&!selectedCategories.includes(id)&&next===selectedCategories){
+   flash(ui("Bis zu sechs Kategorien gleichzeitig."));return;
+  }
+  setSelectedCategories(next);setCategory(next[0]||'Alle');
+ };
+ useEffect(()=>{
+  pageRequest.current?.abort();pageRequest.current=null;setMoreLoading(null);
+  if(page!=='discover')return;
+  let disposed=false;const controller=new AbortController();
+  setCandidateLoading(true);setDiscoverLoadError(false);setCandidates([]);setCandidateTotal(0);setDiscoverPlaces([]);setDiscoverPlacesTotal(0);
+  const timer=window.setTimeout(()=>{
+   fetch('/api/explore?'+exploreParams(0),{signal:controller.signal,cache:'no-store'})
+    .then(async r=>{if(!r.ok)throw Error(ui("Suche nicht erreichbar"));return r.json()})
+    .then(d=>{if(disposed)return;setCandidates(d.candidates||[]);setCandidateTotal(d.candidates_total||0);
+     setDiscoverPlaces(d.places||[]);setDiscoverPlacesTotal(d.places_total||0);
+     setCandidateDistrictUnsupported(Boolean(d.candidate_district_unsupported));})
+    .catch(()=>{if(!disposed)setDiscoverLoadError(true)})
+    .finally(()=>{if(!disposed)setCandidateLoading(false)});
+  },240);
+  return()=>{disposed=true;window.clearTimeout(timer);controller.abort();pageRequest.current?.abort();pageRequest.current=null};
+ // API owns counts, filters and pagination rather than first-80 client list.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[page,selectedCategories,district,query,nurGepruefte,nearby,radiusKm,factFilters,priceMax,ratingMin,openNow,refresh]);
+ const mehrLaden=async(source:'places'|'candidates'='candidates')=>{
+  const items=source==='places'?discoverPlaces:candidates;
+  const total=source==='places'?discoverPlacesTotal:candidateTotal;
+  if(candidateLoading||pageRequest.current||items.length>=total)return;
+  const controller=new AbortController(),requestedFilter=filterKey;
+  pageRequest.current=controller;setMoreLoading(source);
+  try{
+   const r=await fetch('/api/explore?'+exploreParams(candidates.length,discoverPlaces.length),{signal:controller.signal,cache:'no-store'});
+   if(!r.ok)throw Error(ui("Suche nicht erreichbar"));const d=await r.json();
+   if(controller.signal.aborted||latestFilter.current!==requestedFilter)return;
+   const merge=(prev:Place[],next:Place[])=>[...prev,...next.filter(p=>!prev.some(v=>v.id===p.id))];
+   if(source==='places')setDiscoverPlaces(prev=>merge(prev,d.places||[]));
+   else setCandidates(prev=>merge(prev,d.candidates||[]));
+  }catch{if(!controller.signal.aborted&&latestFilter.current===requestedFilter)flash(ui("Weitere Orte konnten nicht geladen werden."))}
+  finally{if(pageRequest.current===controller){pageRequest.current=null;setMoreLoading(null)}}
  };
 
- useEffect(()=>{if(page==='business'&&user){api('businesses').then(b=>{setBusiness(b.items[0]||null);if(b.items[0])api('business/overview').then(setBusinessDetail).catch(()=>{})}).catch(()=>{})}if(page==='admin'&&user?.role==='admin')api('admin/queue').then(setQueue).catch(()=>{})},[page,user,refresh]);
- useEffect(()=>{if(page==='community')void api('posts?scope='+(followingOnly?'following':'all')).then(d=>setPosts(d.items||[])).catch(()=>setPosts([]));if(page==='events')void api('deals').then(d=>setDeals(d.items||[])).catch(()=>{})},[page,refresh,user?.id,followingOnly]);
+
+ useEffect(()=>{if(page==='business'&&user){api('businesses').then(b=>{setBusiness(b.items[0]||null);if(b.items[0])api('business/overview').then(setBusinessDetail).catch(()=>{})}).catch(()=>{})}if(page==='admin'&&canAdmin(user))api('admin/queue').then(setQueue).catch(()=>{})},[page,user,refresh]);
+ useEffect(()=>{if(page==='community')void api('posts?scope='+(followingOnly?'following':'all')).then(d=>setPosts(d.items||[])).catch(()=>setPosts([]));if(page==='events')void api('deals?priority='+encodeURIComponent(new URLSearchParams(window.location.search).get('offer')||'')).then(d=>setDeals(d.items||[])).catch(()=>{})},[page,refresh,user?.id,followingOnly]);
  useEffect(()=>{if(page!=='events'||!user){setEventFavorites([]);return;}void api('event-favorites').then(d=>setEventFavorites((d.items||[]).map((e:Event)=>e.id))).catch(()=>setEventFavorites([]))},[page,user?.id,refresh]);
 
  useEffect(()=>{
@@ -96,7 +215,7 @@ export default function Home(){
   let active=true;setSavedLoading(true);
   void api('favorites/details').then(data=>{
    if(active)setSavedPlaces(data.items||[]);
-  }).catch(()=>{if(active){setSavedPlaces([]);flash('Deine Merkliste konnte nicht geladen werden.')}})
+  }).catch(()=>{if(active){setSavedPlaces([]);flash(ui("Deine Merkliste konnte nicht geladen werden."))}})
    .finally(()=>{if(active)setSavedLoading(false)});
   return()=>{active=false};
  // favorites.length ensures fresh data after a save or unsave.
@@ -108,48 +227,63 @@ export default function Home(){
  const sichtbareBeitraege=useMemo(()=>[...news,...vorschauBeitraege],[news]);
  const sichtbarePosts=useMemo(()=>followingOnly?posts:[...posts,...vorschauPosts],[posts,followingOnly]);
  const sichtbareAngebote=useMemo(()=>[...deals,...vorschauAngebote],[deals]);
- const filtered=useMemo(()=>sichtbareOrte.filter(p=>passendeRubrik(p,category)&&(!nurGepruefte||frischBestaetigt(p))&&(!district||p.district===district)&&[p.name,p.category,p.district,p.description_de,p.description_en].join(' ').toLocaleLowerCase().includes(query.toLocaleLowerCase())),[sichtbareOrte,category,district,query,nurGepruefte]);
- const navigate=(p:Page)=>{if(new URLSearchParams(window.location.search).has('tour'))window.history.replaceState(null,'',window.location.pathname);setPage(p);setMenu(false);window.scrollTo({top:0,behavior:'smooth'})};
+ const previewFiltered=useMemo(()=>vorschauOrte.filter(p=>
+  !nearby&&!nurGepruefte&&!district&&
+  (selectedCategories.length===0||selectedCategories.some(cat=>passendeRubrik(p,cat)))&&
+  [p.name,p.category,p.district,p.description_de,p.description_en].join(' ').toLocaleLowerCase().includes(query.toLocaleLowerCase())
+ ),[selectedCategories,nearby,district,query,nurGepruefte]);
+ const filtered=useMemo(()=>[...discoverPlaces,...previewFiltered],[discoverPlaces,previewFiltered]);
+ const toggleCompare=(p:Place)=>setComparePlaces(list=>list.some(x=>x.id===p.id)?list.filter(x=>x.id!==p.id):[...list,p].slice(-3));
+ const toggleNearby=()=>{if(nearby){setNearby(null);return;}if(!navigator.geolocation){flash(ui("Standortzugriff nicht verfügbar. Bitte normal suchen."));return;}setFindingNearby(true);navigator.geolocation.getCurrentPosition(pos=>{setFindingNearby(false);const {latitude:lat,longitude:lon}=pos.coords;if(lat<49.7||lat>50.4||lon<8.2||lon>9.1){flash(ui("Der Standort liegt außerhalb des Frankfurter Suchbereichs."));return;}setNearby({lat,lon});},()=>{setFindingNearby(false);flash(ui("Standort nicht freigegeben. Suche ohne Standort bleibt möglich."));},{enableHighAccuracy:false,timeout:10000,maximumAge:60000});};
+ useEffect(()=>{const previous=window.history.scrollRestoration;window.history.scrollRestoration='manual';return()=>{window.history.scrollRestoration=previous}},[]);
+ useEffect(()=>{window.scrollTo({top:0,behavior:'instant'})},[page]);
+ const navigate=(p:Page)=>{if(new URLSearchParams(window.location.search).has('tour'))window.history.replaceState(null,'',window.location.pathname);setPage(p);setMenu(false)};
  const selectPlace=useCallback((id:string)=>{
   const cached=[...sichtbareOrte,...candidates].find(p=>p.id===id);
   if(cached){setSelected(cached);return;}
   if(!validLocationId(id))return;
   void api('location?id='+encodeURIComponent(id))
    .then(data=>{if(data.place)setSelected(data.place as Place)})
-   .catch(()=>flash('Ort konnte nicht geöffnet werden.'));
+   .catch(()=>flash(ui("Ort konnte nicht geöffnet werden.")));
  },[sichtbareOrte,candidates]);
- const submit=async(path:string,data:unknown,success:string)=>{try{await api(path,data);flash(success);setRefresh(x=>x+1);return true}catch(e){flash((e as Error).message||'Die Anfrage ist fehlgeschlagen.');return false}};
- const favoriteEvent=async(id:string,active:boolean)=>{try{await api('event-favorites',{event_id:id,active});setEventFavorites(v=>active?[...new Set([...v,id])]:v.filter(x=>x!==id));flash(active?'Veranstaltung gemerkt.':'Veranstaltung entfernt.')}catch{flash('Veranstaltung konnte nicht gespeichert werden.')}};
- const favorite=async(id:string)=>{if(!validLocationId(id)){flash('Dieser Musterort kann nicht gespeichert werden.');return}if(!user){setAuth(true);return}try{const active=!favorites.includes(id);await api('favorites',{place_id:id,active});setFavorites(a=>active?[...a,id]:a.filter(x=>x!==id));flash(active?'Ort gemerkt.':'Aus Merkliste entfernt.')}catch(e){flash((e as Error).message||'Die Merkliste konnte nicht geändert werden.')}};
+ const submit=async(path:string,data:unknown,success:string)=>{try{await api(path,data);flash(success);setRefresh(x=>x+1);return true}catch(e){flash((e as Error).message||ui("Die Anfrage ist fehlgeschlagen."));return false}};
+ const favoriteEvent=async(id:string,active:boolean)=>{try{await api('event-favorites',{event_id:id,active});setEventFavorites(v=>active?[...new Set([...v,id])]:v.filter(x=>x!==id));flash(active?ui("Veranstaltung gemerkt."):ui("Veranstaltung entfernt."))}catch{flash(ui("Veranstaltung konnte nicht gespeichert werden."))}};
+ const favorite=async(id:string)=>{if(!validLocationId(id)){flash(ui("Dieser Musterort kann nicht gespeichert werden."));return}if(!user){setAuth(true);return}try{const active=!favorites.includes(id);await api('favorites',{place_id:id,active});setFavorites(a=>active?[...a,id]:a.filter(x=>x!==id));flash(active?ui("Ort gemerkt."):ui("Aus Merkliste entfernt."))}catch(e){flash((e as Error).message||ui("Die Merkliste konnte nicht geändert werden."))}};
  const handle=(e:FormEvent<HTMLFormElement>,path:string,transform?:(x:Record<string,FormDataEntryValue>)=>unknown)=>{e.preventDefault();const form=e.currentTarget;const data=Object.fromEntries(new FormData(form));submit(path,transform?transform(data):data,t.pending).then(success=>{if(success)form.reset()})};
  const onAuth=async(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.currentTarget));const ok=await submit(register?'auth/register':'auth/login',data,t.welcome);if(ok){setAuth(false);setRegister(false)}};
  const nav:[Page,any,string][]=[['home',Compass,t.home],['discover',Search,t.discover],['map',MapIcon,t.map]];
- const picture=(index:number,p?:Place)=> <div className="v3-photo"><img src={ortsbild(p?.name||'',p?.image_url)} alt="Stimmungsbild zur Stadtempfehlung" loading="lazy"/><span className="v3-photo-index">{String(index+1).padStart(2,'0')}</span><span className="v3-photo-credit">Stimmungsbild</span></div>;
- const cards=(arr:Place[])=>arr.length?<div className="cards v3-place-grid">{arr.map((p,i)=><article className="card v3-place-card" key={p.id}><button className="card-cover" onClick={()=>setSelected(p)} aria-label={p.name}>{picture(i,p)}<span className="v3-visit-mark"><Plus size={18}/></span></button><div className="card-info"><div className="v3-card-label"><span>{catBezeichnungen[p.category]||p.category} · {p.district||t.city}</span><span className="v4-check-label">{statusLabel(p)}</span></div><div><button onClick={()=>setSelected(p)}>{p.name}</button><button className={'heart '+(favorites.includes(p.id)?'liked':'')} onClick={()=>favorite(p.id)} aria-label={t.save}><Heart size={19} fill={favorites.includes(p.id)?'currentColor':'none'}/></button></div><p>{p.description_de}</p><span><MapPin size={14}/>{p.district||t.city}</span></div></article>)}</div>:<div className="empty"><Compass size={28}/><p>{t.empty}</p></div>;
+ const picture=(index:number,p?:Place)=> <div className="v3-photo"><ContentImage src={ortsbild(p?.name||'',p?.image_url)} alt={ui("Stimmungsbild zur Stadtempfehlung")} loading="lazy"/><span className="v3-photo-index">{String(index+1).padStart(2,'0')}</span><span className="v3-photo-credit">{ui("Stimmungsbild")}</span></div>;
+ const cards=(arr:Place[])=>arr.length?<div className="cards v3-place-grid">{arr.map((p,i)=><article className="card v3-place-card" key={p.id}><button className="card-cover" onClick={()=>setSelected(p)} aria-label={p.name}>{picture(i,p)}<span className="v3-visit-mark"><Plus size={18}/></span></button><div className="card-info"><div className="v3-card-label"><span>{catBezeichnungen[p.category]||p.category} · {p.district||t.city}</span><span className="v4-check-label">{statusLabel(p)}</span></div><div><button onClick={()=>setSelected(p)}>{p.name}</button><button className={'heart '+(favorites.includes(p.id)?'liked':'')} onClick={()=>favorite(p.id)} aria-label={t.save}><Heart size={19} fill={favorites.includes(p.id)?'currentColor':'none'}/></button></div><p>{p.description_de}</p><span><MapPin size={14}/>{p.district||t.city}{nearby&&p.distance_km!=null?' · '+p.distance_km+ui(" km"):''}</span></div></article>)}</div>:<div className="empty"><Compass size={28}/><p>{t.empty}</p></div>;
  const sectionHeading=(index:string,head:string,sub:string)=> <div className="section-head"><small>{index} / FFM JOURNAL <span/></small><h2>{head}</h2><p>{sub}</p></div>;
- const catBezeichnungen:Record<string,string>=kategorienAnzeigen;
- const categoriesEl=<div className="chips">{categories.map(cat=><button key={cat} className={category===cat?'active':''} onClick={()=>setCategory(cat)}>{catBezeichnungen[cat]||cat}</button>)}</div>;
- const formField=(label:string,name:string,required=false,type='text')=><label className="form-label">{label}<input name={name} type={type} required={required}/></label>;
- const reviewSection=(type:string,items:any[])=><div className="review-section" key={type}><h3>{{businesses:'Unternehmen',claims:'Inhaberschaft',places:'Orte',deals:'Angebote',posts:'Beiträge'}[type]||'Einträge'} <span>{items.length}</span></h3>{items.map(a=><div className="review-row" key={a.id}><span>{a.name||a.title||a.body||a.business_name+' / '+a.place_name}</span><div><button title={t.approve} onClick={()=>submit('admin/review',{type:type==='businesses'?'business':type==='claims'?'claim':type==='places'?'place':type==='deals'?'deal':'post',id:a.id,approve:true},t.approve)}><Check size={18}/></button><button title={t.reject} onClick={()=>submit('admin/review',{type:type==='businesses'?'business':type==='claims'?'claim':type==='places'?'place':type==='deals'?'deal':'post',id:a.id,approve:false},t.reject)}><X size={18}/></button></div></div>)}{items.length===0&&<p className="subdued">—</p>}</div>;
- return <div className={'site v3-site'+(page==='admin'?' ffm-studio-active':'')}>
-  <header className="header"><div className="header-inner"><button className="logo" onClick={()=>navigate('home')} aria-label="FFM Aktuell Startseite"><span className="ml-brand-mark" aria-hidden="true"><svg viewBox="0 0 60 44" fill="none" role="presentation"><path d="M2 29C15 5 23 7 34 22C43 33 51 37 58 16" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round"/><circle cx="34" cy="22" r="2.7" fill="currentColor"/></svg></span><span className="ml-brand-word">ffm<b>aktuell</b><small>FRANKFURT VON INNEN</small></span></button><nav className="desktop-nav">{nav.map(([p,,txt])=><button key={p} className={page===p?'active':''} onClick={()=>navigate(p)}>{txt}</button>)}</nav><div className="header-end"><button className="business-nav" onClick={()=>navigate('business')}>{t.business}<span className="ui-dot" aria-hidden="true"/></button><button className="user-button" title={user?'Meine Orte':t.sign} aria-label={user?'Meine Orte':t.sign} onClick={()=>user?navigate(user.role==='admin'?'admin':'profile'):setAuth(true)}><UserRound size={20}/></button><button className="menu-button" onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div></div>{menu&&<div className="mobile-menu"><button onClick={()=>navigate('business')}>{t.business}</button><button onClick={()=>user?navigate('saved'):setAuth(true)}>{user?'Meine Orte':t.login}</button>{user&&<button onClick={()=>navigate('profile')}>Mein Profil</button>}{user&&<button onClick={()=>navigate('tours')}>Meine Touren</button>}{user?.role==='admin'&&<button onClick={()=>navigate('admin')}>Verwaltung</button>}</div>}</header>
-  {(page==='events'||page==='community')&&<div className="v3-preview-strip" role="status"><span className="v3-preview-spark"/><strong>VORSCHAU</strong><span>{VORSCHAU_HINWEIS}</span></div>}
-   {toast&&<div className="toast" role="status"><Check size={16}/>{toast}<button onClick={()=>setToast('')}><X size={16}/></button></div>}
-  {error&&<div className="error">{error}<button onClick={()=>setRefresh(x=>x+1)}>{lang==='de'?'Erneut laden':'Retry'}</button></div>}
-  {page==='home'&&<AtlasHome lang={lang} places={sichtbareOrte} events={sichtbareVeranstaltungen} news={sichtbareBeitraege} onDiscover={()=>navigate('discover')} onMap={()=>navigate('map')} onEvents={()=>navigate('events')} onCommunity={()=>navigate('community')} onBusiness={()=>navigate('business')} onPlace={selectPlace} onCategory={cat=>{setCategory(cat);navigate('discover')}} onSearch={value=>{setQuery(value);setCategory('Alle');setDistrict('');navigate('discover')}} />}
+ const catBezeichnungen:Record<string,string>={...Object.fromEntries(Object.entries(kategorienAnzeigen).map(([k,v])=>[k,ui(v)])),...Object.fromEntries(managedCategories.map(c=>[c.slug,lang==='de'?c.label_de:c.label_en]))};
+ const categoryIds=[...new Set([...categories,...managedCategories.map(c=>c.slug)])];
+ const categoriesEl=<div className="chips">{categoryIds.map(cat=><button key={cat} className={category===cat?'active':''} onClick={()=>setCategory(cat)}>{catBezeichnungen[cat]||cat}</button>)}</div>;
+ const formField=(label:string,name:string,required=false,type='text')=><label className="form-label">{ui(label)}<input name={name} type={type} required={required}/></label>;
+ const reviewSection=(type:string,items:any[])=><div className="review-section" key={type}><h3>{{businesses:'Unternehmen',claims:'Inhaberschaft',places:'Orte',deals:'Angebote',posts:'Beiträge'}[type]||ui("Einträge")} <span>{items.length}</span></h3>{items.map(a=><div className="review-row" key={a.id}><span>{a.name||a.title||a.body||a.business_name+' / '+a.place_name}</span><div><button title={t.approve} onClick={()=>submit('admin/review',{type:type==='businesses'?'business':type==='claims'?'claim':type==='places'?'place':type==='deals'?'deal':'post',id:a.id,approve:true},t.approve)}><Check size={18}/></button><button title={t.reject} onClick={()=>submit('admin/review',{type:type==='businesses'?'business':type==='claims'?'claim':type==='places'?'place':type==='deals'?'deal':'post',id:a.id,approve:false},t.reject)}><X size={18}/></button></div></div>)}{items.length===0&&<p className="subdued">—</p>}</div>;
+ return <div className={'site v3-site ffm-page-'+page+(page==='admin'?' ffm-studio-active':'')}>
+  <a className="ffm-skip-link" href="#ffm-main">{ui("Zum Inhalt")}</a>
+  <header className="header"><div className="header-inner"><button className="logo" onClick={()=>navigate('home')} title={ui("FFM Aktuell Startseite")}><span className="ml-brand-mark" aria-hidden="true"><svg viewBox="0 0 60 44" fill="none" role="presentation"><path d="M2 29C15 5 23 7 34 22C43 33 51 37 58 16" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round"/><circle cx="34" cy="22" r="2.7" fill="currentColor"/></svg></span><span className="ml-brand-word">{ui("ffm")}<b>{ui("aktuell")}</b><small>{ui("FRANKFURT VON INNEN")}</small></span></button><nav className="desktop-nav">{nav.map(([p,,txt])=><button key={p} className={page===p?'active':''} onClick={()=>navigate(p)}>{txt}</button>)}</nav><div className="header-end"><button type="button" onClick={()=>setLang(l=>l==='de'?'en':'de')} aria-label={(lang==='de'?'EN · ':'DE · ')+(lang==='de'?ui("Switch to English"):ui("Auf Deutsch wechseln"))} title={lang==='de'?ui("English"):ui("Deutsch")} className="ffm-language-toggle">{lang==='de'?ui("EN"):ui("DE")}</button><button className="business-nav" onClick={()=>navigate('business')}>{t.business}<span className="ui-dot" aria-hidden="true"/></button><button className="user-button" title={user?ui("Meine Orte"):t.sign} aria-label={user?ui("Meine Orte"):t.sign} onClick={()=>user?navigate(canAdmin(user)?'admin':'profile'):setAuth(true)}><UserRound size={20}/></button><button className="menu-button" aria-label={ui(menu?"Menü schließen":"Menü öffnen")} aria-expanded={menu} aria-controls="ffm-mobile-menu" onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div></div>{menu&&<div className="mobile-menu" id="ffm-mobile-menu"><button onClick={()=>navigate('business')}>{t.business}</button><button onClick={()=>user?navigate('saved'):setAuth(true)}>{user?ui("Meine Orte"):t.login}</button>{user&&<button onClick={()=>navigate('profile')}>{ui("Mein Profil")}</button>}{user&&<button onClick={()=>navigate('tours')}>{ui("Meine Touren")}</button>}{canAdmin(user)&&<button onClick={()=>navigate('admin')}>{ui("Verwaltung")}</button>}</div>}</header>
+  <div id="ffm-main" tabIndex={-1}/>
+  {page==='discover'&&<LocalTrends district={district} category={category} lang={lang} onPlace={selectPlace}/>}
+  {page==='home'&&<SponsoredPlace placement="new_openings" onPlace={selectPlace}/>}
+  {['home','discover','events','community'].includes(page)&&<SponsoredPlace placement={page==='home'?'home':page==='events'?'events':page==='community'?'feed':district?'district':category!=='Alle'?'category':'search'} category={category} district={district} onPlace={selectPlace}/>}
+  {(page==='events'||page==='community')&&<div className="v3-preview-strip" role="status"><span className="v3-preview-spark"/><strong>{ui("VORSCHAU")}</strong><span>{ui(VORSCHAU_HINWEIS)}</span></div>}
+   {toast&&<div className="toast" role="status"><Check size={16}/>{ui(toast)}<button aria-label={ui("Mitteilung schließen")} onClick={()=>setToast('')}><X size={16}/></button></div>}
+  {error&&<div className="error">{error}<button onClick={()=>setRefresh(x=>x+1)}>{lang==='de'?ui("Erneut laden"):ui("Retry")}</button></div>}
+  {page==='home'&&<><AtlasHome lang={lang} places={sichtbareOrte} events={sichtbareVeranstaltungen} news={sichtbareBeitraege} onDiscover={()=>navigate('discover')} onMap={()=>navigate('map')} onEvents={()=>navigate('events')} onCommunity={()=>navigate('community')} onBusiness={()=>navigate('business')} onPlace={selectPlace} onCategory={cat=>{setCategory(cat);setSelectedCategories(cat==='Alle'?[]:[cat]);navigate('discover')}} onSearch={value=>{setQuery(value);setCategory('Alle');setSelectedCategories([]);setDistrict('');navigate('discover')}} onTours={()=>navigate('tours')} tips={<DiscoveryTips onPlace={selectPlace}/>} assistant={<SmartDiscover onPlace={selectPlace} onDiscover={()=>navigate('discover')} lang={lang} loggedIn={Boolean(user)}/>} /></>}
   {page==='discover'&&<main className="ffm-find-page ffm-find-visual" id="entdecken">
  <section className="ffm-find-head">
-  <h1>Entdecken<span>.</span></h1>
+  <h1>{ui("Entdecken")}<span>.</span></h1>
   <div className="ffm-find-search" role="search">
    <Search size={21} aria-hidden="true"/>
-   <label htmlFor="ffm-find-query" className="sr-only">Orte oder Stadtteile suchen</label>
-   <input id="ffm-find-query" type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Was suchst du?" autoComplete="off"/>
-   {query&&<button type="button" className="ffm-find-clear" onClick={()=>setQuery('')} aria-label="Suche löschen"><X size={18}/></button>}
-   <button className="ffm-find-map" type="button" onClick={()=>navigate('map')} aria-label="Karte öffnen"><MapIcon size={20}/><span>Karte</span></button>
+   <label htmlFor="ffm-find-query" className="sr-only">{ui("Orte oder Stadtteile suchen")}</label>
+   <input id="ffm-find-query" type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder={ui("Was suchst du?")} autoComplete="off"/>
+   {query&&<button type="button" className="ffm-find-clear" onClick={()=>setQuery('')} aria-label={ui("Suche löschen")}><X size={18}/></button>}
+   <button className="ffm-find-map" type="button" onClick={()=>navigate('map')} aria-label={ui("Karte öffnen")}><MapIcon size={20}/><span>{ui("Karte")}</span></button>
   </div>
  </section>
 
- <section className="ffm-find-filters" aria-label="Kategorien">
+ <section className="ffm-find-filters" aria-label={ui("Kategorien")}>
   <div className="ffm-find-main-cats">
    {[
     {id:'Alle',label:'Alle',Icon:Compass,tone:'all'},
@@ -159,114 +293,153 @@ export default function Home(){
     {id:'Freizeit',label:'Freizeit',Icon:Activity,tone:'play'},
     {id:'Museen',label:'Kultur',Icon:Landmark,tone:'culture'},
     {id:'Apotheken',label:'Apotheken',Icon:Pill,tone:'health'}
-   ].map(({id,label,Icon,tone})=><button key={id} type="button" aria-pressed={category===id} onClick={()=>{setCategory(id);setNurGepruefte(false)}} className={'ffm-find-category '+tone+(category===id?' active':'')}>
+   ].map(({id,label,Icon,tone})=><button key={id} type="button" aria-pressed={id==='Alle'?selectedCategories.length===0:selectedCategories.includes(id)} onClick={()=>toggleDiscoveryCategory(id)} className={'ffm-find-category '+tone+((id==='Alle'?selectedCategories.length===0:selectedCategories.includes(id))?' active':'')}>
     <span className="ffm-find-category-visual"><Icon size={24} strokeWidth={1.9} aria-hidden="true"/></span>
-    <span>{label}</span>
+    <span>{ui(label)}</span>
    </button>)}
   </div>
+  <div className="ffm-find-quick-filters" aria-label={ui("Weitere Suchfilter")}>
+   <label>{ui("Stadtteil ")}<select aria-label={ui("Stadtteil")} value={district} onChange={e=>setDistrict(e.target.value)}>
+     <option value="">{ui("Alle Stadtteile")}</option>{districtOptions.map(v=><option key={v} value={v}>{v}</option>)}
+    </select>
+   </label>
+   <button type="button" aria-pressed={Boolean(nearby)} disabled={findingNearby} onClick={toggleNearby}>{nearby?ui("✓ Standort aktiv"):findingNearby?ui("Standort wird gesucht …"):ui("Standort verwenden")}</button>
+   {nearby&&<label>{ui("Umkreis ")}<select aria-label={ui("Suchradius")} value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value) as 1|3|5|10)}>
+    {[1,3,5,10].map(n=><option value={n} key={n}>{n} {ui(" km")}</option>)}
+   </select></label>}
+   <label className="ffm-find-verified"><input type="checkbox" checked={nurGepruefte} onChange={e=>setNurGepruefte(e.target.checked)}/> {ui(" Nur aktuell geprüfte Betriebe")}</label>
+   {(selectedCategories.length>0||district||nearby||nurGepruefte||factFilters.length>0||priceMax>0||ratingMin>0||openNow)&&<button type="button" className="ffm-find-filter-reset"
+    onClick={()=>{setSelectedCategories([]);setCategory('Alle');setDistrict('');setNearby(null);setRadiusKm(3);setNurGepruefte(false);setFactFilters([]);setPriceMax(0);setRatingMin(0);setOpenNow(false)}}>{ui("Filter löschen")}</button>}
+  </div>
   <details className="ffm-find-more">
-   <summary><Plus size={16}/> Mehr {category!=='Alle'&&!['Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(category)?'· '+(catBezeichnungen[category]||category):''}</summary>
+   <summary><Plus size={16}/> {ui(" Weitere Kategorien")}{selectedCategories.length?' · '+selectedCategories.length+ui(" gewählt"):''}</summary>
    <div className="ffm-find-extra">
-    <div className="ffm-find-extra-cats">{categories.filter(cat=>!['Alle','Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(cat)).map(cat=><button type="button" key={cat} className={category===cat?'active':''} onClick={()=>setCategory(cat)}>{catBezeichnungen[cat]||cat}</button>)}</div>
-    <label className="ffm-find-verified"><input type="checkbox" checked={nurGepruefte} onChange={e=>setNurGepruefte(e.target.checked)}/> Nur aktuell geprüfte Betriebe</label>
+    <p className="ffm-find-category-hint">{ui("Mehrere Kategorien kombinieren (bis zu 6).")}</p>
+    <div className="ffm-find-extra-cats">{categoryIds.filter(cat=>!['Alle','Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(cat)).map(cat=><button type="button" key={cat} aria-pressed={selectedCategories.includes(cat)}
+     className={selectedCategories.includes(cat)?'active':''} onClick={()=>toggleDiscoveryCategory(cat)}>{selectedCategories.includes(cat)?'✓ ':''}{catBezeichnungen[cat]||cat}</button>)}</div>
    </div>
   </details>
- </section>
+  <details className="ffm-find-more"><summary>{ui("Merkmale, Preisniveau und Bewertung")}</summary>
+   <p>{ui("Nur belegte, in den letzten 30 Tagen geprüfte Merkmale. Unbekannte Angaben und ungeprüfte OSM Orte werden bei Merkmalsfiltern ausgeschlossen. Preisniveau ist kein konkreter Preis.")}</p>
+   <div className="ffm-find-quick-filters"><label><input type="checkbox" checked={openNow} onChange={e=>setOpenNow(e.target.checked)}/>{ui("Laut Tagesplan jetzt geöffnet")}</label>{([['indoor','Indoor'],['outdoor','Outdoor'],['family_friendly','Familienfreundlich'],['wheelchair_accessible','Rollstuhlgerecht']] as const).map(([key,label])=><label key={key}><input type="checkbox" checked={factFilters.includes(key)} onChange={e=>setFactFilters(v=>e.target.checked?[...v,key]:v.filter(f=>f!==key))}/>{label}</label>)}
+   <label>{ui("Preisniveau bis")}<select aria-label={ui("Maximales Preisniveau")} value={priceMax} onChange={e=>setPriceMax(Number(e.target.value))}><option value={0}>{ui("Alle oder unbekannt")}</option>{[1,2,3,4].map(v=><option key={v} value={v}>{'€'.repeat(v)}</option>)}</select></label>
+   <label>{ui("Bewertung ab")}<select aria-label={ui("Mindestbewertung")} value={ratingMin} onChange={e=>setRatingMin(Number(e.target.value))}><option value={0}>{ui("Alle oder ohne Bewertung")}</option>{[1,2,3,4,5].map(v=><option key={v} value={v}>{v} {ui(" Sterne")}</option>)}</select></label></div>
+  </details> </section>
 
- {category==='Apotheken Notdienst'&&<section className="ffm-find-duty"><strong>Apotheken-Notdienst</strong><p>Unsere Ortsliste ist keine Notdienstbestätigung.</p><a href="https://www.aponet.de/notdienstsuche/60320-Frankfurt" target="_blank" rel="noopener noreferrer">Aktuellen Dienst bei aponet prüfen <ChevronRight size={16}/></a></section>}
+ {category==='Apotheken Notdienst'&&<section className="ffm-find-duty"><strong>{ui("Apotheken-Notdienst")}</strong><p>{ui("Diese Ortsliste ist keine Notdienstbestätigung.")}</p><a href="https://www.aponet.de/notdienstsuche/60320-Frankfurt" target="_blank" rel="noopener noreferrer">{ui("Aktuellen Dienst bei aponet prüfen ")}<ChevronRight size={16}/></a></section>}
 
  <section className="ffm-find-results" aria-labelledby="ffm-find-results-title">
+  {comparePlaces.length>0&&<div className="ffm-compare" role="region" aria-label={ui("Orte vergleichen")}>
+   <div className="ffm-compare-heading"><div><strong>{ui("Orte vergleichen (")}{comparePlaces.length}/3)</strong><small>{ui("Nur belegte Angaben; unbekannte Daten bleiben unbekannt.")}</small></div><button type="button" onClick={()=>setComparePlaces([])}>{ui("Vergleich leeren")}</button></div>
+   <div className="ffm-compare-grid">{comparePlaces.map(p=><article key={p.id}>
+     <div className="ffm-compare-title"><strong>{p.name}</strong><button aria-label={p.name+ui(" entfernen")} type="button" onClick={()=>toggleCompare(p)}><X size={15}/></button></div>
+     <dl><dt>{ui("Kategorie")}</dt><dd>{catBezeichnungen[p.category]||p.category}</dd><dt>{ui("Adresse")}</dt><dd>{p.address||ui("Keine Angabe")}</dd><dt>{ui("Status")}</dt><dd>{p.candidate?ui("OSM · ungeprüft"):statusLabel(p)}</dd><dt>{ui("Öffnungszeiten")}</dt><dd>{p.opening_hours_text?String(p.opening_hours_text)+ui(" · bitte bestätigen"):ui("Nicht hinterlegt")}</dd></dl>
+     <button type="button" onClick={()=>setSelected(p)}>{ui("Details ansehen")}</button>
+   </article>)}</div>
+   {comparePlaces.length===1&&<p>{ui("Öffne einen weiteren Ort und wähle „Vergleichen“.")}</p>}
+  </div>}
   <div className="ffm-find-result-head">
-   <h2 id="ffm-find-results-title">Orte <span>{nurGepruefte?filtered.filter(p=>!p.demo).length:candidateTotal+filtered.filter(p=>!p.demo).length}</span></h2>
-   <details className="ffm-find-data"><summary><Info size={16}/> Dateninfo</summary><div><strong>Hinweis zu den Orten</strong><p>OSM Einträge sind noch nicht auf Betrieb oder Öffnungszeiten geprüft. Bitte vor dem Besuch beim Anbieter nachsehen. Redaktionell bestätigte Orte sind gesondert gekennzeichnet.</p><small>© OpenStreetMap-Mitwirkende · ODbL</small></div></details>
+   <h2 id="ffm-find-results-title">{ui("Orte ")}<span>{discoverPlacesTotal+candidateTotal}</span></h2>
+   <details className="ffm-find-data"><summary><Info size={16}/> {ui(" Dateninfo")}</summary><div><strong>{ui("Hinweis zu den Orten")}</strong><p>{ui("OSM Einträge sind noch nicht auf Betrieb oder Öffnungszeiten geprüft. Bitte vor dem Besuch beim Anbieter nachsehen. Redaktionell bestätigte Orte sind gesondert gekennzeichnet.")}</p><small>{ui("© OpenStreetMap-Mitwirkende · ODbL")}</small></div></details>
   </div>
 
-  {filtered.some(p=>!p.demo)&&<div className="ffm-find-verified-results"><div className="ffm-find-subhead"><Check size={17}/><strong>Redaktionelle Orte</strong></div>{cards(filtered.filter(p=>!p.demo))}</div>}
+  {discoverLoadError&&<div className="ffm-find-empty" role="alert">{ui("Die Suche ist gerade nicht erreichbar. ")}<button type="button" onClick={()=>setRefresh(v=>v+1)}>{ui("Erneut versuchen")}</button></div>}
+   {!discoverLoadError&&filtered.some(p=>!p.demo)&&<div className="ffm-find-verified-results"><div className="ffm-find-subhead"><Check size={17}/><strong>{ui("Redaktionelle Orte")}</strong></div>{cards(filtered.filter(p=>!p.demo))}{discoverPlacesTotal>discoverPlaces.length&&<button type="button" className="ffm-find-load" disabled={candidateLoading||moreLoading!==null} onClick={()=>void mehrLaden('places')}>{moreLoading==='places'?ui("Orte werden geladen …"):ui("Weitere redaktionelle Orte")} <span>{discoverPlaces.length} / {discoverPlacesTotal}</span></button>}</div>}
 
-  {!nurGepruefte&&<>
-   <div className="ffm-find-source-line"><span className="ffm-find-source-dot"/><strong>Weitere Orte</strong><small>OSM · ungeprüft</small></div>
+  {!nurGepruefte&&!district&&!factFilters.length&&!priceMax&&!ratingMin&&!openNow&&!discoverLoadError&&<>
+   <div className="ffm-find-source-line"><span className="ffm-find-source-dot"/><strong>{ui("Weitere Orte")}</strong><small>{ui("OSM · ungeprüft")}</small></div>
    <div className="ffm-find-list" aria-busy={candidateLoading&&candidates.length===0}>
     {candidates.map(p=>{
      const Icon=p.category==='Cafés'||p.category==='Brunch'?Coffee:p.category==='Restaurants'||p.category==='Imbiss'?UtensilsCrossed:p.category==='Bars'||p.category==='Clubs'||p.category==='Shisha Bars'?Martini:p.category==='Museen'||p.category==='Kultur'?Landmark:p.category==='Apotheken'?Pill:MapPin;
      const tone=p.category==='Cafés'||p.category==='Brunch'?'coffee':p.category==='Restaurants'||p.category==='Imbiss'?'food':p.category==='Bars'||p.category==='Clubs'||p.category==='Shisha Bars'?'night':p.category==='Museen'||p.category==='Kultur'?'culture':p.category==='Apotheken'?'health':'play';
-     return <button type="button" className={'ffm-find-item '+tone} key={p.id} onClick={()=>setSelected(p)} aria-label={p.name+' · Details öffnen'}>
+     return <button type="button" className={'ffm-find-item '+tone} key={p.id} onClick={()=>setSelected(p)} aria-label={p.name+ui(" · Details öffnen")}>
       <span className="ffm-find-place-visual" aria-hidden="true"><span className="ffm-find-visual-rim"/><Icon size={32} strokeWidth={1.45}/></span>
       <span className="ffm-find-item-copy"><strong title={p.name}>{p.name}</strong><small title={p.address||''}>{p.address||catBezeichnungen[p.category]||p.category}</small></span>
-      <span className="ffm-find-item-footer"><span><ShieldAlert size={12}/> Ungeprüft</span><ChevronRight size={17}/></span>
+      <span className="ffm-find-item-footer"><span><ShieldAlert size={12}/> {ui(" Ungeprüft")}{nearby&&p.distance_km!=null?' · '+p.distance_km+ui(" km"):''}</span><ChevronRight size={17}/></span>
      </button>;
     })}
    </div>
-   {candidateLoading&&<p className="ffm-find-empty" role="status">Orte werden geladen …</p>}
-   {!candidateLoading&&candidates.length===0&&<div className="ffm-find-empty">Keine Treffer. Anderes Wort probieren.</div>}
-   {candidateTotal>candidates.length&&<button className="ffm-find-load" disabled={candidateLoading} onClick={mehrLaden}>Weitere Orte anzeigen <span>{candidates.length} / {candidateTotal}</span></button>}
-   <p className="ffm-find-source-credit">© OpenStreetMap-Mitwirkende (ODbL)</p>
+   {candidateLoading&&<p className="ffm-find-empty" role="status">{ui("Orte werden geladen …")}</p>}
+   {!candidateLoading&&candidates.length===0&&<div className="ffm-find-empty">{ui("Keine Treffer. Anderes Wort probieren.")}</div>}
+   {candidateTotal>candidates.length&&<button className="ffm-find-load" disabled={candidateLoading||moreLoading!==null} onClick={()=>void mehrLaden('candidates')}>{moreLoading==='candidates'?ui("Orte werden geladen …"):ui("Weitere Orte anzeigen")} <span>{candidates.length} / {candidateTotal}</span></button>}
+   <p className="ffm-find-source-credit">{ui("© OpenStreetMap-Mitwirkende (ODbL)")}</p>
   </>}
 
-  {nurGepruefte&&filtered.filter(p=>!p.demo).length===0&&<div className="ffm-find-empty">Noch keine bestätigten Orte.</div>}
-  {filtered.some(p=>p.demo)&&!nurGepruefte&&<details className="ffm-find-preview"><summary>Musterorte anzeigen <Plus size={16}/></summary><p>Beispiele, keine bestätigten Empfehlungen.</p>{cards(filtered.filter(p=>p.demo))}</details>}
+  {(factFilters.length>0||priceMax>0||ratingMin>0||openNow)&&<p className="ffm-find-district-note">{ui("Nur passende belegte Angaben. Unbekannte Merkmale und ungeprüfte OSM Einträge werden nicht angezeigt.")}</p>}
+  {candidateDistrictUnsupported&&!nurGepruefte&&<p className="ffm-find-district-note">{ui("OSM Einträge ohne geprüfte Stadtteilzuordnung werden bei diesem Filter nicht angezeigt.")}</p>}
+   {!candidateLoading&&!discoverLoadError&&discoverPlacesTotal+candidateTotal===0&&<div className="ffm-find-empty">{ui("Keine passenden Orte. Filter anpassen.")}</div>}
+  {filtered.some(p=>p.demo)&&!nurGepruefte&&<details className="ffm-find-preview"><summary>{ui("Musterorte anzeigen ")}<Plus size={16}/></summary><p>{ui("Beispiele, keine bestätigten Empfehlungen.")}</p>{cards(filtered.filter(p=>p.demo))}</details>}
  </section>
  </main>}
  {page==='saved'&&<main className="ffm-saved-page">
-  <div className="ffm-saved-heading"><span>DEIN FRANKFURT</span><h1>Meine Orte<span>.</span></h1><p>Deine gemerkten Plätze auf einen Blick.</p><button type="button" className="ffm-saved-tour-link" onClick={()=>navigate('tours')}>Tour planen <ChevronRight size={16}/></button></div>
-  {!user?<div className="ffm-saved-empty"><p>Bitte melde dich an, um deine Orte zu sehen.</p><button onClick={()=>setAuth(true)}>Anmelden</button></div>:
-  savedLoading?<p role="status">Deine Orte werden geladen …</p>:
-  !savedPlaces.length?<div className="ffm-saved-empty"><Heart size={29}/><h2>Noch keine Orte gemerkt.</h2><p>Entdecke Frankfurt und tippe beim nächsten Lieblingsort auf Merken.</p><button onClick={()=>navigate('discover')}>Orte entdecken <ChevronRight size={18}/></button></div>:
-   <div className="ffm-saved-list" aria-label="Gespeicherte Orte">{savedPlaces.map(p=><article key={p.id} className="ffm-saved-item">
+  <div className="ffm-saved-heading"><span>{ui("DEIN FRANKFURT")}</span><h1>{ui("Meine Orte")}<span>.</span></h1><p>{ui("Deine gemerkten Plätze auf einen Blick.")}</p><button type="button" className="ffm-saved-tour-link" onClick={()=>navigate('tours')}>{ui("Tour planen ")}<ChevronRight size={16}/></button></div>
+  {!user?<div className="ffm-saved-empty"><p>{ui("Bitte melde dich an, um deine Orte zu sehen.")}</p><button onClick={()=>setAuth(true)}>{ui("Anmelden")}</button></div>:
+  savedLoading?<p role="status">{ui("Deine Orte werden geladen …")}</p>:
+  !savedPlaces.length?<div className="ffm-saved-empty"><Heart size={29}/><h2>{ui("Noch keine Orte gemerkt.")}</h2><p>{ui("Entdecke Frankfurt und tippe beim nächsten Lieblingsort auf Merken.")}</p><button onClick={()=>navigate('discover')}>{ui("Orte entdecken ")}<ChevronRight size={18}/></button></div>:
+   <div className="ffm-saved-list" aria-label={ui("Gespeicherte Orte")}>{savedPlaces.map(p=><article key={p.id} className="ffm-saved-item">
     <div className="ffm-saved-pin"><MapPin size={21}/></div>
-    <button className="ffm-saved-name" onClick={()=>setSelected(p)}><strong>{p.name}</strong><small>{p.category} · {p.address||p.district||'Frankfurt'}</small><span>{p.candidate?'OSM · Ungeprüft':statusLabel(p)}</span></button>
-    <button className="ffm-saved-remove" title="Aus Merkliste entfernen" aria-label={p.name+' entfernen'} onClick={()=>void favorite(p.id)}><Heart size={20} fill="currentColor"/></button>
+    <button className="ffm-saved-name" onClick={()=>setSelected(p)}><strong>{p.name}</strong><small>{p.category} · {p.address||p.district||'Frankfurt'}</small><span>{p.candidate?ui("OSM · Ungeprüft"):statusLabel(p)}</span></button>
+    <button className="ffm-saved-remove" title={ui("Aus Merkliste entfernen")} aria-label={p.name+ui(" entfernen")} onClick={()=>void favorite(p.id)}><Heart size={20} fill="currentColor"/></button>
    </article>)}</div>}
   </main>}
- {page==='tours'&&<TourPlanner loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>}
- {page==='profile'&&<ProfileSettings user={user} onLogin={()=>setAuth(true)} onNotice={flash}
+ {page==='tours'&&<><CuratedTours lang={lang}/><TourPlanner loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/></>}
+ {page==='profile'&&<><ProfileSettings user={user} onLogin={()=>setAuth(true)} onNotice={flash}
   onSavedPlaces={()=>navigate('saved')} onTours={()=>navigate('tours')}
-  onDeleted={()=>{setUser(null);setFavorites([]);setSelected(null);navigate('home');flash('Dein Konto wurde gelöscht.')}}/>}
- {page==='map'&&<main className="atlas-app-map"><Atlas3D places={places} lang={lang} variant="full" onSelect={selectPlace}/><div className="atlas-app-map-note">{t.notice} · © OpenStreetMap contributors, OpenMapTiles, OpenFreeMap</div></main>}
+  onDeleted={()=>{setUser(null);setFavorites([]);setSelected(null);navigate('home');flash(ui("Dein Konto wurde gelöscht."))}}/><div className="ffm-profile-extras"><VerifyEmailAndTeamInvite loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>{user&&<TeamMemberWorkspace onNotice={flash}/>}<PremiumTariffPreview audience="user"/> {user&&<MediaRightsPanel onNotice={flash}/>}</div></>}
+ {page==='map'&&<main className="atlas-app-map"><Atlas3D places={places} lang={lang} variant="full" onSelect={selectPlace}/><div className="atlas-app-map-note">{t.notice} {ui(" · © OpenStreetMap contributors, OpenMapTiles, OpenFreeMap")}</div></main>}
   {page==='events'&&<main className="inner-page v3-editorial-page">
- <div className="page-title v3-page-head"><small>03 / STADTJOURNAL</small><h1>Die Stadt lebt<em>.</em></h1><p>Ideen, Begegnungen und neue Perspektiven auf Frankfurt.</p></div>
- <section className="v3-section"><div className="v3-section-head"><div><span className="v3-eyebrow">FÜR DEINEN KALENDER</span><h2>Was steht an?</h2></div><span className="v3-section-trail">Veranstaltungen in Frankfurt</span></div>
+ <div className="page-title v3-page-head"><small>{ui("03 / STADTJOURNAL")}</small><h1>{ui("Die Stadt lebt")}<em>.</em></h1><p>{ui("Ideen, Begegnungen und neue Perspektiven auf Frankfurt.")}</p></div>
+ <section className="v3-section"><div className="v3-section-head"><div><span className="v3-eyebrow">{ui("FÜR DEINEN KALENDER")}</span><h2>{ui("Was steht an?")}</h2></div><span className="v3-section-trail">{ui("Veranstaltungen in Frankfurt")}</span></div>
    <div className="v3-events-grid">{sichtbareVeranstaltungen.map(e=><article className="v3-event-card" key={e.id}>
-     <div className="v3-event-photo"><img src={ortsbild('',e.image_url)} alt="Stimmungsbild zur Veranstaltung" loading="lazy"/><span className="v3-event-date">{date(e.starts_at,lang)}</span><span className="v3-image-note">Stimmungsbild</span></div>
-     <div className="v3-event-info">{e.demo&&<span className="v3-demo-label">Musterveranstaltung · nicht buchbar</span>}<h3>{e.title}</h3><p>{e.description_de}</p><span className="v3-place-meta"><MapPin size={15}/>{e.venue}</span><EventActions key={e.id} event={e} saved={eventFavorites.includes(e.id)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onSaved={favoriteEvent} onNotice={flash}/></div>
+     <div className="v3-event-photo"><ContentImage src={ortsbild('',e.image_url)} alt={ui("Stimmungsbild zur Veranstaltung")} loading="lazy"/><span className="v3-event-date">{date(e.starts_at,lang)}</span><span className="v3-image-note">{ui("Stimmungsbild")}</span></div>
+     <div className="v3-event-info">{e.demo&&<span className="v3-demo-label">{ui("Musterveranstaltung · nicht buchbar")}</span>}<h3>{e.title}</h3><p>{e.description_de}</p>{!e.demo&&e.category&&<small>{e.category}</small>}{!e.demo&&e.organizer&&<small>{ui("Veranstalter: ")}{e.organizer}</small>}{!e.demo&&e.price_cents!=null&&e.price_source_url&&<p className="ffm-event-price">{e.price_cents===0?ui("Eintritt frei"):ui("Preisangabe: ")+new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(e.price_cents/100)} · <a href={e.price_source_url} target="_blank" rel="noopener noreferrer">{ui("Preisquelle prüfen")}</a></p>}<span className="v3-place-meta"><MapPin size={15}/>{e.venue}</span><EventActions key={e.id} event={e} saved={eventFavorites.includes(e.id)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onSaved={favoriteEvent} onNotice={flash}/></div>
    </article>)}</div>
  </section>
- <section className="v3-section v3-journal"><div className="v3-section-head"><div><span className="v3-eyebrow">WAS UNS BEWEGT</span><h2>Aus der Stadt.</h2></div><span className="v3-section-trail">Geschichten und Inspiration</span></div>
-   <div className="v3-journal-grid">{sichtbareBeitraege.map((n,i)=><article className={'v3-journal-card '+(i===0?'v3-wide':'')} key={n.id}><div className="v3-journal-image"><img src={ortsbild('',n.image_url)} alt="Stimmungsbild aus Frankfurt" loading="lazy"/><span className="v3-image-note">Stimmungsbild</span></div><div className="v3-journal-copy"><span className="v3-eyebrow">{n.demo?'MUSTERBEITRAG':'STADTGESCHICHTE'} · {date(n.published_at,lang)}</span><h3>{n.title}</h3><p>{n.body_de}</p>{n.source_url&&<a href={n.source_url} rel="noopener noreferrer" target="_blank">Originalquelle ansehen</a>}</div></article>)}</div>
+ <section className="v3-section v3-journal"><div className="v3-section-head"><div><span className="v3-eyebrow">{ui("WAS UNS BEWEGT")}</span><h2>{ui("Aus der Stadt.")}</h2></div><span className="v3-section-trail">{ui("Geschichten und Inspiration")}</span></div>
+   <div className="v3-journal-grid">{sichtbareBeitraege.map((n,i)=><article className={'v3-journal-card '+(i===0?'v3-wide':'')} key={n.id}><div className="v3-journal-image"><ContentImage src={ortsbild('',n.image_url)} alt={ui("Stimmungsbild aus Frankfurt")} loading="lazy"/><span className="v3-image-note">{ui("Stimmungsbild")}</span></div><div className="v3-journal-copy"><span className="v3-eyebrow">{n.demo?'MUSTERBEITRAG':n.category||'STADTGESCHICHTE'} · {date(n.published_at,lang)}</span><h3>{n.title}</h3><p>{n.body_de}</p>{n.source_url&&<a href={n.source_url} rel="noopener noreferrer" target="_blank">{ui("Originalquelle ansehen")}</a>}</div></article>)}</div>
  </section>
- <section className="v3-section v3-offers"><div className="v3-section-head"><div><span className="v3-eyebrow">AUS DEINEM VIERTEL</span><h2>Lokale Angebote.</h2></div><span className="v3-section-trail">Entdecken und vormerken</span></div>
-   <div className="v3-offer-grid">{sichtbareAngebote.map(d=><article className="v3-offer-card" key={d.id}><div className="v3-offer-image"><img src={ortsbild('',d.image_url)} alt="Stimmungsbild zum Angebot" loading="lazy"/><span className="v3-image-note">Stimmungsbild</span></div><div className="v3-offer-copy"><span className="v3-eyebrow">{d.demo?'MUSTERANGEBOT · NICHT EINLÖSBAR':'LOKALES ANGEBOT'}</span><h3>{d.title}</h3><p>{d.details}</p><small>{d.business_name}</small><DealActions deal={d} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/></div></article>)}</div>
+ <section className="v3-section v3-offers"><div className="v3-section-head"><div><span className="v3-eyebrow">{ui("AUS DEINEM VIERTEL")}</span><h2>{ui("Lokale Angebote.")}</h2></div><span className="v3-section-trail">{ui("Entdecken und vormerken")}</span></div>
+   <div className="v3-offer-grid">{sichtbareAngebote.map(d=><article className="v3-offer-card" id={'angebot-'+d.id} key={d.id}><div className="v3-offer-image"><ContentImage src={ortsbild('',d.image_url)} alt={ui("Stimmungsbild zum Angebot")} loading="lazy"/><span className="v3-image-note">{ui("Stimmungsbild")}</span></div><div className="v3-offer-copy"><span className="v3-eyebrow">{d.demo?ui("MUSTERANGEBOT · NICHT EINLÖSBAR"):ui("LOKALES ANGEBOT")}</span><h3>{d.title}</h3><p>{d.details}</p><small>{d.business_name}</small><DealActions deal={d} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/></div></article>)}</div>
  </section>
 </main>}
 {page==='community'&&<main className="inner-page v3-community-page">
- <div className="page-title v3-page-head"><small>04 / MENSCHEN DER STADT</small><h1>Frankfurt verbindet<em>.</em></h1><p>Lieblingsorte, kleine Geschichten und ein Blick auf die Stadt durch andere Augen.</p></div>
- <section className="v4-groups-preview"><span className="v3-eyebrow">GEMEINSAM AKTIV</span><h2 className="v4-group-heading">Laufen. Spazieren. Lesen.</h2><p className="v4-group-sub">Entdecke, wie Frankfurter Gruppen künftig eigene Treffen präsentieren können. Die folgenden Profile sind Ideen für die Vorschau, keine bestätigten Anbieter.</p><div className="v4-group-grid">{vorschauGruppen.map(g=><article key={g.id} className="v4-group"><small>{g.typ} · MUSTERGRUPPE</small><h3>{g.name}</h3><p>{g.beschreibung}</p></article>)}</div></section><div className="v3-community-layout"><section className="v3-community-posts"><div className="v3-section-head"><div><span className="v3-eyebrow">STIMMEN AUS FRANKFURT</span><h2>Unsere Geschichten.</h2></div></div><div className="ffm-follow-filter" role="group" aria-label="Community-Feed">
-    <button type="button" className={!followingOnly?'active':''} aria-pressed={!followingOnly} onClick={()=>setFollowingOnly(false)}>Alle Beiträge</button>
-    <button type="button" className={followingOnly?'active':''} aria-pressed={followingOnly} onClick={()=>{if(!user){setAuth(true);return;}setFollowingOnly(true)}}>Folge ich</button>
+ <div className="page-title v3-page-head"><small>{ui("04 / MENSCHEN DER STADT")}</small><h1>{ui("Frankfurt verbindet")}<em>.</em></h1><p>{ui("Lieblingsorte, kleine Geschichten und ein Blick auf die Stadt durch andere Augen.")}</p></div><StoriesStrip reload={refresh}/><SponsoredPlace placement="stories" onPlace={selectPlace}/>
+ <section className="v4-groups-preview"><span className="v3-eyebrow">{ui("GEMEINSAM AKTIV")}</span><h2 className="v4-group-heading">{ui("Laufen. Spazieren. Lesen.")}</h2><p className="v4-group-sub">{ui("Entdecke, wie Frankfurter Gruppen künftig eigene Treffen präsentieren können. Die folgenden Profile sind Ideen für die Vorschau, keine bestätigten Anbieter.")}</p><div className="v4-group-grid">{vorschauGruppen.map(g=><article key={g.id} className="v4-group"><small>{g.typ} {ui(" · MUSTERGRUPPE")}</small><h3>{g.name}</h3><p>{g.beschreibung}</p></article>)}</div></section><div className="v3-community-layout"><section className="v3-community-posts"><div className="v3-section-head"><div><span className="v3-eyebrow">{ui("STIMMEN AUS FRANKFURT")}</span><h2>{ui("Unsere Geschichten.")}</h2></div></div><div className="ffm-follow-filter" role="group" aria-label={ui("Community-Feed")}>
+    <button type="button" className={!followingOnly?'active':''} aria-pressed={!followingOnly} onClick={()=>setFollowingOnly(false)}>{ui("Alle Beiträge")}</button>
+    <button type="button" className={followingOnly?'active':''} aria-pressed={followingOnly} onClick={()=>{if(!user){setAuth(true);return;}setFollowingOnly(true)}}>{ui("Folge ich")}</button>
    </div>
-   {followingOnly&&posts.length===0&&<p className="ffm-follow-empty">Noch keine Beiträge von Personen oder Unternehmen, denen du folgst.</p>}
+   {followingOnly&&posts.length===0&&<p className="ffm-follow-empty">{ui("Noch keine Beiträge von Personen oder Unternehmen, denen du folgst.")}</p>}
    <div className="v3-post-grid">{sichtbarePosts.map(p=><article className="v3-post-card" key={p.id}>
-  <div className="v3-post-image"><img src={ortsbild('',p.image_url)} alt="Stimmungsbild zum Beitrag" loading="lazy"/><span className="v3-image-note">Stimmungsbild</span></div>
+  <div className="v3-post-image">{!p.demo&&p.media_id&&p.media_type?.startsWith('video/')?<video controls preload="none" playsInline src={p.image_url} aria-label={ui("Video aus der Community")}/>:<ContentImage src={!p.demo&&p.media_id?p.image_url:ortsbild('',p.image_url)} alt={!p.demo&&p.media_id?ui("Geteiltes Foto"):ui("Stimmungsbild zum Beitrag")} loading="lazy"/>}<span className="v3-image-note">{!p.demo&&p.media_id?ui("Community Datei"):ui("Stimmungsbild")}</span></div>
   <div className="v3-post-content"><div className="v3-post-person"><span className="v3-avatar">{p.display_name.charAt(0).toUpperCase()}</span><div><strong>{p.display_name}</strong><small>{p.place_name||'Frankfurt'} · {date(p.created_at,lang)}</small></div>
    {!p.demo&&p.author_id&&<FollowButton key={p.author_id} targetType="user" targetId={p.author_id} initialFollowing={Boolean(p.following_author)} own={Boolean(p.own_post)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash} onChanged={()=>{if(followingOnly)setRefresh(v=>v+1)}}/>}
-   </div><p>{p.body}</p>
-   {p.demo?<span className="v3-demo-label">Musterbeitrag · erfundenes Profil</span>:
+   </div><p>{p.body}</p>{!p.demo&&<PostTranslation key={p.id+lang} postId={p.id} language={lang} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)}/>}
+   {p.demo?<span className="v3-demo-label">{ui("Musterbeitrag · erfundenes Profil")}</span>:
     <PostEngagement postId={p.id} likes={p.likes_count||0} comments={p.comments_count||0} liked={Boolean(p.liked)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>} </div>
  </article>)}</div></section>
-  <aside className="panel v3-community-compose"><span className="v3-eyebrow">MITMACHEN</span><h2>Und deine Geschichte?</h2><p>Zeig uns Frankfurt aus deiner Perspektive. Neue Beiträge werden vor der Veröffentlichung geprüft.</p>{user?<form onSubmit={e=>handle(e,'posts')}><textarea name="body" maxLength={1000} required placeholder={t.postPlaceholder}/><button className="primary-btn small">{t.post}<Plus size={16}/></button></form>:<button className="primary-btn small" onClick={()=>setAuth(true)}>{t.sign}<Plus size={16}/></button>}</aside>
+  <aside className="panel v3-community-compose"><span className="v3-eyebrow">{ui("MITMACHEN")}</span><h2>{ui("Und deine Geschichte?")}</h2><p>{ui("Teile deinen Moment. Jede Veröffentlichung wird geprüft.")}</p><CommunityMediaComposer loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash} onChanged={()=>setRefresh(n=>n+1)}/></aside>
  </div>
 </main>}
-{page==='business'&&<main className="inner-page"><div className="page-title"><small>LOKALE UNTERNEHMEN</small><h1>{t.businessTitle}</h1><p>{t.businessIntro}</p></div>{!user?<div className="panel standalone"><Building2 size={36}/><h2>{t.businessRegister}</h2><p>{t.sign}</p><button className="primary-btn" onClick={()=>setAuth(true)}>{t.sign}<span className="ui-dot" aria-hidden="true"/></button></div>:!business?<div className="panel standalone"><h2>{t.businessRegister}</h2><form onSubmit={e=>handle(e,'businesses')}>{formField(t.company,'name',true)}{formField(t.registry,'registry_reference')}<button className="primary-btn">{t.send}<span className="ui-dot" aria-hidden="true"/></button></form></div>:<><div className="business-status"><div><small>UNTERNEHMENSBEREICH</small><h2>{business.name}</h2><p>{business.status==='approved'?'✓ BESTÄTIGT':'◌ '+t.pending}</p></div><Building2 size={44}/></div><div className="dashboard-grid"><div className="panel"><h2>{t.claim}</h2><form onSubmit={e=>handle(e,'claims')}><label className="form-label">{t.discover}<select name="place_id" required><option value="">—</option>{places.map(p=><option value={p.id} key={p.id}>{p.name}</option>)}</select></label><label className="form-label">{t.claimNote}<textarea name="note" maxLength={500}/></label><button className="primary-btn small">{t.send}<span className="ui-dot" aria-hidden="true"/></button></form></div><div className="panel"><h2>{t.offer}</h2><p>{t.pending}</p><form onSubmit={e=>handle(e,'deals')}><label className="form-label">{t.title}<input name="title" required/></label><label className="form-label">{t.offerText}<textarea name="details"/></label><button className="primary-btn small" disabled={business.status!=='approved'}>{t.send}<span className="ui-dot" aria-hidden="true"/></button></form></div></div>{businessDetail&&<BusinessBranchEditor places={businessDetail.places||[]} changes={businessDetail.changes||[]} businessStatus={business.status} onNotice={flash} onChanged={()=>setRefresh(v=>v+1)}/>}<BusinessCouponRedeem status={business.status} onNotice={flash}/>{businessDetail&&<p className="subdued">{businessDetail.claims.length} Anfragen · {businessDetail.deals.length} Angebote</p>}</>}<section className="v3-business-preview"><div className="v3-section-head"><div><span className="v3-eyebrow">SO KÖNNTE DEIN ANGEBOT AUSSEHEN</span><h2>Mehr Sichtbarkeit vor Ort.</h2></div></div><div className="v3-offer-grid">{vorschauAngebote.map(a=><article className="v3-offer-card" key={a.id}><div className="v3-offer-image"><img src={ortsbild('',a.image_url)} loading="lazy" alt="Stimmungsbild zum Musterangebot"/><span className="v3-image-note">Stimmungsbild</span></div><div className="v3-offer-copy"><span className="v3-eyebrow">MUSTERANGEBOT · NICHT EINLÖSBAR</span><h3>{a.title}</h3><p>{a.details}</p><small>{a.business_name}</small></div></article>)}</div></section></main>}
-  {page==='admin'&&(user?.role==='admin'?<AdminStudio onChanged={()=>setRefresh(n=>n+1)}/>:<main className="inner-page"><div className="empty"><LockKeyhole/><p>Zugriff nur für die Redaktion. Bitte melde dich als Administrator an.</p></div></main>)}
-  <footer className="footer"><div className="footer-top"><div><strong>ffm<b>aktuell</b><em>.</em></strong><p>FRANKFURT VON INNEN. DEINE STADT, DEIN BLICK.</p></div><div><button onClick={()=>navigate('discover')}>{t.discover}</button><button onClick={()=>navigate('events')}>{t.events}</button><button onClick={()=>navigate('business')}>{t.business}</button></div></div><div className="footer-bottom"><span>© 2026 FFM Aktuell</span><span>Frankfurt am Main</span></div></footer>
+{page==='business'&&<main className="inner-page ffm-business-page"><div className="page-title"><small>{ui("LOKALE UNTERNEHMEN")}</small><h1>{t.businessTitle}</h1><p>{t.businessIntro}</p></div>{!user?<div className="panel standalone"><Building2 size={36}/><h2>{t.businessRegister}</h2><p>{t.sign}</p><button className="primary-btn" onClick={()=>setAuth(true)}>{t.sign}<span className="ui-dot" aria-hidden="true"/></button></div>:!business?<div className="panel standalone"><h2>{t.businessRegister}</h2><form onSubmit={e=>handle(e,'businesses')}>{formField(t.company,'name',true)}{formField(t.registry,'registry_reference')}<button className="primary-btn">{t.send}<span className="ui-dot" aria-hidden="true"/></button></form></div>:<><div className="business-status"><div><small>{ui("UNTERNEHMENSBEREICH")}</small><h2>{business.name}</h2><p>{business.status==='approved'?ui("✓ BESTÄTIGT"):'◌ '+t.pending}</p></div><Building2 size={44}/></div><nav className="ffm-business-nav" aria-label={ui("Unternehmensbereiche")}>{[['locations','Standorte'],['content','Inhalte'],['customers','Kunden'],['advertising','Werbung'],['settings','Verwaltung']].map(([id,label])=><button type="button" key={id} aria-pressed={businessView===id} aria-controls={'business-'+id} onClick={()=>setBusinessView(id)}>{ui(label)}</button>)}</nav><section className="ffm-business-section" id="business-locations" aria-label={ui("Standorte")} hidden={businessView!=='locations'}><div className="panel"><h2>{t.claim}</h2><form onSubmit={e=>handle(e,'claims')}><label className="form-label">{t.discover}<select name="place_id" required><option value="">—</option>{places.map(p=><option value={p.id} key={p.id}>{p.name}</option>)}</select></label><label className="form-label">{t.claimNote}<textarea name="note" maxLength={500}/></label><button className="primary-btn small">{t.send}<span className="ui-dot" aria-hidden="true"/></button></form></div>{businessDetail&&<BusinessBranchEditor places={businessDetail.places||[]} changes={businessDetail.changes||[]} businessStatus={business.status} onNotice={flash} onChanged={()=>setRefresh(v=>v+1)}/>}</section><section className="ffm-business-section" id="business-content" aria-label={ui("Inhalte")} hidden={businessView!=='content'}><div className="panel"><h2>{t.offer}</h2><p>{lang==='en'?ui("An active business Premium subscription is required to publish offers."):ui("Für Angebote ist aktives Unternehmens Premium erforderlich.")}</p><p>{t.pending}</p><form onSubmit={e=>handle(e,'deals')}><label className="form-label">{t.title}<input name="title" required/></label><label className="form-label">{t.offerText}<textarea name="details"/></label><label className="form-label">{lang==='en'?ui("Eligible customers"):ui("Berechtigte Kunden")}<select name="premium_only"><option value="false">{lang==='en'?ui("Everyone"):ui("Alle")}</option><option value="true">{lang==='en'?ui("Personal Premium only"):ui("Nur persönliches Premium")}</option></select></label><button className="primary-btn small" disabled={business.status!=='approved'}>{t.send}<span className="ui-dot" aria-hidden="true"/></button></form></div>{business.status==='approved'&&businessDetail&&<BusinessStories business={{id:business.id,places:businessDetail.places||[]}} onNotice={flash}/>}<BusinessHighlightsManager businessId={business.id} approved={business.status==='approved'} onNotice={flash}/></section><section className="ffm-business-section" id="business-customers" aria-label={ui("Kunden")} hidden={businessView!=='customers'}>{business.status==='approved'&&<ReviewReplies/>}<BusinessCouponRedeem status={business.status} onNotice={flash}/>{business.status==='approved'&&<BusinessLoyalty businessId={business.id}/>}</section><section className="ffm-business-section" id="business-advertising" aria-label={ui("Werbung")} hidden={businessView!=='advertising'}><BusinessCampaigns approved={business.status==='approved'} places={businessDetail?.places||[]} onNotice={flash}/></section><section className="ffm-business-section" id="business-settings" aria-label={ui("Verwaltung")} hidden={businessView!=='settings'}><BusinessTeam approved={business.status==='approved'} onNotice={flash}/><PremiumTariffPreview audience="business" businessId={business.id}/>{business.status==='approved'&&<BusinessInsights businessId={business.id}/>}</section>{businessDetail&&<p className="subdued">{businessDetail.claims.length} {ui(" Anfragen · ")}{businessDetail.deals.length} {ui(" Angebote")}</p>}</>}<details className="ffm-business-examples"><summary>{ui("Beispielangebote ansehen")}</summary><section className="v3-business-preview"><div className="v3-section-head"><div><span className="v3-eyebrow">{ui("SO KÖNNTE DEIN ANGEBOT AUSSEHEN")}</span><h2>{ui("Mehr Sichtbarkeit vor Ort.")}</h2></div></div><div className="v3-offer-grid">{vorschauAngebote.map(a=><article className="v3-offer-card" key={a.id}><div className="v3-offer-image"><ContentImage src={ortsbild('',a.image_url)} loading="lazy" alt={ui("Stimmungsbild zum Musterangebot")}/><span className="v3-image-note">{ui("Stimmungsbild")}</span></div><div className="v3-offer-copy"><span className="v3-eyebrow">{ui("MUSTERANGEBOT · NICHT EINLÖSBAR")}</span><h3>{a.title}</h3><p>{a.details}</p><small>{a.business_name}</small></div></article>)}</div></section></details></main>}
+  {page==='admin'&&(canAdmin(user)?<AdminStudio permissions={user?.role==='admin'?['*']:user?.admin_permissions||[]} onChanged={()=>setRefresh(n=>n+1)}/>:<main className="inner-page"><div className="empty"><LockKeyhole/><p>{ui("Zugriff nur für die Redaktion. Bitte melde dich als Administrator an.")}</p></div></main>)}
+  <footer className="footer"><div className="footer-top"><div><strong>{ui("ffm")}<b>{ui("aktuell")}</b><em>.</em></strong><p>{ui("FRANKFURT VON INNEN. DEINE STADT, DEIN BLICK.")}</p></div><div><button onClick={()=>navigate('discover')}>{t.discover}</button><button onClick={()=>navigate('events')}>{t.events}</button><button onClick={()=>navigate('business')}>{t.business}</button></div></div><div className="footer-bottom"><span>{ui("© 2026 FFM Aktuell")}</span><span>Frankfurt am Main</span></div></footer>
   <nav className="mobile-bottom">{nav.map(([p,Icon,title])=><button className={page===p?'active':''} key={p} onClick={()=>navigate(p)}><Icon size={21}/><span>{title}</span></button>)}</nav>
-  {selected&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}><div className="place-dialog" role="dialog" aria-modal="true" aria-label="Ortsdetails"><div className="ffm-place-dialog-header"><span>Ortsdetails</span><button type="button" className="dialog-close" aria-label="Details schließen" onClick={()=>setSelected(null)}><X size={20}/></button></div><div className="dialog-body">{selected.demo&&<span className="v3-demo-label">Musterort – noch keine redaktionelle Freigabe</span>}<small>{catBezeichnungen[selected.category]||selected.category} / {selected.district}</small><p className="v4-place-check">{selected.candidate?'OSM · Ungeprüft':statusLabel(selected)}{selected.verified_at&&frischBestaetigt(selected)?' · Zuletzt geprüft: '+date(selected.verified_at,lang):''}</p><h2>{selected.name}</h2><p>{!selected.candidate&&(lang==='de'?selected.description_de||selected.description_en:selected.description_en||selected.description_de)}</p><p className="address"><MapPin size={16}/>{selected.address}</p><PlaceActions key={selected.id} venue={selected} saved={favorites.includes(selected.id)} loggedIn={Boolean(user)}
+  {selected&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}><div className="place-dialog" role="dialog" aria-modal="true" tabIndex={-1} aria-label={ui("Ortsdetails")}><div className="ffm-place-dialog-header"><span>{ui("Ortsdetails")}</span><button type="button" className="dialog-close" aria-label={ui("Details schließen")} onClick={()=>setSelected(null)}><X size={20}/></button></div><div className="dialog-body">{selected.demo&&<span className="v3-demo-label">{ui("Musterort – noch keine redaktionelle Freigabe")}</span>}<small>{catBezeichnungen[selected.category]||selected.category} / {selected.district}</small><p className="v4-place-check">{selected.candidate?ui("OSM · Ungeprüft"):statusLabel(selected)}{selected.verified_at&&frischBestaetigt(selected)?ui(" · Zuletzt geprüft: ")+date(selected.verified_at,lang):''}</p><h2>{selected.name}</h2>{!selected.demo&&<button type="button" className="ffm-compare-add" aria-pressed={comparePlaces.some(p=>p.id===selected.id)} onClick={()=>toggleCompare(selected)}>{comparePlaces.some(p=>p.id===selected.id)?ui("✓ Im Vergleich · entfernen"):ui("+ Zum Vergleich hinzufügen")}</button>}<p>{!selected.candidate&&(lang==='de'?selected.description_de||selected.description_en:selected.description_en||selected.description_de)}</p><p className="address"><MapPin size={16}/>{selected.address}</p>
+  {!selected.candidate&&!selected.demo&&<><PlaceFacts placeId={selected.id}/><OpeningStatus placeId={selected.id}/></>}
+  {selected.opening_hours_text&&<div className="ffm-venue-hours"><strong>{ui("Reguläre Öffnungszeiten laut Anbieter")}</strong>
+   <p>{selected.opening_hours_text}</p><small>{ui("Keine Live-Öffnungsprüfung. Sonderöffnungen vor dem Besuch bei der Quelle prüfen.")}</small></div>}
+  {!selected.demo&&!selected.candidate&&selected.business_id&&<VisitCode placeId={selected.id} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)}/>}
+  <PlaceActions key={selected.id} venue={selected} saved={favorites.includes(selected.id)} loggedIn={Boolean(user)}
  onSave={()=>favorite(selected.id)} onLogin={()=>setAuth(true)} onNotice={flash}
  onReport={(reason,message)=>submit('place-reports',{place_id:selected.id,reason,message},'Danke! Die Redaktion prüft deine Meldung.')}
  onPost={body=>submit('posts',{body,place_id:selected.id},'Dein Tipp wartet auf Freigabe.')}
 />{!selected.demo&&!selected.candidate&&selected.business_id&&<div className="ffm-venue-follow">
-  <span>Dieses Unternehmen</span>
+  <span>{ui("Dieses Unternehmen")}</span>
   <FollowButton key={selected.business_id} targetType="business" targetId={selected.business_id} initialFollowing={Boolean(selected.following_business)} own={false} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>
- </div>}<VenueReviews key={selected.id} placeId={selected.id} demo={Boolean(selected.demo)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>{selected.candidate&&<p className="v5-candidate-alert">Betrieb und Öffnungszeiten nicht geprüft. Bitte beim Anbieter nachsehen.</p>}{selected.verification_source&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.verification_source}>Quelle der Betriebsprüfung</a>}{selected.source_url&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.source_url}>{t.source}<span className="ui-dot" aria-hidden="true"/></a>}<p className="fineprint">{t.notice}</p></div><PlaceLocationMap key={selected.id} name={selected.name} address={selected.address} latitude={selected.latitude} longitude={selected.longitude}/></div></div>}
-  {auth&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setAuth(false)}}><div className="auth-dialog" role="dialog" aria-modal="true"><button className="dialog-close" onClick={()=>setAuth(false)}><X/></button><span className="auth-mark">F✳</span><small>DEIN ZUGANG ZU FFM AKTUELL</small><h2>{register?t.register:t.welcome}</h2><form onSubmit={onAuth}>{register&&formField(t.name,'display_name',true)}{formField(t.email,'email',true,'email')}{formField(t.password,'password',true,'password')}<button className="primary-btn">{register?t.register:t.login}<span className="ui-dot" aria-hidden="true"/></button></form><button className="switch-auth" onClick={()=>setRegister(!register)}>{register?t.login:t.register}<span className="ui-dot" aria-hidden="true"/></button></div></div>}
+ </div>}{!selected.demo&&!selected.candidate&&selected.business_id&&<BusinessHighlights businessId={selected.business_id}/>}<VenueReviews key={selected.id} placeId={selected.id} demo={Boolean(selected.demo)} loggedIn={Boolean(user)} onLogin={()=>setAuth(true)} onNotice={flash}/>{selected.candidate&&<p className="v5-candidate-alert">{ui("Betrieb und Öffnungszeiten nicht geprüft. Bitte beim Anbieter nachsehen.")}</p>}{selected.verification_source&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.verification_source}>{ui("Quelle der Betriebsprüfung")}</a>}{selected.source_url&&<a className="source" target="_blank" rel="noopener noreferrer" href={selected.source_url}>{t.source}<span className="ui-dot" aria-hidden="true"/></a>}<p className="fineprint">{t.notice}</p></div><PlaceLocationMap key={selected.id} name={selected.name} address={selected.address} latitude={selected.latitude} longitude={selected.longitude}/></div></div>}
+  {auth&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setAuth(false)}}><div className="auth-dialog" role="dialog" aria-modal="true" aria-labelledby="ffm-auth-title" tabIndex={-1}><button className="dialog-close" aria-label={ui("Schließen")} onClick={()=>setAuth(false)}><X/></button><span className="auth-mark">{ui("F✳")}</span><small>{ui("DEIN ZUGANG ZU FFM AKTUELL")}</small><h2 id="ffm-auth-title">{register?t.register:t.welcome}</h2><form onSubmit={onAuth}>{register&&formField(t.name,'display_name',true)}{formField(t.email,'email',true,'email')}{formField(t.password,'password',true,'password')}<button className="primary-btn">{register?t.register:t.login}<span className="ui-dot" aria-hidden="true"/></button></form>
+ <PhoneAccess onDone={()=>{setAuth(false);setRefresh(v=>v+1)}}/>{(oauthReady.google||oauthReady.apple)&&<div className="ffm-oauth-actions">{oauthReady.google&&<a href="/api/auth/oauth/google/start">{ui("Mit Google anmelden")}</a>}{oauthReady.apple&&<a href="/api/auth/oauth/apple/start">{ui("Mit Apple anmelden")}</a>}</div>}
+ <button className="switch-auth" onClick={()=>setRegister(!register)}>{register?t.login:t.register}<span className="ui-dot" aria-hidden="true"/></button></div></div>}
  </div>;
 }
+

@@ -1,7 +1,8 @@
+import {readUiSource} from './ui-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const get=p=>readFileSync(p,'utf8');
+const get=p=>readUiSource(p);
 const api=get('app/api/[[...path]]/route.ts');
 const schema=get('db/schema.sql');
 const page=get('app/page.tsx'),admin=get('components/AdminStudio.tsx'),component=get('components/VenueReviews.tsx'),css=get('app/venue-reviews.css'),layout=get('app/layout.tsx');
@@ -73,3 +74,4 @@ test('demo locations never get reviews',()=>{
  assert.match(component,/if\(demo\)return null/);
  assert.match(api,/validLocationId\(venueId\)/);
 });
+

@@ -1,0 +1,33 @@
+/* Shared keyboard and motion behavior; map gestures retain their bounded controls. */
+:where(button,a,input,select,textarea,summary,[tabindex]):focus-visible{outline:3px solid #1762bc;outline-offset:3px}
+.ffm-skip-link{position:fixed;left:16px;top:12px;z-index:20000;padding:12px 18px;background:#fff;color:#113b6b;border:2px solid currentColor;border-radius:8px;transform:translateY(-180%)}
+.ffm-skip-link:focus{transform:translateY(0)}
+:where(button,a,input,select,textarea,summary){scroll-margin-block:90px}
+@media(pointer:coarse){:where(button,summary,.primary-btn,.ffm-profile-check,.form-label input,.form-label select){min-height:44px}.ffm-language-toggle{min-width:44px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+@media(forced-colors:active){button,input,select,textarea{border:1px solid ButtonText}.ffm-skip-link{background:Canvas;color:LinkText}}
+
+/* Measured WCAG AA text contrast on the actual cream surfaces. */
+.atlas-app-map-note,.footer-top p,.footer-bottom{color:#566457}
+.mobile-bottom button{color:#526957}
+.ml-brand-word small,.atlas-map-loading>small,.ffm-quick-hero-top>.ffm-quick-eyebrow,
+.ffm-quick-container>p,.ffm-quick-empty p,.ffm-quick-empty small,.ffm-quick-quiet p,
+.ffm-find-more>summary,.ffm-find-data>summary,.ffm-find-source-line small,
+.ffm-find-empty,.ffm-find-source-credit,.ffm-find-preview>summary,
+.ffm-profile-head>span,.ffm-profile-head p,.ffm-profile-field>small,
+.ffm-profile-check small,.ffm-profile-tip,.ffm-coupon-wallet>p,.ffm-team-check p{color:#526457}
+.auth-dialog>small{color:#8b5132}
+.ffm-profile-danger>button{color:#934e46}
+.ffm-quick-empty button{min-height:44px}
+.ffm-find-visual .ffm-find-data summary{color:#526457}
+.ffm-team-section .ffm-team-check p{color:#526457}
+.atlas-standalone-note,.atlas-detail-source{color:#526457}
+.atlas-editorial-index{color:#81564e}
+.ffm-find-visual .ffm-find-source-credit{opacity:1}
+/* Keep the standalone atlas wordmark readable at its 21px mobile size. */
+.atlas-standalone-brand>span{color:#735959}
+
+/* Secondary public text remains readable across the editorial paper colours. */
+.site:not(.ffm-studio-active) .desktop-nav>button{color:#535f55}
+.site:not(.ffm-studio-active) :is(.ffm-quick-geo,.ffm-quick-help,.page-title>p,.v3-section-trail,.v3-event-info>p,.v3-place-meta,.v3-journal-copy>p,.v3-offer-copy>p,.v3-offer-copy>small,.v4-group-sub,.v3-post-person small,.v3-community-compose>p,.ffm-follow-filter>button,.ffm-saved-heading>span,.ffm-saved-heading>p,.ffm-saved-empty>p,.ffm-tour-head>span,.ffm-tour-head>p,.ffm-tour-mini-head>span,.ffm-tour-empty,.ffm-tour-muted,.business-status small,.business-status p,.ffm-branch-panel>p,.ffm-coupon-business>p,.ffm-team-note,.ffm-insights-head>span,.subdued){color:#506354}
+.site:not(.ffm-studio-active) :is(.page-title>small,.v3-eyebrow){color:#80594e}

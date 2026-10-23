@@ -16,12 +16,13 @@ test('events are private and only published events may be bookmarked',()=>{
  assert.match(api,/const u=need\(user\)/);
 });
 test('calendar exporter uses real UTC time, labels unknown event end and explicit reminder',()=>{
- assert.match(actions,/BEGIN:VCALENDAR/);
- assert.match(actions,/DTSTART:/);
- assert.match(actions,/DTEND:/);
- assert.match(actions,/TRIGGER:-PT60M/);
- assert.match(actions,/Endzeit nicht bestätigt/);
- assert.match(actions,/new Date\(event.starts_at\)/);
+ const calendar=get('lib/event-calendar.ts');
+ assert.match(calendar,/BEGIN:VCALENDAR/);
+ assert.match(calendar,/DTSTART:/);
+ assert.match(calendar,/DTEND:/);
+ assert.match(calendar,/TRIGGER:-PT60M/);
+ assert.match(calendar,/Endzeit nicht bestätigt/);
+ assert.match(calendar,/new Date\(event.starts_at\)/);
  assert.match(actions,/event.demo/);
  assert.match(actions,/navigator.clipboard|URL.createObjectURL/);
 });
@@ -32,7 +33,8 @@ test('profile preferences opt-in and no public activity by default',()=>{
  assert.match(api,/if\(method==='POST'&&path==='me\/preferences'\)/);
  assert.match(api,/new Set\(v\)/);
  assert.match(profile,/share_activity/);
- assert.match(profile,/Push Benachrichtigungen sind noch nicht aktiviert/);
+ assert.match(profile,/<PushSettings/);
+ assert.match(profile,/Für Push zusätzlich dieses Gerät/);
 });
 test('export excludes stored password hashes and deletions require exact confirmation',()=>{
  const a=api.slice(api.indexOf("if(method==='GET'&&path==='me/export'"),api.indexOf("if(method==='GET'&&path==='places'"));
@@ -47,9 +49,12 @@ test('export excludes stored password hashes and deletions require exact confirm
 });
 test('event cards and profile are directly reachable without dense nav',()=>{
  assert.match(page,/<EventActions key=\{e.id\}/);
- assert.match(page,/page==='profile'&&<ProfileSettings/);
+ assert.match(page,/page==='profile'&&<>/);
+ assert.match(page,/<ProfileSettings user=/);
+ assert.match(page,/<MediaRightsPanel onNotice=/);
  assert.match(page,/Mein Profil/);
  assert.match(css,/@media\(max-width:600px\)/);
  assert.match(e2e,/Guest could read private event bookmarks/);
  assert.match(e2e,/Account deletion accepted bad password/);
 });
+

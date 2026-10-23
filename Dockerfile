@@ -1,7 +1,7 @@
 FROM node:22-alpine AS build
 WORKDIR /app
-COPY package.json ./
-RUN npm install --no-audit --no-fund
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
@@ -9,8 +9,12 @@ FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 COPY --from=build /app/public ./public
+COPY --from=build /app/scripts/start-server.mjs ./start-server.mjs
+COPY --from=build /app/scripts/bootstrap-web-push.mjs ./bootstrap-web-push.mjs
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
+RUN apk add --no-cache ffmpeg && mkdir -p /app/uploads && chown node:node /app/uploads
 USER node
 EXPOSE 3000
-CMD ["node","server.js"]
+CMD ["node","start-server.mjs"]
+

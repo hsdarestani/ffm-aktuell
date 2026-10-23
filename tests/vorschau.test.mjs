@@ -1,7 +1,8 @@
+import {readUiSource} from './ui-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const read=(file)=>readFileSync(file,'utf8');
+const read=(file)=>readUiSource(file);
 const v=read('lib/vorschau.ts'),page=read('app/page.tsx'),home=read('components/AtlasHome.tsx'),css=read('app/vorschau.css'),atlas=read('app/atlas/page.tsx');
 test('samples exist for all requested visitor surfaces but are not written to the DB',()=>{
  for(const key of ['vorschauOrte','vorschauVeranstaltungen','vorschauBeitraege','vorschauPosts','vorschauAngebote'])assert.match(v,new RegExp('export const '+key));
@@ -25,7 +26,8 @@ test('visible navigational and editorial content does not use unwanted English w
  for(const old of ['03 / CITY JOURNAL','04 / THE PEOPLE','YOUR CITY / YOUR VOICE','COMMUNITY / POST','LOCAL BUSINESS / PARTNERS','01 / DISCOVER FRANKFURT','PLACES / FRANKFURT','MEMBER ACCESS / FFM AKTUELL'])assert.ok(!page.includes(old),old);
  assert.match(page,/events:'Veranstaltungen'/);
  assert.match(page,/community:'Miteinander'/);
- assert.doesNotMatch(page,/setLang\(/);
+ assert.match(page,/setLang\(/);
+ assert.match(page,/lang==='de'\?'EN':'DE'/);
  assert.doesNotMatch(atlas,/setLang\(/);
  assert.match(home,/03 \/ STADTJOURNAL/);
 });
@@ -36,3 +38,4 @@ test('photo cards include meaningful alt labels and demo UI never writes placeho
  assert.match(v,/Stimmungsbild/);
  assert.match(css,/prefers-reduced-motion/);
 });
+

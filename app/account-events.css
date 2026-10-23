@@ -33,3 +33,10 @@
 .ffm-profile-danger form button{display:inline-flex;gap:8px;align-items:center;background:#a54e48;border:0;color:#fff;border-radius:9px;padding:11px 13px;font-size:11px}
 .ffm-profile-danger form button:disabled{opacity:.45}
 @media(max-width:600px){.ffm-profile-page{padding:31px 13px 110px}.ffm-profile-panel{padding:19px 16px}.ffm-profile-head h1{font-size:51px}.ffm-event-actions{gap:5px}.ffm-event-actions button,.ffm-event-actions a{padding:8px 9px}}
+
+
+.ffm-saved-events ul{list-style:none;padding:0;margin:0;display:grid;gap:16px}
+.ffm-saved-events li{padding:0 0 16px;border-bottom:1px solid #e4e9e0}
+.ffm-saved-events li:last-child{padding-bottom:0;border-bottom:0}
+.ffm-saved-events h3{font-size:16px;line-height:1.4;margin:0 0 6px;overflow-wrap:anywhere}
+.ffm-saved-events p{font-size:13px;line-height:1.6;margin:0;color:#486d52}

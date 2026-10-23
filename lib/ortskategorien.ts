@@ -30,12 +30,13 @@ export type Ortsrubrik=typeof KATEGORIEN[number]['id'];
 export type Betriebsstatus='unknown'|'operating'|'temporarily_closed'|'permanently_closed';
 export type Quellenstatus='unverified'|'verified'|'disputed';
 export type GepruefterOrt={
- category:string;name:string;description_de?:string|null;
+ category:string;name:string;categories?:string[]|null;description_de?:string|null;
  demo?:boolean;verification_status?:Quellenstatus|null;activity_status?:Betriebsstatus|null;
  verified_at?:string|null;verification_source?:string|null;editorial_rank?:number|null;
 };
 export function passendeRubrik(ort:GepruefterOrt,rubrik:string){
  if(rubrik==='Alle')return true;
+ if(ort.categories?.includes(rubrik))return true;
  const item=KATEGORIEN.find(k=>k.id===rubrik);if(!item)return ort.category===rubrik;
  const text=[ort.category,ort.name,ort.description_de||''].join(' ').toLocaleLowerCase('de-DE');
  return ort.category===rubrik||item.stichworte.some(v=>text.includes(v));
