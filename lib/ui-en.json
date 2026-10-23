@@ -1778,5 +1778,8 @@
   "Invalid JSON": "Invalid JSON",
   "Exactly two valid provider credentials required": "Exactly two valid provider credentials required",
   "Already used": "Already used",
-  "Credential storage not available": "Credential storage not available"
+  "Credential storage not available": "Credential storage not available",
+  "Inhalte werden geladen …": "Loading content …",
+  "Einige Inhalte konnten nicht geladen werden. Bitte erneut versuchen.": "Some content could not be loaded. Please try again.",
+  "Kartendaten derzeit nicht erreichbar. Bitte Karte extern öffnen.": "Map tiles are currently unavailable. Please open the external map."
 }

@@ -1,5 +1,5 @@
 'use client';
-import {useState} from 'react';
+import {useState,useEffect} from 'react';
 import {ArrowLeft,ArrowRight,CheckCircle2,Coffee,Martini,UtensilsCrossed,Compass,Sparkles} from 'lucide-react';
 type Item={id:string;name:string;category:string;district:string;description_de?:string;description_en?:string;reasons?:string[];distance_km?:number|null};
 const groups=[
@@ -12,6 +12,8 @@ export default function MatcherQuiz({lang,loggedIn,onLogin,onPlace,onDiscover}:{
  const [stage,setStage]=useState(0),[group,setGroup]=useState('Cafés'),[companion,setCompanion]=useState(''),
  [daypart,setDaypart]=useState(''),[budget,setBudget]=useState(''),[weather,setWeather]=useState(true),[ai,setAi]=useState(false),
  [busy,setBusy]=useState(false),[result,setResult]=useState<Item[]>([]),[asked,setAsked]=useState(false),[notice,setNotice]=useState('');
+ const [noticeLang,setNoticeLang]=useState(lang);
+ useEffect(()=>{setNotice('')},[lang]);
  const t=(de:string,en:string)=>lang==='de'?de:en;
  const choices=[
   [{value:'',label:t('Ganz egal','Any')},{value:'solo',label:t('Alleine','Solo')},{value:'partner',label:t('Zu zweit','With a partner')},{value:'friends',label:t('Mit Freunden','With friends')},{value:'family',label:t('Mit Familie','With family')}],
@@ -20,16 +22,16 @@ export default function MatcherQuiz({lang,loggedIn,onLogin,onPlace,onDiscover}:{
  ];
  const values=[companion,daypart,budget],setters=[setCompanion,setDaypart,setBudget];
  async function match(){
-  setBusy(true);setAsked(true);setNotice('');setResult([]);
+  setBusy(true);setAsked(true);setNotice('');setNoticeLang(lang);setResult([]);
   const q={Cafés:'Café Kaffee gemütlich',Bars:'Bar Drinks Cocktails',Restaurants:'Restaurant Essen',Freizeit:'Freizeit Aktivität erleben'}[group]||group;
   const params=new URLSearchParams({q,lang,category:group,companion,daypart,budget,weather:weather?'1':'0',ai:ai&&loggedIn?'1':'0'});
-  try{const r=await fetch('/api/recommendations?'+params,{cache:'no-store'}),d=await r.json();
+  try{const r=await fetch('/api/recommendations?'+params,{cache:'no-store',signal:AbortSignal.timeout(15000)}),d=await r.json();
    if(!r.ok)throw Error('Empfehlungsdienst nicht erreichbar.');
    setResult((d.items||[]).slice(0,3));setNotice(d.notice||'');
   }catch{setNotice(t('Vorschläge sind vorübergehend nicht verfügbar.','Suggestions are temporarily unavailable.'))}finally{setBusy(false)}
  }
  return <main className="ffm-matcher-screen">
-  <header className="ffm-city-head"><span className="ffm-city-eyebrow">FINDE DEINEN SPOT</span><h1>Matcher<span>.</span></h1>
+  <header className="ffm-city-head"><span className="ffm-city-eyebrow">{t('FINDE DEINEN SPOT','FIND YOUR SPOT')}</span><h1>Matcher<span>.</span></h1>
    <p>{t('Wähle aus, worauf du Lust hast. Wir zeigen passende Orte aus Frankfurt.','Answer a few quick questions to find the right spot.')}</p></header>
   <div className="ffm-matcher-content">
    <div className="ffm-matcher-progress"><span>{asked?t('Deine Vorschläge','Your matches'):t('Frage','Question')+' '+(stage+1)+'/4'}</span><div>{Array.from({length:4},(_,i)=><span key={i} className={i<=stage?'active':''}/>)}</div></div>
@@ -55,7 +57,7 @@ export default function MatcherQuiz({lang,loggedIn,onLogin,onPlace,onDiscover}:{
       </button>)}</div>:<div className="ffm-city-empty"><Sparkles size={27}/><strong>{t('Noch keine passenden verifizierten Orte.','No independently verified matches yet.')}</strong>
       <p>{t('Wir zeigen keine erfundenen Empfehlungen. Du kannst weitere, deutlich als ungeprüft gekennzeichnete Orte durchsuchen.','We never invent recommendations. Browse other clearly marked unverified places instead.')}</p>
       <button onClick={()=>onDiscover(group)}>{t('Weitere Orte entdecken','Explore more places')}</button></div>}
-    {notice&&<p className="ffm-city-disclaimer">{notice}</p>}
+    {notice&&noticeLang===lang&&<p className="ffm-city-disclaimer">{notice}</p>}
     <div className="ffm-matcher-bottom"><button onClick={()=>{setAsked(false);setStage(0);setResult([])}}>{t('Noch einmal','Start over')}</button><button onClick={()=>onDiscover(group)}>{t('Alle Orte anzeigen','See all places')}</button></div>
    </div>}
   </div>

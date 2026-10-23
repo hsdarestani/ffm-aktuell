@@ -41,6 +41,8 @@ jobs:
         run: npm run build
       - name: Install Chromium for map recovery checks
         run: npx playwright install --with-deps chromium
+      - name: Live QA functional regressions on desktop and mobile
+        run: node scripts/live-functional-qa-browser.mjs
       - name: Admin workspace desktop and mobile browser checks
         run: node scripts/admin-workspace-browser.mjs
       - name: Admin workspace screenshots

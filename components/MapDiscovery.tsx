@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useState,useRef} from 'react';
 import dynamic from 'next/dynamic';
 import {CalendarDays,ChevronDown,ChevronUp,MapPin,Search} from 'lucide-react';
 import type {AtlasPlace} from './Atlas3D';
@@ -9,6 +9,7 @@ const date=(d:Date)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Berlin',y
 export default function MapDiscovery({lang,places,onPlace,onEvents,initialMode='places'}:{lang:'de'|'en';places:AtlasPlace[];onPlace:(id:string)=>void;onEvents:()=>void;initialMode?:'places'|'events'}){
  const [mode,setMode]=useState<'places'|'events'>(initialMode),[events,setEvents]=useState<EventPin[]>([]),[search,setSearch]=useState(''),[open,setOpen]=useState(true),
  [selectedEvent,setSelectedEvent]=useState<EventPin|null>(null),[error,setError]=useState(false);
+ useEffect(()=>{setMode(initialMode);setSelectedEvent(null)},[initialMode]);
  const [raw,setRaw]=useState<AtlasPlace[]>([]),[rawTotal,setRawTotal]=useState(0),[rawLoading,setRawLoading]=useState(false);
  const [rawError,setRawError]=useState(false),[moreLoading,setMoreLoading]=useState(false),[listLimit,setListLimit]=useState(35);
  useEffect(()=>{if(mode!=='places')return;
@@ -20,13 +21,16 @@ export default function MapDiscovery({lang,places,onPlace,onEvents,initialMode='
   },220);
   return()=>{ctl.abort();window.clearTimeout(timer)}
  },[mode,search]);
+ const searchVersion=useRef(0);
+ useEffect(()=>{searchVersion.current++;setMoreLoading(false)},[search,mode]);
  async function loadMore(){
+  const version=searchVersion.current;
   if(moreLoading||raw.length>=rawTotal)return;
   setMoreLoading(true);
   try{const r=await fetch('/api/discovery?'+new URLSearchParams({q:search.slice(0,90),limit:'48',offset:String(raw.length)}),{cache:'no-store'});
    if(!r.ok)throw Error('Lookup unavailable');
-   const d=await r.json();setRaw(current=>[...current,...((d.items||[]) as AtlasPlace[]).filter(p=>!current.some(x=>x.id===p.id))]);setRawTotal(d.total||0);setListLimit(n=>n+48);
-  }catch{setRawError(true)}finally{setMoreLoading(false)}
+   const d=await r.json();if(version!==searchVersion.current)return;setRaw(current=>[...current,...((d.items||[]) as AtlasPlace[]).filter(p=>!current.some(x=>x.id===p.id))]);setRawTotal(d.total||0);setListLimit(n=>n+48);
+  }catch{if(version===searchVersion.current)setRawError(true)}finally{if(version===searchVersion.current)setMoreLoading(false)}
  }
  useEffect(()=>{const c=new AbortController(),now=new Date(),end=new Date(Date.now()+14*86400000);
  fetch('/api/event-explorer?'+new URLSearchParams({from:date(now),to:date(end)}),{signal:c.signal,cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject())
