@@ -48,11 +48,14 @@ try{
   assert.equal(await page.getByText('Keine passenden unabhängig geprüften Orte.',{exact:true}).count(),0);
   await page.goto(base+'/?ort=node%2F8883508132',{waitUntil:'domcontentloaded'});
   await page.locator('.ffm-place-raster-pin').waitFor();
+  assert.equal(await page.locator('.ffm-place-actions').count(),1,'Place actions render exactly once');
   const tile=page.locator('.ffm-place-raster-tiles img').first();
   const before=await tile.getAttribute('src');
   await page.locator('.ffm-place-raster-controls button').first().click();
   assert.notEqual(await tile.getAttribute('src'),before,'Raster zoom changes actual map tiles without WebGL');
   assert.equal(await page.locator('.ffm-place-location iframe').count(),0);
+  await page.locator('.ffm-compare-add').click();
+  assert.equal(await page.locator('.ffm-place-actions').count(),1,'Parent updates must not duplicate keyed actions');
   assert.deepEqual(errors,[]);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
   await ctx.close();console.log(`Functional recovery, calendar and locale: ${width}px passed`);
  }
