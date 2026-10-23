@@ -124,3 +124,11 @@ All 15 permitted sections now use task-grouped navigation (editorial, content, b
 Shared admin-only controls cover account search, catalog/roles, tariff/seat forms and moderation tools. Homepage modules use compact ordered rows, correctly sized checkboxes, spaced movement actions and a separate save action. Failed initial layout loading blocks editing/saving rather than overwriting the saved layout with defaults. Empty role/team/loyalty states are explicit. Public interfaces retain their own styles.
 
 `node scripts/admin-workspace-browser.mjs` uses isolated HTTP fixtures and a production build to exercise every section at desktop/mobile sizes, check horizontal overflow, audit accessibility, test homepage order/visibility persistence and account search, and capture representative screenshots. It creates no production records and is included in CI. Provider delivery and independent accessibility acceptance remain external prerequisites.
+
+### Public-site design review — 2026-10-23
+
+The business workspace now groups existing tools into five task areas: locations, content, customers, advertising and administration. Hidden sections stay mounted so switching tasks preserves unsent form drafts. Example offers are an explicit optional disclosure. Existing authorization, payments, moderation and scanner gates are unchanged.
+
+Public profile/premium/business controls now share spacing, readable input sizes and appropriately sized checkboxes. Profile auxiliary sections use the same reading width as profile settings. Assistant consent checkboxes no longer inherit text-input dimensions. Secondary editorial, saved-place and tour labels have measured darker colours. Content photographs in the main experience and homepage have a local SVG illustration fallback with an explicit unavailable-image alt label; it is not venue photography or a verified-content claim.
+
+`scripts/site-design-browser.mjs` exercises production-built public pages and all five business task areas at 1440, 390 and 320 pixels, with anonymous/registration states, English business labels, blocked external photographs, draft preservation and checkbox-size assertions. Isolated HTTP fixtures create no production records; the browser checks and screenshots are included in CI. Existing map/admin/API/PostgreSQL/restore checks remain required.

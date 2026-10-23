@@ -1,0 +1,63 @@
+/* Public forms and workspaces share controls without changing map or admin controls. */
+.site:not(.ffm-studio-active) :is(.ffm-profile-panel,.ffm-premium-preview,.ffm-business-page,.ffm-community-composer) :is(input:not([type=checkbox]):not([type=radio]),select,textarea){max-width:100%;min-width:0;min-height:44px;border:1px solid #cad5ca;border-radius:9px;padding:11px 12px;background:#fcfdf9;color:#254331;font-size:14px;line-height:1.45;box-sizing:border-box}
+.site:not(.ffm-studio-active) :is(.ffm-profile-panel,.ffm-premium-preview,.ffm-business-page) label{font-size:12px;line-height:1.6}
+.site:not(.ffm-studio-active) :is(.ffm-profile-panel,.ffm-premium-preview,.ffm-business-page) label:has(>input:not([type=checkbox]):not([type=radio])),.site:not(.ffm-studio-active) :is(.ffm-profile-panel,.ffm-premium-preview,.ffm-business-page) label:has(>textarea),.site:not(.ffm-studio-active) :is(.ffm-profile-panel,.ffm-premium-preview,.ffm-business-page) label:has(>select){display:grid;gap:7px}
+.site:not(.ffm-studio-active) :is(.ffm-profile-panel,.ffm-premium-preview,.ffm-business-page) textarea{width:100%;min-height:96px;resize:vertical}
+.site:not(.ffm-studio-active) :is(.ffm-profile-panel,.ffm-premium-preview,.ffm-business-page) button{min-height:42px;border-radius:9px;white-space:normal;line-height:1.45}
+.site:not(.ffm-studio-active) :is(.ffm-profile-panel,.ffm-premium-preview,.ffm-business-page) form{display:grid;gap:15px}
+.site:not(.ffm-studio-active) :is(.ffm-profile-panel,.ffm-premium-preview,.ffm-business-page) form>button{justify-self:start}
+.site:not(.ffm-studio-active) :is(.ffm-profile-panel,.ffm-premium-preview) :where(button):not(:where(.ffm-profile-danger button,.ffm-profile-chips button)){border:1px solid #cfdbcf;background:#edf3e9;color:#274d36;padding:10px 14px;font-weight:650;font-size:12px}
+.site:not(.ffm-studio-active) .ffm-profile-panel button.ffm-profile-primary{background:#284d36;color:#fff}
+.site:not(.ffm-studio-active) :is(.ffm-profile-panel,.ffm-premium-preview,.ffm-business-page,.ffm-assistant) input:is([type=checkbox],[type=radio]){width:18px;height:18px;min-height:18px;flex:none;padding:0;margin:2px 0;accent-color:#315b40;vertical-align:middle}
+.site:not(.ffm-studio-active) :is(.ffm-premium-preview,.ffm-business-page,.ffm-assistant) label:has(>input:is([type=checkbox],[type=radio])){display:flex;align-items:flex-start;justify-content:flex-start;gap:10px;line-height:1.6}
+.site:not(.ffm-studio-active) .ffm-intent-optin{max-width:80ch;padding:10px 0;font-size:12px;color:#425f4a}
+.ffm-assistant form>input{flex:1;min-width:0}
+.ffm-assistant form>button{flex:none}
+.ffm-profile-extras{max-width:800px;margin:-65px auto 40px;padding:0 18px}
+.ffm-profile-extras>section{margin:16px 0;border-radius:15px;padding:24px}
+.ffm-premium-preview article{flex:1;min-width:min(100%,240px);max-width:100%;line-height:1.6}
+.ffm-premium-preview>label{margin:18px 0}
+.ffm-profile-panel :is(p,article,li){line-height:1.65;overflow-wrap:anywhere}
+.ffm-profile-panel form>label:not(.ffm-profile-check){margin:0}
+.ffm-business-page{max-width:1240px}
+.ffm-business-page>.page-title{margin-bottom:28px}
+.ffm-business-page .business-status{border:1px solid #d4dfd1;border-radius:14px;padding:22px 26px;margin-bottom:22px}
+.ffm-business-page .business-status h2{font-size:24px;overflow-wrap:anywhere}
+.ffm-business-nav{display:flex;gap:7px;flex-wrap:wrap;border-bottom:1px solid #d6dfd2;padding-bottom:16px;margin-bottom:24px}
+.ffm-business-nav button{border:1px solid #d2ddce;background:#fff;color:#35543b;padding:11px 18px;min-height:44px;font-size:13px;font-weight:650;border-radius:9px}
+.ffm-business-nav button[aria-pressed=true]{background:#254a35;border-color:#254a35;color:#fff}
+.ffm-business-section[hidden]{display:none!important}
+.ffm-business-section{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+.ffm-business-section>*{min-width:0;margin:0!important;width:100%;max-width:100%}
+.ffm-business-section>:is(.ffm-campaign-panel,.ffm-team-section,.ffm-premium-preview,.ffm-insights,.ffm-business-highlights){grid-column:1/-1}
+.ffm-business-page :is(.panel,.ffm-profile-panel,.ffm-branch-panel,.ffm-campaign-panel,.ffm-team-section,.ffm-premium-preview){border-radius:14px;padding:24px;border:1px solid #dce4d6;background:#fff;box-shadow:none}
+.ffm-business-page :is(h2,h3){font-family:'DM Sans',sans-serif;letter-spacing:-.4px;line-height:1.35}
+.ffm-business-page h2{font-size:22px;margin-bottom:14px}
+.ffm-business-page :is(p,small){line-height:1.65}
+.ffm-business-page .ffm-profile-panel>form{margin-top:18px}
+.ffm-business-page .ffm-profile-panel button{border:1px solid #284e36;background:#284e36;color:#fff;padding:11px 14px;font-size:12px;font-weight:650}
+.ffm-business-page input[type=file]::file-selector-button,.v3-community-compose input[type=file]::file-selector-button{border:0;border-radius:6px;padding:7px 10px;margin-right:10px;background:#e6eee2;color:#244431}
+.ffm-business-examples{margin-top:32px;border-top:1px solid #d6dfd2;padding-top:18px}
+.ffm-business-examples>summary{cursor:pointer;min-height:44px;padding:10px 0;font-size:13px;color:#35573e;font-weight:650}
+.ffm-business-examples .v3-business-preview{margin-top:24px}
+.site:not(.ffm-studio-active) .v3-community-compose{padding:24px;border-radius:14px}
+.site:not(.ffm-studio-active) .v3-community-compose input[type=file]{width:100%;min-width:0;font-size:12px;border-radius:9px}
+.site img[data-image-fallback=true]{background:#eaf0e7;object-fit:cover}
+@media(max-width:850px){.ffm-business-section{grid-template-columns:1fr}.ffm-business-page .business-status{padding:19px}.ffm-business-nav button{flex:1;min-width:110px}.ffm-business-page :is(.panel,.ffm-profile-panel,.ffm-branch-panel,.ffm-campaign-panel,.ffm-team-section,.ffm-premium-preview){padding:20px}}
+@media(max-width:600px){
+ .ffm-profile-extras{padding:0 13px;margin-top:-85px}
+ .ffm-profile-extras>section{padding:19px 16px}
+ .ffm-business-page .business-status h2{font-size:21px}
+ .ffm-business-nav{gap:7px;margin-bottom:20px}
+ .ffm-business-nav button{padding:10px;font-size:12px;min-width:calc(33% - 7px)}
+ .ffm-business-section{gap:16px}
+ .ffm-assistant form>button{width:100%}
+ .ffm-business-page .ffm-campaign-panel>header,.ffm-business-page .ffm-team-section>header{flex-wrap:wrap;gap:14px}
+}
+.ffm-business-page .page-title h1{font-size:clamp(38px,5.4vw,68px);line-height:1.08}
+.ffm-business-section>:last-child:nth-child(odd){grid-column:1/-1}
+.ffm-business-section>.ffm-profile-panel>form{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ffm-business-section>.ffm-profile-panel>form>label:has(textarea){grid-column:1/-1}
+@media(max-width:600px){.ffm-business-section>.ffm-profile-panel>form{grid-template-columns:1fr}}
+
+.site:not(.ffm-studio-active) .ffm-profile-panel .ffm-profile-chips button{border-radius:999px;min-height:40px}

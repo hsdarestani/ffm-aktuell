@@ -26,3 +26,8 @@
 .ffm-find-visual .ffm-find-source-credit{opacity:1}
 /* Keep the standalone atlas wordmark readable at its 21px mobile size. */
 .atlas-standalone-brand>span{color:#735959}
+
+/* Secondary public text remains readable across the editorial paper colours. */
+.site:not(.ffm-studio-active) .desktop-nav>button{color:#535f55}
+.site:not(.ffm-studio-active) :is(.ffm-quick-geo,.ffm-quick-help,.page-title>p,.v3-section-trail,.v3-event-info>p,.v3-place-meta,.v3-journal-copy>p,.v3-offer-copy>p,.v3-offer-copy>small,.v4-group-sub,.v3-post-person small,.v3-community-compose>p,.ffm-follow-filter>button,.ffm-saved-heading>span,.ffm-saved-heading>p,.ffm-saved-empty>p,.ffm-tour-head>span,.ffm-tour-head>p,.ffm-tour-mini-head>span,.ffm-tour-empty,.ffm-tour-muted,.business-status small,.business-status p,.ffm-branch-panel>p,.ffm-coupon-business>p,.ffm-team-note,.ffm-insights-head>span,.subdued){color:#506354}
+.site:not(.ffm-studio-active) :is(.page-title>small,.v3-eyebrow){color:#80594e}

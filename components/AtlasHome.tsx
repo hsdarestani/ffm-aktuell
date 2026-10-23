@@ -1,4 +1,5 @@
 'use client';
+import ContentImage from '@/components/ContentImage';
 import {useUiText} from '@/lib/ui-locale';
 
 import {useState,useEffect,Fragment,type ReactNode,type FormEvent} from 'react';
@@ -62,7 +63,7 @@ export default function AtlasHome({tips,assistant,lang,places,events,news,onDisc
    <div><Compass size={23}/><h2>{lang==='de'?ui("Frankfurt hat noch mehr zu bieten."):ui("There is more to Frankfurt.")}</h2><p>{lang==='de'?ui("Entdecke die Stadt auf deine Weise – oder teile deine Lieblingsorte."):ui("Explore the city your way, or share your favourite places.")}</p></div>
    <div className="ffm-quick-quiet-actions"><button onClick={onCommunity}>{lang==='de'?ui("Miteinander entdecken"):ui("Explore together")} <ChevronRight size={17}/></button><button onClick={onBusiness}>{lang==='de'?ui("Für Unternehmen"):ui("For businesses")} <ChevronRight size={17}/></button></div>
   </section>),news:(news.length>0&&<details className="ffm-quick-extras ffm-quick-container"><summary>{lang==='de'?ui("Stadtgeschichten ansehen"):ui("See stories from the city")} <ChevronRight size={16}/></summary>
-   <div className="v3-home-news-grid" aria-label={ui("03 / STADTJOURNAL")}>{news.slice(0,3).map(n=><article key={n.id} className="ffm-quick-news"><img src={ortsbild('',n.image_url)} loading="lazy" alt={ui("Stimmungsbild aus Frankfurt")}/><div><small>{n.demo?'MUSTERBEITRAG':'STADTGESCHICHTE'}</small><strong>{n.title}</strong></div></article>)}</div>
+   <div className="v3-home-news-grid" aria-label={ui("03 / STADTJOURNAL")}>{news.slice(0,3).map(n=><article key={n.id} className="ffm-quick-news"><ContentImage src={ortsbild('',n.image_url)} loading="lazy" alt={ui("Stimmungsbild aus Frankfurt")}/><div><small>{n.demo?'MUSTERBEITRAG':'STADTGESCHICHTE'}</small><strong>{n.title}</strong></div></article>)}</div>
   </details>)};
  return <main className="ffm-quick-home">
   <section className="ffm-quick-hero" aria-labelledby="quick-home-title">

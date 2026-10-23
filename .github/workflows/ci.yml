@@ -50,6 +50,17 @@ jobs:
           name: admin-workspace-browser
           path: artifacts/admin-workspace
           if-no-files-found: ignore
+      - name: Public site design and business workspace browser checks
+        env:
+          SITE_DESIGN_VERIFY: "1"
+        run: node scripts/site-design-browser.mjs
+      - name: Public site design screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-design-browser
+          path: artifacts/site-design
+          if-no-files-found: ignore
       - name: Mobile map startup and stalled-network recovery
         run: npm run test:map-browser
       - name: Map recovery screenshots
