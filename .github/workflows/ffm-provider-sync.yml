@@ -12,14 +12,11 @@ jobs:
   provision:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    environment: production
     steps:
       - name: Securely send existing FFM repository keys to the FFM server
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
-          OIDC_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
-          OIDC_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
         run: |
           set -euo pipefail
           test -n "$OPENAI_API_KEY" && test -n "$OPENWEATHER_API_KEY" || {
