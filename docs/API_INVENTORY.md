@@ -26,6 +26,7 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | POST | `/api/admin/news` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/admin/places` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/admin/plans` | [app/api/admin/plans/route.ts](../app/api/admin/plans/route.ts) |
+| POST | `/api/admin/provider-probe` | [app/api/admin/provider-probe/route.ts](../app/api/admin/provider-probe/route.ts) |
 | GET | `/api/admin/queue` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/admin/remove-review` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/admin/review` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
@@ -79,6 +80,7 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | POST | `/api/deals` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/discovery` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/discovery-map` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
+| GET | `/api/event-explorer` | [app/api/event-explorer/route.ts](../app/api/event-explorer/route.ts) |
 | GET | `/api/event-favorites` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/event-favorites` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/events` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
@@ -89,6 +91,7 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | GET | `/api/favorites/details` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/follows` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | POST | `/api/follows` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
+| GET | `/api/guides` | [app/api/guides/route.ts](../app/api/guides/route.ts) |
 | GET | `/api/health` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/highlights` | [app/api/highlights/route.ts](../app/api/highlights/route.ts) |
 | POST | `/api/highlights` | [app/api/highlights/route.ts](../app/api/highlights/route.ts) |
@@ -122,6 +125,8 @@ Generated from the actual route handlers. Dynamic segments retain square bracket
 | POST | `/api/media/rights` | [app/api/media/rights/route.ts](../app/api/media/rights/route.ts) |
 | GET | `/api/media/status` | [app/api/media/status/route.ts](../app/api/media/status/route.ts) |
 | POST | `/api/media/upload` | [app/api/media/upload/route.ts](../app/api/media/upload/route.ts) |
+| GET | `/api/new-openings` | [app/api/new-openings/route.ts](../app/api/new-openings/route.ts) |
+| POST | `/api/new-openings` | [app/api/new-openings/route.ts](../app/api/new-openings/route.ts) |
 | GET | `/api/news` | [app/api/[[...path]]/route.ts](../app/api/[[...path]]/route.ts) |
 | GET | `/api/openapi` | [app/api/openapi/route.ts](../app/api/openapi/route.ts) |
 | GET | `/api/opening-hours` | [app/api/opening-hours/route.ts](../app/api/opening-hours/route.ts) |
