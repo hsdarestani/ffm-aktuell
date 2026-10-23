@@ -841,3 +841,16 @@ $$;
 CREATE OR REPLACE FUNCTION business_profile_access(bid uuid) RETURNS boolean LANGUAGE sql STABLE AS $$
  SELECT business_deal_access(bid,NULL::uuid)
 $$;
+
+
+-- Independent encrypted FFM-only provider secrets, written solely by exact GitHub Actions OIDC identity.
+-- Rotation of SESSION_SECRET requires re-provisioning; no raw key is stored in SQL.
+CREATE TABLE IF NOT EXISTS service_credentials(
+ provider text PRIMARY KEY CHECK(provider IN ('OPENAI_API_KEY','OPENWEATHER_API_KEY')),
+ secret_encrypted text NOT NULL,
+ updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS github_oidc_receipts(
+ jti text PRIMARY KEY,
+ accepted_at timestamptz NOT NULL DEFAULT now()
+);
