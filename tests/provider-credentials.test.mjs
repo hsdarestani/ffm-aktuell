@@ -27,6 +27,8 @@ test('remote configuration only accepts a precisely authorized FFM workflow and 
  const handler=source('app/api/internal/github-provider-sync/route.ts');
  for(const value of ['jwtVerify','RS256','repository_id','workflow_ref','jti','service_credentials','github_oidc_receipts','encryptCredential','OPENAI_API_KEY','OPENWEATHER_API_KEY'])assert.ok(handler.includes(value),value);
  assert.match(handler,/maxTokenAge:'3m'/);
+ assert.match(handler,/hsdarestani@45485005\/ffm-aktuell@1423074676/);
+ assert.match(handler,/repository_owner_id/);
  assert.match(handler,/\bCOMMIT\b/);
  assert.doesNotMatch(handler,/console\.log|process\.env\.OPENAI_API_KEY|process\.env\.OPENWEATHER_API_KEY/);
  const workflow=source('.github/workflows/ffm-provider-sync.yml');
