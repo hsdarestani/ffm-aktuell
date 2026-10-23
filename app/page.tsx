@@ -8,7 +8,7 @@ import PostTranslation from '@/components/PostTranslation';
 import PhoneAccess from '@/components/PhoneAccess';
 import {useState,useRef,useEffect,useMemo,useCallback,type FormEvent} from 'react';
 import dynamic from 'next/dynamic';
-import {Compass,MapPin,Map as MapIcon,Heart,CalendarDays,Users,UserRound,Search,Menu,X,Globe,Plus,Check,Building2,Newspaper,LockKeyhole,Coffee,UtensilsCrossed,Martini,Activity,Landmark,Pill,Info,ChevronRight,ShieldAlert} from 'lucide-react';
+import {Compass,MapPin,Map as MapIcon,Heart,CalendarDays,Users,UserRound,Search,Menu,X,Globe,Plus,Check,SlidersHorizontal,Building2,Newspaper,LockKeyhole,Coffee,UtensilsCrossed,Martini,Activity,Landmark,Pill,Info,ChevronRight,ShieldAlert} from 'lucide-react';
 import type {MapPlace} from '@/components/CityMap';
 import AtlasHome from '@/components/AtlasHome';
 import AdminStudio from '@/components/AdminStudio';
@@ -292,6 +292,7 @@ export default function Home(){
  </section>
 
  <section className="ffm-find-filters" aria-label={ui("Kategorien")}>
+ <p className="ffm-find-filter-heading">{ui("Was möchtest du entdecken?")}</p>
   <div className="ffm-find-main-cats">
    {[
     {id:'Alle',label:'Alle',Icon:Compass,tone:'all'},
@@ -319,6 +320,11 @@ export default function Home(){
    {(selectedCategories.length>0||district||nearby||nurGepruefte||factFilters.length>0||priceMax>0||ratingMin>0||openNow)&&<button type="button" className="ffm-find-filter-reset"
     onClick={()=>{setSelectedCategories([]);setCategory('Alle');setDistrict('');setNearby(null);setRadiusKm(3);setNurGepruefte(false);setFactFilters([]);setPriceMax(0);setRatingMin(0);setOpenNow(false)}}>{ui("Filter löschen")}</button>}
   </div>
+  <details className="ffm-find-advanced">
+   <summary className="ffm-find-advanced-toggle"><SlidersHorizontal size={18} aria-hidden="true"/><span>{ui("Weitere Filter")}</span>
+    <span className="ffm-find-advanced-count">{factFilters.length+(priceMax>0?1:0)+(ratingMin>0?1:0)+(openNow?1:0)+(selectedCategories.filter(c=>!['Cafés','Restaurants','Bars','Freizeit','Museen','Apotheken'].includes(c)).length)||''}</span>
+    <ChevronRight size={18} className="ffm-find-advanced-chevron"/></summary>
+  <div className="ffm-find-advanced-body">
   <details className="ffm-find-more">
    <summary><Plus size={16}/> {ui(" Weitere Kategorien")}{selectedCategories.length?' · '+selectedCategories.length+ui(" gewählt"):''}</summary>
    <div className="ffm-find-extra">
@@ -332,7 +338,8 @@ export default function Home(){
    <div className="ffm-find-quick-filters"><label><input type="checkbox" checked={openNow} onChange={e=>setOpenNow(e.target.checked)}/>{ui("Laut Tagesplan jetzt geöffnet")}</label>{([['indoor','Indoor'],['outdoor','Outdoor'],['family_friendly','Familienfreundlich'],['wheelchair_accessible','Rollstuhlgerecht']] as const).map(([key,label])=><label key={key}><input type="checkbox" checked={factFilters.includes(key)} onChange={e=>setFactFilters(v=>e.target.checked?[...v,key]:v.filter(f=>f!==key))}/>{label}</label>)}
    <label>{ui("Preisniveau bis")}<select aria-label={ui("Maximales Preisniveau")} value={priceMax} onChange={e=>setPriceMax(Number(e.target.value))}><option value={0}>{ui("Alle oder unbekannt")}</option>{[1,2,3,4].map(v=><option key={v} value={v}>{'€'.repeat(v)}</option>)}</select></label>
    <label>{ui("Bewertung ab")}<select aria-label={ui("Mindestbewertung")} value={ratingMin} onChange={e=>setRatingMin(Number(e.target.value))}><option value={0}>{ui("Alle oder ohne Bewertung")}</option>{[1,2,3,4,5].map(v=><option key={v} value={v}>{v} {ui(" Sterne")}</option>)}</select></label></div>
-  </details> </section>
+  </details>
+  </div></details> </section>
 
  {category==='Apotheken Notdienst'&&<section className="ffm-find-duty"><strong>{ui("Apotheken-Notdienst")}</strong><p>{ui("Diese Ortsliste ist keine Notdienstbestätigung.")}</p><a href="https://www.aponet.de/notdienstsuche/60320-Frankfurt" target="_blank" rel="noopener noreferrer">{ui("Aktuellen Dienst bei aponet prüfen ")}<ChevronRight size={16}/></a></section>}
 
