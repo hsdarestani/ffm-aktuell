@@ -85,3 +85,29 @@
  .ffm-find-visual .ffm-find-place-visual{width:89px}
  .ffm-find-visual .ffm-find-item-copy strong{font-size:14px}
 }
+
+/* Studio service status: scannable cards and clear access to the provider workflow. */
+.ffm-services-dashboard{max-width:1120px;margin:0 auto;padding:15px 0 35px}
+.ffm-services-dashboard .ffm-services-heading{padding-bottom:22px;border-bottom:1px solid #dce6dc}
+.ffm-services-dashboard .ffm-services-heading>span{font:800 11px 'DM Sans',sans-serif;letter-spacing:.12em;color:#627d69;text-transform:uppercase}
+.ffm-services-dashboard .ffm-services-heading h1{font-size:clamp(32px,4vw,47px);line-height:1.12;letter-spacing:-.04em;margin:10px 0 12px}
+.ffm-services-dashboard .ffm-services-heading p{font-size:14px;line-height:1.65;color:#65796b;max-width:730px;margin:0}
+.ffm-services-dashboard .ffm-services-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:23px 0}
+.ffm-services-dashboard .ffm-services-actions button{min-height:45px;padding:11px 19px;border:1px solid #285b40;border-radius:12px;background:#fff;color:#255238;font-weight:800;font-size:13px}
+.ffm-services-dashboard .ffm-services-actions button:nth-child(2){background:#295c40;color:#fff}
+.ffm-services-dashboard .ffm-catalog-columns{gap:15px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.ffm-services-dashboard .ffm-catalog-panel{background:#fff;border:1px solid #e0e8dd;border-radius:18px;padding:21px 23px;box-shadow:0 3px 16px #173a2008;margin-bottom:15px}
+.ffm-services-dashboard .ffm-catalog-panel h2{font-size:17px;letter-spacing:-.025em;margin:0 0 13px}
+.ffm-services-dashboard .ffm-catalog-panel p{margin:8px 0;color:#627364;font-size:13px;line-height:1.65}
+.ffm-services-dashboard .ffm-services-provision-note{margin:8px 0 26px;padding:22px 24px;background:#ecf4ec;border:1px solid #cddfcd;border-radius:18px}
+.ffm-services-dashboard .ffm-services-provision-note strong{font-size:17px;letter-spacing:-.02em;color:#285139}
+.ffm-services-dashboard .ffm-services-provision-note p{font-size:13px;line-height:1.65;margin:10px 0;color:#506b57;max-width:82ch}
+.ffm-services-dashboard .ffm-services-provision-note a{display:inline-flex;align-items:center;min-height:42px;border:1px solid #8db299;border-radius:10px;padding:10px 15px;font-size:12px;font-weight:800;color:#245e3d;background:#fff}
+.ffm-services-dashboard>small{display:block;margin-top:12px;color:#617569}
+@media(max-width:690px){
+ .ffm-services-dashboard{padding:4px 0 25px}
+ .ffm-services-dashboard .ffm-catalog-columns{grid-template-columns:minmax(0,1fr)}
+ .ffm-services-dashboard .ffm-catalog-panel{padding:19px}
+ .ffm-services-dashboard .ffm-services-actions button{width:100%;justify-content:center}
+ .ffm-services-dashboard .ffm-services-provision-note{padding:18px}
+}
