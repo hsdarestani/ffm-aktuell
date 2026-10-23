@@ -25,7 +25,6 @@ import FollowButton from '@/components/FollowButton';
 import {validLocationId} from '@/lib/location-actions';
 import './assistant-discovery.css';
 import './city-experience.css';
-import './discover-refresh.css';
 import './community-media.css';
 import './highlights.css';
 import {KATEGORIEN,passendeRubrik,frischBestaetigt,statusLabel} from '@/lib/ortskategorien';
