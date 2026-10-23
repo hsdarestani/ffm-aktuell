@@ -2,6 +2,34 @@
 
 The web product remains usable without third-party credentials. Never paste real keys into source code, issues, screenshots, chat or this example file.
 
+## OpenAI / OpenWeather: FFM repository secrets are now supported
+
+The existing repo secrets **OPENAI_API_KEY** and **OPENWEATHER_API_KEY** in
+`hsdarestani/ffm-aktuell` can now be applied directly to production by the
+dedicated [FFM provider sync workflow](https://github.com/hsdarestani/ffm-aktuell/actions/workflows/ffm-provider-sync.yml).
+The two values are never checked into code, printed in a CI log, sent through
+chat or copied into Publisher. The workflow sends them to the FFM-owned HTTPS
+endpoint using a short-lived GitHub OIDC token. The server independently verifies
+GitHub's signature, the exact FFM repository ID, workflow filename, ref, token
+audience and unused token ID, then encrypts credentials using its existing
+private SESSION_SECRET for storage in the isolated FFM database.
+
+The legacy Publisher `FFM_SERVICES_JSON` configuration continues to support
+other provider integrations and takes precedence for these two keys if values
+are explicitly configured there. Thus setting GitHub Secrets in FFM alone did
+*not* activate them in the old deployment; the earlier Publisher run applied
+`settings: 0`. This dedicated workflow fixes the cross-repository gap.
+
+After running the workflow, refresh **Stadtstudio → Dienste** and use
+**OpenAI und OpenWeather live testen** to distinguish `ready`,
+`unauthorized`, `unavailable` and `missing`. Credentials are not proof of
+adequate editorial inventory: genuine independently verified operating venues
+must exist before Matcher can return verified recommendations.
+
+Key re-provisioning is required after rotation of SESSION_SECRET.
+Stored ciphertext is included in FFM-only encrypted backup/restore but must
+never be exported unencrypted to screenshots, issues or support threads.
+
 ## One configuration secret
 
 Publisher's **production** environment accepts `FFM_SERVICES_JSON`, a JSON object whose key names match `.env.example`. Include only the services you want to configure. `scripts/service-config.example.json` contains placeholders, not working credentials. Missing fields preserve the current server configuration. Explicit empty values disable the corresponding setting. The workflow validates the allowlist and writes only the isolated FFM `.env` with mode 0600; it never changes Publisher credentials. Re-run the FFM deploy workflow after changing the secret. No source changes are needed.
